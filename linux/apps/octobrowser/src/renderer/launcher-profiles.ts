@@ -162,7 +162,7 @@ export async function startProfile(p: Profile): Promise<void> {
     case 'tor-missing': torMissing(); break;
     case 'wsb-unavailable': wsbUnavailable(p); break;
     case 'inkbrowser-missing': case 'inkbrowser-conflict': toast(inkbrowserLaunchMessage(r.status, r.detail), 'err'); break;
-    case 'firefox-engine-unavailable': toast(t('launch.status.firefox-engine-unavailable'), 'err'); break;
+    case 'firefox-engine-unavailable': toast(`${t('launch.status.firefox-engine-unavailable')} (${r.detail ?? 'runtime-unavailable'})`, 'err'); break;
     case 'firefox-launch-failed': toast(t('launch.status.firefox-launch-failed'), 'err'); break;
     default: toast(r.status, 'err');
   }
@@ -863,6 +863,41 @@ function row(p: Profile, activeCols: ProfileColumnKey[], trGridCols: string): HT
 
 let ticker: number | undefined;
 
+function managerOverview(onCreate: () => void): HTMLElement {
+  const running = S.profiles.filter((p) => p.running).length;
+  const folders = new Set(S.profiles.map((p) => p.folder).filter(Boolean)).size;
+  const native = S.profiles.filter((p) => browserEngineFor(p.engine) !== 'electron').length;
+  const metric = (value: string, label: string, ic: string) => h('div', { class: 'orbit-metric' }, h('span', { class: 'orbit-metric-icon' }, icon(ic, 17)), h('div', {}, h('strong', { text: value }), h('small', { text: label })));
+  const engineCard = (engine: 'chromium' | 'firefox' | 'electron', available: boolean, title: string, note: string) => h('article', { class: `orbit-engine orbit-engine-${engine}${available ? ' ready' : ' unavailable'}` },
+    h('div', { class: 'orbit-engine-head' }, h('span', { class: 'orbit-engine-icon' }, icon(engine === 'firefox' ? 'globe' : engine === 'electron' ? 'octopus' : 'browser', 19)), h('span', { class: 'orbit-engine-badge' }, icon(available ? 'check' : 'alert', 12), h('span', { text: available ? t('ui.manager.ready') : t('ui.manager.needsSetup') }))),
+    h('b', { text: title }), h('p', { text: note }));
+  const health = h('button', { class: 'btn small outline orbit-health' }, icon('shieldCheck', 14), h('span', { text: t('ui.manager.runtimeHealth') }));
+  health.onclick = async () => {
+    const status = await run(api.invoke<{ reason: string; version: string; platform: string; packaged: string; user: string; executable: string | null }>('mgr:firefox-runtime-status'));
+    if (!status) return;
+    modal(t('ui.manager.runtimeHealth'), (box) => {
+      const line = (label: string, value: string) => h('div', { class: 'orbit-diagnostic-line' }, h('b', { text: label }), h('span', { class: 'mono', text: value }));
+      const close = h('button', { class: 'btn primary', text: t('common.close') }); close.onclick = closeModal;
+      box.append(
+        h('p', { class: 'hint', text: t('ui.manager.runtimeHealthHint') }),
+        h('div', { class: 'orbit-diagnostic' },
+          line(t('ui.manager.runtimeVersion'), status.version),
+          line(t('ui.manager.runtimePlatform'), status.platform),
+          line(t('ui.manager.packagedRuntime'), status.packaged),
+          line(t('ui.manager.userRuntime'), status.user),
+          line(t('ui.manager.runtimeResult'), status.reason),
+          line(t('ui.manager.runtimeExecutable'), status.executable ?? t('ui.manager.notAvailable'))),
+        h('div', { class: 'modal-actions' }, close),
+      );
+    }, 'wide');
+  };
+  const create = h('button', { class: 'btn primary orbit-create' }, icon('plus', 15), h('span', { text: t('ui.createProfile') })); create.onclick = onCreate;
+  return h('section', { class: 'orbit-overview' },
+    h('div', { class: 'orbit-welcome' }, h('div', { class: 'orbit-welcome-copy' }, h('span', { class: 'orbit-kicker', text: t('ui.manager.kicker') }), h('h2', { text: t('ui.manager.title') }), h('p', { text: t('ui.manager.subtitle') })), h('div', { class: 'orbit-welcome-actions' }, health, create)),
+    h('div', { class: 'orbit-metrics' }, metric(String(S.profiles.length), t('ui.manager.totalProfiles'), 'users'), metric(String(running), t('ui.manager.runningNow'), 'play'), metric(String(folders), t('ui.manager.folders'), 'folder'), metric(String(native), t('ui.manager.nativeProfiles'), 'globe')),
+    h('div', { class: 'orbit-engines' }, engineCard('chromium', Boolean(S.init.inkbrowserInstalled), t('browserEngine.chromiumCore'), t('ui.manager.chromiumCapability')), engineCard('firefox', Boolean(S.init.firefoxAvailable), t('browserEngine.firefoxCore'), t('ui.manager.firefoxCapability')), engineCard('electron', true, t('browserEngine.electron'), t('ui.manager.electronCapability'))));
+}
+
 export function renderProfiles(v: HTMLElement): void {
   const list = visibleProfiles();
   // ---- toolbar
@@ -893,7 +928,7 @@ export function renderProfiles(v: HTMLElement): void {
   const search = input(S.search, { type: 'search', placeholder: t('ui.searchPh'), 'aria-label': t('ui.searchPh'), id: 'profileSearch' });
   search.oninput = () => { S.search = search.value; drawTable(); };
   const searchBox = h('div', { class: 'search' }, icon('search', 16), search);
-  v.append(h('div', { class: 'toolbar' },
+  v.append(managerOverview(() => openEditor(null)), h('div', { class: 'toolbar' },
     h('h1', { class: 'ell', text: title }),
     h('div', { class: 'grow' }),
     create, h('div', { class: 'split' }, quick, quickOs), more, organization, searchBox));

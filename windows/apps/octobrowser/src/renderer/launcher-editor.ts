@@ -35,7 +35,7 @@ import { parseProxy } from '@octo/core/proxy';
 import { presetFor } from '@octo/core/privacy';
 import { chromiumUserAgent } from '@octo/core/user-agent';
 import { browserEngineFor, NEW_PROFILE_ENGINE, type BrowserEngine } from '@octo/core/inkbrowser';
-import { DEFAULT_ENGINE_PRIVACY, type EnginePrivacySettings } from '@octo/core/engine-privacy';
+import { DEFAULT_ENGINE_PRIVACY, sanitizeEnginePrivacy, type EnginePrivacySettings } from '@octo/core/engine-privacy';
 import { ANDROID_VERSIONS, IOS_VERSIONS, mobileEmulationFor, MOBILE_DEVICES } from '@octo/core/mobile';
 import {
   S, Profile, Kind, Level, FpOs, Fingerprint, ProxyType, ProxyCheck, SavedProxy, animateIn, run, toast, errText, modal, closeModal, field, fieldWithInfo, input, select, toggle,
@@ -182,7 +182,7 @@ function draftFrom(p: Profile): Draft {
     homePage: c.homePage === 'octo://newtab' ? '' : c.homePage, searchEngine: c.searchEngine ?? '', theme: c.theme, browserShell: c.browserShell, baseChromeLook: c.baseChromeLook === true, appMode: c.appMode === true, smartPaste: c.smartPaste !== false, keepHistory: c.keepHistory, savePasswords: c.savePasswords === true, restoreSession: c.restoreSession, deleteOnClose: c.deleteOnClose,
     protection: { level: c.protection.level, overrides: c.protection.overrides ?? {} }, dns: c.dns, sandbox: c.sandbox, mobile: c.mobile ?? { device: 'none', orientation: 'portrait' }, addons: c.addons,
     vstudioWebOnLaunch: c.vstudioWebOnLaunch === true,
-    mediaCapture: c.mediaCapture ?? { cameraLabel: '', microphoneLabel: '' }, enginePrivacy: structuredClone(c.enginePrivacy ?? DEFAULT_ENGINE_PRIVACY),
+    mediaCapture: c.mediaCapture ?? { cameraLabel: '', microphoneLabel: '' }, enginePrivacy: sanitizeEnginePrivacy(c.enginePrivacy ?? DEFAULT_ENGINE_PRIVACY),
     fp: c.fingerprint?.enabled ? c.fingerprint : c.kind === 'antidetect' ? c.fingerprint : null, proxy, cookies: '',
   };
 }
@@ -940,8 +940,13 @@ function nativeEnginePrivacySection(d: Draft, draw: () => void, summary: () => v
     else d.enginePrivacy.chromium.location = v as 'ask' | 'block';
     summary();
   });
+  const webgl = select(base === 'firefox' ? d.enginePrivacy.firefox.webgl : d.enginePrivacy.chromium.webgl, [['allow', t('enginePrivacy.webgl.allow')], ['disable', t('enginePrivacy.webgl.disable')]], (v) => {
+    if (base === 'firefox') d.enginePrivacy.firefox.webgl = v as 'allow' | 'disable';
+    else d.enginePrivacy.chromium.webgl = v as 'allow' | 'disable';
+    summary();
+  });
   reset.onclick = () => { d.enginePrivacy = structuredClone(DEFAULT_ENGINE_PRIVACY); draw(); };
-  const controls: HTMLElement[] = [field('enginePrivacy.webRtc', webRtc), field('enginePrivacy.location', location)];
+  const controls: HTMLElement[] = [field('enginePrivacy.webRtc', webRtc), field('enginePrivacy.location', location), field('enginePrivacy.webgl', webgl)];
   if (base === 'firefox') controls.push(toggle(d.enginePrivacy.firefox.resistFingerprinting, 'enginePrivacy.resistFingerprinting', (v) => { d.enginePrivacy.firefox.resistFingerprinting = v; summary(); }));
   return section(t('enginePrivacy.title'), h('p', { class: 'hint', text: t(`enginePrivacy.${base}.hint`) }), h('div', { class: 'row between' }, h('span', { class: 'pill' }, base === 'firefox' ? 'Firefox / Gecko' : 'Chromium'), reset), h('div', { class: 'frows' }, ...controls), h('p', { class: 'hint native-applied-note', text: t('enginePrivacy.nativeApplied') }), h('p', { class: 'hint', text: t('enginePrivacy.limitations') }));
 }

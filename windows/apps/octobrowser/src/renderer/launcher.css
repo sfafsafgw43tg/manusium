@@ -1534,3 +1534,41 @@ textarea.ua, .frow-info-card { max-width: 760px; }
 .profile-table .tr.reorderable:active { cursor: grabbing; }
 .profile-table .tr.reorderable.dragging { opacity: .42; }
 .profile-table .tr.reorderable.drag-over { box-shadow: inset 0 2px 0 var(--accent-h), inset 0 -2px 0 var(--accent-h); }
+
+/* ------------------------------------------------------------ Orbit manager surface */
+.orbit-overview { display: flex; flex-direction: column; gap: 12px; margin: 0 0 18px; }
+.orbit-welcome { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; padding: 22px 24px; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(120deg, var(--panel) 0%, var(--panel2) 100%); box-shadow: 0 16px 36px #0002; }
+.orbit-welcome-copy { min-width: 0; }
+.orbit-kicker { display: block; margin-bottom: 6px; color: var(--accent-h); font-size: 10px; font-weight: 800; letter-spacing: .16em; }
+.orbit-welcome h2 { margin: 0; font-size: clamp(20px, 2vw, 28px); letter-spacing: -.025em; }
+.orbit-welcome p { max-width: 680px; margin: 7px 0 0; color: var(--muted); }
+.orbit-welcome-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.orbit-create { box-shadow: 0 8px 18px #0003; }
+.orbit-health { white-space: nowrap; }
+.orbit-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.orbit-metric { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 13px 15px; border: 1px solid var(--line); border-radius: 11px; background: color-mix(in srgb, var(--panel) 86%, transparent); }
+.orbit-metric-icon { display: grid; place-items: center; flex: none; width: 31px; height: 31px; border-radius: 9px; color: var(--accent-h); background: var(--accent-bg); }
+.orbit-metric strong, .orbit-metric small { display: block; }
+.orbit-metric strong { font-size: 18px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.orbit-metric small { margin-top: 3px; color: var(--muted); font-size: 11px; }
+.orbit-engines { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.orbit-engine { min-width: 0; padding: 14px 15px; border: 1px solid var(--line); border-radius: 11px; background: var(--panel); transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease; }
+.orbit-engine:hover { transform: translateY(-2px); border-color: var(--line2); box-shadow: 0 10px 24px #0003; }
+.orbit-engine.unavailable { opacity: .75; border-style: dashed; }
+.orbit-engine-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.orbit-engine-icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; color: var(--accent-h); background: var(--accent-bg); }
+.orbit-engine-firefox .orbit-engine-icon { color: var(--accent-h); background: var(--accent-bg); }
+.orbit-engine-electron .orbit-engine-icon { color: var(--accent-h); background: var(--accent-bg); }
+.orbit-engine-badge { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 11px; }
+.orbit-engine.ready .orbit-engine-badge { color: var(--ok); }
+.orbit-engine.unavailable .orbit-engine-badge { color: var(--warn); }
+.orbit-engine b { display: block; font-size: 13px; }
+.orbit-engine p { min-height: 38px; margin: 5px 0 0; color: var(--muted); font-size: 11.5px; line-height: 1.4; }
+.orbit-diagnostic { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg2); }
+.orbit-diagnostic-line { display: grid; grid-template-columns: minmax(130px, .35fr) minmax(0, 1fr); gap: 12px; padding-bottom: 7px; border-bottom: 1px solid var(--line); }
+.orbit-diagnostic-line:last-child { padding-bottom: 0; border-bottom: 0; }
+.orbit-diagnostic-line b { color: var(--muted); font-size: 12px; }
+.orbit-diagnostic-line span { overflow-wrap: anywhere; }
+@media (max-width: 980px) { .orbit-metrics, .orbit-engines { grid-template-columns: repeat(2, minmax(0, 1fr)); } .orbit-engine:last-child { grid-column: 1 / -1; } }
+@media (max-width: 650px) { .orbit-welcome { align-items: flex-start; flex-direction: column; padding: 18px; } .orbit-welcome-actions { justify-content: flex-start; } .orbit-metrics, .orbit-engines { grid-template-columns: 1fr; } .orbit-engine:last-child { grid-column: auto; } .orbit-diagnostic-line { grid-template-columns: 1fr; gap: 3px; } }
+@media (prefers-reduced-motion: reduce) { .orbit-engine { transition: none; } .orbit-engine:hover { transform: none; } }

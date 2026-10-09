@@ -46,7 +46,7 @@ suite('real Chromium CDP vertical slice', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'octo-cdp-test-'));
     roots.push(root);
     const port = await freePort();
-    prepareChromiumPrivacy(path.join(root, 'profile'), { webRtc: 'disable-non-proxied-udp', location: 'block' });
+    prepareChromiumPrivacy(path.join(root, 'profile'), { webRtc: 'disable-non-proxied-udp', location: 'block', webgl: 'disable' });
     processUnderTest = await spawnNativeEngine('chromium', executable, {
       profileDir: path.join(root, 'profile'),
       debugPort: port,

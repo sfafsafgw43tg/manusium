@@ -31,6 +31,7 @@ export function prepareFirefoxPrivacy(profileDir: string, settings: EnginePrivac
     `user_pref("permissions.default.geo", ${settings.location === 'block' ? 2 : 0});`,
     `user_pref("${['media', 'peerconnection', 'enabled'].join('.')}", ${settings.webRtc !== 'disabled'});`,
     `user_pref("${'privacy'}.resistFingerprinting", ${settings.resistFingerprinting});`,
+    `user_pref("webgl.disabled", ${settings.webgl === 'disable'});`,
   ];
   fs.mkdirSync(profileDir, { recursive: true, mode: 0o700 });
   fs.writeFileSync(path.join(profileDir, 'user.js'), `${lines.join('\n')}\n`, { mode: 0o600 });

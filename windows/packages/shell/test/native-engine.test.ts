@@ -25,6 +25,10 @@ describe('native engine process contract', () => {
     expect(nativeEngineArgs('chromium', { profileDir: profile, appMode: true, url: 'https://example.test' })).not.toContain('https://example.test');
   });
 
+  it('allows the privacy layer to disable WebGL without widening the debug endpoint', () => {
+    expect(nativeEngineArgs('chromium', { profileDir: profile, extraArgs: ['--disable-webgl'] })).toContain('--disable-webgl');
+  });
+
   it('rejects relative profile directories and invalid ports', () => {
     expect(() => nativeEngineArgs('chromium', { profileDir: 'relative/profile' })).toThrow(/absolute/);
     expect(() => nativeEngineArgs('chromium', { profileDir: profile, debugPort: 0 })).toThrow(/debug port/);

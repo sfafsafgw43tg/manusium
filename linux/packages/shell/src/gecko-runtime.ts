@@ -23,6 +23,17 @@ export interface InstalledGeckoRuntime {
   installed: boolean;
 }
 
+export interface FirefoxRuntimeDiagnostic {
+  version: string;
+  platform: string;
+  packagedRoot: string;
+  userRoot: string;
+  packaged: 'valid' | 'missing' | 'invalid';
+  user: 'valid' | 'missing' | 'invalid';
+  executable: string | null;
+  reason: 'ready' | 'packaged-missing' | 'packaged-invalid' | 'user-missing' | 'user-invalid' | 'unsupported-platform';
+}
+
 const LICENSE = 'MPL-2.0 with additional binary components and Mozilla trademark restrictions; preserve upstream notices.';
 
 export const FIREFOX_CATALOG: readonly GeckoCatalogEntry[] = [
@@ -150,4 +161,35 @@ export function discoverFirefoxRuntime(resourcesPath: string, userRuntimeRoot: s
     }
   }
   return null;
+}
+
+/**
+ * Return a user-safe explanation of why the verified Gecko runtime is or is
+ * not available. This intentionally does not return arbitrary executable
+ * candidates: callers still have to use the catalog manifest and checksum.
+ */
+export function inspectFirefoxRuntime(resourcesPath: string, userRuntimeRoot: string, version = FIREFOX_CATALOG[0].version): FirefoxRuntimeDiagnostic {
+  const platform = `${process.platform}-${process.arch}`;
+  const entry = FIREFOX_CATALOG.find((candidate) => candidate.version === version && candidate.platform === platform);
+  const packagedRoot = path.join(resourcesPath, 'engines', 'gecko');
+  const userRoot = userRuntimeRoot;
+  if (!entry) return { version, platform, packagedRoot, userRoot, packaged: 'missing', user: 'missing', executable: null, reason: 'unsupported-platform' };
+  const classify = (root: string): { state: 'valid' | 'missing' | 'invalid'; executable: string | null } => {
+    const runtimeRoot = path.join(root, entry.version);
+    if (!fs.existsSync(runtimeRoot)) return { state: 'missing', executable: null };
+    try {
+      const manifest = JSON.parse(fs.readFileSync(path.join(runtimeRoot, 'runtime.json'), 'utf8')) as { version?: string; executableSha256?: string; sha256?: string; platforms?: string[] };
+      const executable = path.join(runtimeRoot, entry.executable);
+      const valid = manifest.version === entry.version
+        && (manifest.platforms ?? []).includes(entry.platform)
+        && fs.existsSync(executable)
+        && (manifest.executableSha256 ?? manifest.sha256) === sha256(executable);
+      return valid ? { state: 'valid', executable } : { state: 'invalid', executable: fs.existsSync(executable) ? executable : null };
+    } catch { return { state: 'invalid', executable: null }; }
+  };
+  const packaged = classify(packagedRoot);
+  const user = classify(userRoot);
+  const ready = packaged.state === 'valid' ? packaged : user.state === 'valid' ? user : null;
+  const reason = ready ? 'ready' : packaged.state === 'invalid' ? 'packaged-invalid' : packaged.state === 'missing' && user.state === 'invalid' ? 'user-invalid' : packaged.state === 'missing' && user.state === 'missing' ? 'user-missing' : 'user-invalid';
+  return { version, platform, packagedRoot, userRoot, packaged: packaged.state, user: user.state, executable: ready?.executable ?? null, reason };
 }

@@ -64,7 +64,7 @@ import { DOLPHIN_IMPORT_FIELDS, convertDolphinProfile, dolphinProfileSummaries, 
 import { FirefoxBidi, NativeChromiumTabs, NativeEngineProcess, spawnNativeEngine } from '@octo/shell/native-engine';
 import { discoverEngineRuntime, EngineRunnerError } from '@octo/shell/engine-runtime';
 import { catalogEntry, listInstalled, installChromium, removeChromium, DEFAULT_CHROMIUM_VERSION } from '@octo/shell/runtime-catalog';
-import { discoverFirefoxRuntime, geckoCatalogEntry, installFirefoxRuntime } from '@octo/shell/gecko-runtime';
+import { discoverFirefoxRuntime, geckoCatalogEntry, installFirefoxRuntime, inspectFirefoxRuntime } from '@octo/shell/gecko-runtime';
 import { prepareChromiumPrivacy, prepareFirefoxPrivacy } from '@octo/shell/engine-privacy';
 
 let importedHandsetsLoaded = false;
@@ -752,6 +752,7 @@ export class Manager {
         debugPort,
         headless: false,
         appMode: p.appMode,
+        extraArgs: p.enginePrivacy.chromium.webgl === 'disable' ? ['--disable-webgl'] : undefined,
       });
       const tabs = await NativeChromiumTabs.connect(debugPort);
       const native = { engine, tabs, startedAt: Date.now(), runtimeVersion: p.chromiumRuntime ?? DEFAULT_CHROMIUM_VERSION };
@@ -791,14 +792,17 @@ export class Manager {
           executable = installFirefoxRuntime(entry, path.join(this.ctx.layout.engine, 'runtimes', 'gecko')).executablePath;
           this.ctx.logger.info('profile.firefox-runtime-installed', { version: entry.version, executable });
         } catch (error) {
-          this.ctx.logger.warn('profile.firefox-runtime-install-failed', error);
+          this.ctx.logger.warn('profile.firefox-runtime-install-failed', { error: error instanceof Error ? error.message : String(error), diagnostic: inspectFirefoxRuntime('', path.join(this.ctx.layout.engine, 'runtimes', 'gecko')) });
         }
       }
       if (!executable) {
         const available = firefoxAvailability(configured);
         executable = available.available ? available.path : null;
       }
-      if (!executable) return { status: 'firefox-engine-unavailable', detail: 'verified-runtime-not-installed' };
+      if (!executable) {
+        const diagnostic = inspectFirefoxRuntime('', path.join(this.ctx.layout.engine, 'runtimes', 'gecko'));
+        return { status: 'firefox-engine-unavailable', detail: diagnostic.reason };
+      }
       const firefoxProfile = path.join(this.ctx.layout.profileEngineDir(p.id), 'firefox-profile');
       fs.mkdirSync(firefoxProfile, { recursive: true });
       prepareFirefoxPrivacy(firefoxProfile, p.enginePrivacy.firefox);
@@ -2229,6 +2233,11 @@ export class Manager {
     }));
     handle('mgr:profiles', L, () => this.profileList());
     handle('mgr:chromium-catalog', L, () => listInstalled(path.join(ctx.layout.engine, 'runtimes', 'chromium')));
+    handle('mgr:firefox-runtime-status', L, () => {
+      const userRoot = path.join(ctx.layout.engine, 'runtimes', 'gecko');
+      const diagnostic = engineResourceRoots().map((resourcesPath) => inspectFirefoxRuntime(resourcesPath, userRoot)).find((item) => item.reason === 'ready');
+      return diagnostic ?? inspectFirefoxRuntime('', userRoot);
+    });
     handle('mgr:chromium-install', L, (_e, version: string) => installChromium(catalogEntry(String(version)), path.join(ctx.layout.engine, 'runtimes', 'chromium')));
     handle('mgr:chromium-remove', L, (_e, version: string) => {
       const entry = catalogEntry(String(version));

@@ -63,11 +63,13 @@ describe('ProfileManager', () => {
 
   it('persists engine privacy settings independently for Chromium and Firefox profiles', () => {
     const { pm } = setup();
-    const chromium = pm.create({ name: 'Chromium privacy', kind: 'custom', patch: { engine: 'inkbrowser', enginePrivacy: { chromium: { webRtc: 'disable-non-proxied-udp', location: 'block' }, firefox: { webRtc: 'default', location: 'ask', resistFingerprinting: false } } } });
-    const firefox = pm.create({ name: 'Firefox privacy', kind: 'custom', patch: { engine: 'firefox', enginePrivacy: { chromium: { webRtc: 'default', location: 'ask' }, firefox: { webRtc: 'disabled', location: 'block', resistFingerprinting: true } } } });
+    const chromium = pm.create({ name: 'Chromium privacy', kind: 'custom', patch: { engine: 'inkbrowser', enginePrivacy: { chromium: { webRtc: 'disable-non-proxied-udp', location: 'block', webgl: 'disable' }, firefox: { webRtc: 'default', location: 'ask', resistFingerprinting: false, webgl: 'allow' } } } });
+    const firefox = pm.create({ name: 'Firefox privacy', kind: 'custom', patch: { engine: 'firefox', enginePrivacy: { chromium: { webRtc: 'default', location: 'ask', webgl: 'allow' }, firefox: { webRtc: 'disabled', location: 'block', resistFingerprinting: true, webgl: 'disable' } } } });
     expect(pm.get(chromium.id).enginePrivacy.chromium.webRtc).toBe('disable-non-proxied-udp');
     expect(pm.get(firefox.id).enginePrivacy.firefox.resistFingerprinting).toBe(true);
     expect(pm.get(chromium.id).enginePrivacy.firefox.resistFingerprinting).toBe(false);
+    expect(pm.get(chromium.id).enginePrivacy.chromium.webgl).toBe('disable');
+    expect(pm.get(firefox.id).enginePrivacy.firefox.webgl).toBe('disable');
   });
 
   it('persists a custom profile directory without affecting another profile', () => {

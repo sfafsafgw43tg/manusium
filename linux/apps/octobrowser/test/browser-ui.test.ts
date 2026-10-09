@@ -552,3 +552,25 @@ describe('tab right-click dropdown', () => {
     }
   });
 });
+
+describe('Orbit profile manager', () => {
+  it('renders explicit manager metrics and engine capability cards', () => {
+    expect(launcherProfiles).toContain('orbit-overview');
+    expect(launcherProfiles).toContain('orbit-metrics');
+    expect(launcherProfiles).toContain('orbit-engine-${engine}');
+    expect(launcherProfiles).toContain("engineCard('chromium'");
+    expect(launcherProfiles).toContain("engineCard('firefox'");
+    expect(launcherProfiles).toContain('mgr:firefox-runtime-status');
+    expect(launcherCss).toContain('.orbit-welcome');
+    expect(launcherCss).toContain('.orbit-engine:hover');
+    expect(launcherCss).toContain('@media (max-width: 650px)');
+  });
+
+  it('keeps Firefox diagnostics explicit and never presents a fallback engine', () => {
+    expect(manager).toContain('inspectFirefoxRuntime');
+    expect(manager).toContain("status: 'firefox-engine-unavailable'");
+    expect(manager).toContain("detail: diagnostic.reason");
+    expect(i18nEn).toContain("'ui.manager.runtimeHealthHint':");
+    expect(i18nPl).toContain("'ui.manager.runtimeHealthHint':");
+  });
+});
