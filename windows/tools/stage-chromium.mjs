@@ -37,6 +37,18 @@ function downloadVerified(urls, destination, expected) {
   }
   fail(`all Chromium mirrors failed for ${path.basename(destination)} (expected ${expected}): ${errors.join(' | ')}`);
 }
+function extractZip(zip, destination) {
+  if (process.platform === 'win32') {
+    // Stock Windows does not guarantee an unzip.exe installation.
+    execFileSync('powershell.exe', [
+      '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command',
+      '& { param($archive, $target); $ErrorActionPreference = "Stop"; Expand-Archive -LiteralPath $archive -DestinationPath $target -Force }',
+      zip, destination,
+    ], { stdio: 'inherit' });
+    return;
+  }
+  execFileSync('unzip', ['-q', '-o', zip, '-d', destination], { stdio: 'inherit' });
+}
 function stage(target, outDir) {
   const artifact = ARTIFACTS[target];
   if (!artifact) fail(`unsupported target ${target}; supported targets: ${Object.keys(ARTIFACTS).join(', ')}`);
@@ -52,7 +64,7 @@ function stage(target, outDir) {
   }
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'octo-chromium-'));
   try {
-    execFileSync('unzip', ['-q', '-o', cache, '-d', temp], { stdio: 'inherit' });
+    extractZip(cache, temp);
     const extracted = path.join(temp, artifact.archive.replace('.zip', ''));
     if (!fs.existsSync(extracted)) fail(`archive did not contain expected directory ${artifact.archive.replace('.zip', '')}`);
     fs.rmSync(outDir, { recursive: true, force: true });

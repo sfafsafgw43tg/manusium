@@ -2,7 +2,7 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 
 /** Pinned official Mozilla Firefox runtime artifacts. */
 export interface GeckoCatalogEntry {
@@ -107,7 +107,9 @@ export function installFirefoxRuntime(entry: GeckoCatalogEntry, root: string, fe
     }
     if (process.platform !== 'win32') throw new Error('Firefox MSI extraction is supported only on Windows');
     const target = path.join(unpacked, 'Firefox');
-    execFileSync('msiexec.exe', ['/a', archive, '/qn', `TARGETDIR=${target}`], { stdio: 'inherit' });
+    const install = spawnSync('msiexec.exe', ['/a', archive, '/qn', '/norestart', `TARGETDIR=${target}`], { stdio: 'inherit' });
+    if (install.error) throw install.error;
+    if (![0, 3010].includes(install.status ?? -1)) throw new Error(`msiexec administrative extraction failed with exit code ${install.status}`);
     const sourceRoot = fs.existsSync(path.join(target, 'core')) ? path.join(target, 'core') : target;
     const sourceExecutable = path.join(sourceRoot, entry.sourceExecutable);
     if (!fs.existsSync(sourceExecutable)) throw new Error(`Firefox executable missing from extracted MSI: ${sourceExecutable}`);

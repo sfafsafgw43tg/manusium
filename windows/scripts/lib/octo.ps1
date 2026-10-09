@@ -2028,7 +2028,15 @@ function Get-SetupSteps {
         if ($target -notin @('win32-x64', 'linux-x64')) { Warn "Native runtimes are not staged for $target"; return $false }
         $stageChromium = if ($target -eq 'win32-x64') { 'stage:chromium:windows' } else { 'stage:chromium' }
         $stageFirefox = if ($target -eq 'win32-x64') { 'stage:firefox:windows' } else { 'stage:firefox:linux' }
-        try { Invoke-Npm @('run', $stageChromium); Invoke-Npm @('run', $stageFirefox); return $true } catch { Warn $_.Exception.Message; return $false }
+        try {
+          Invoke-Npm @('run', $stageChromium)
+          Invoke-Npm @('run', $stageFirefox)
+          $nodeExe = Resolve-Tool 'node'
+          if (-not $nodeExe) { throw 'Node.js is unavailable for native runtime verification.' }
+          $check = Invoke-Native $nodeExe @('tools\verify-native-engines.mjs') $InstallRoot
+          if ($check.code -ne 0) { throw "Native Chromium/Firefox verification failed with exit code $($check.code)." }
+          return $true
+        } catch { Warn $_.Exception.Message; return $false }
       } }
     @{ Key = 'stepShortcut'; Required = $false; Fatal = $false; Action = { return (ConvertTo-StepResult (New-DesktopShortcut)) } }
     @{ Key = 'stepBuild'; Required = $true; Fatal = $false; Action = {

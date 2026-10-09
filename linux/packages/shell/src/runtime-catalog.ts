@@ -45,9 +45,24 @@ export function validateCatalog(entries = CHROMIUM_CATALOG): void {
 
 function digest(file: string): string { return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex'); }
 function safeExtract(zip: string, temp: string): void {
-  const listing = execFileSync('unzip', ['-Z1', zip], { encoding: 'utf8' }).split(/\r?\n/).filter(Boolean);
+  const listingText = process.platform === 'win32'
+    ? execFileSync('powershell.exe', [
+      '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command',
+      '& { param($archive); Add-Type -AssemblyName System.IO.Compression.FileSystem; $z = [IO.Compression.ZipFile]::OpenRead($archive); try { $z.Entries | ForEach-Object { $_.FullName } } finally { $z.Dispose() } }',
+      zip,
+    ], { encoding: 'utf8' })
+    : execFileSync('unzip', ['-Z1', zip], { encoding: 'utf8' });
+  const listing = listingText.split(/\r?\n/).filter(Boolean);
   for (const item of listing) { const clean = item.replace(/\\/g, '/'); if (clean.startsWith('/') || clean.split('/').includes('..')) throw new Error(`Unsafe archive path: ${item}`); }
-  execFileSync('unzip', ['-q', '-o', zip, '-d', temp]);
+  if (process.platform === 'win32') {
+    execFileSync('powershell.exe', [
+      '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command',
+      '& { param($archive, $target); $ErrorActionPreference = "Stop"; Expand-Archive -LiteralPath $archive -DestinationPath $target -Force }',
+      zip, temp,
+    ]);
+  } else {
+    execFileSync('unzip', ['-q', '-o', zip, '-d', temp]);
+  }
 }
 export interface InstalledRuntime { entry: ChromiumCatalogEntry; rootDir: string; executablePath: string; installed: boolean; }
 export function listInstalled(root: string, platform = process.platform, arch = process.arch): InstalledRuntime[] {

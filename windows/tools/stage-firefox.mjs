@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -73,7 +73,9 @@ try {
   } else {
     if (process.platform !== 'win32') throw new Error('Windows Firefox MSI staging must run on Windows');
     const targetDir = path.join(unpacked, 'Firefox');
-    execFileSync('msiexec.exe', ['/a', archive, '/qn', `TARGETDIR=${targetDir}`], { stdio: 'inherit' });
+    const install = spawnSync('msiexec.exe', ['/a', archive, '/qn', '/norestart', `TARGETDIR=${targetDir}`], { stdio: 'inherit' });
+    if (install.error) throw install.error;
+    if (![0, 3010].includes(install.status ?? -1)) throw new Error(`msiexec administrative extraction failed with exit code ${install.status}`);
     sourceRoot = fs.existsSync(path.join(targetDir, 'core')) ? path.join(targetDir, 'core') : targetDir;
   }
   const sourceExecutable = path.join(sourceRoot, entry.sourceExecutable);

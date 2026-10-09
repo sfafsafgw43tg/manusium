@@ -178,6 +178,19 @@ describe('the options reach the real installation', () => {
 });
 
 describe('steps and the console installer', () => {
+  it('stages native runtimes with Windows-native extraction and verifies both executables', () => {
+    const chromium = fs.readFileSync(path.join(root, 'tools', 'stage-chromium.mjs'), 'utf8');
+    const firefox = fs.readFileSync(path.join(root, 'tools', 'stage-firefox.mjs'), 'utf8');
+    expect(chromium).toContain("process.platform === 'win32'");
+    expect(chromium).toContain('Expand-Archive');
+    expect(chromium).not.toContain("execFileSync('unzip', ['-q', '-o', cache");
+    expect(firefox).toContain("'/norestart'");
+    expect(firefox).toContain('3010');
+    const runtimeStep = functionBody(octo, 'Get-SetupSteps');
+    expect(runtimeStep).toContain("tools\\verify-native-engines.mjs");
+    expect(runtimeStep).toContain('Native Chromium/Firefox verification failed');
+  });
+
   it('the eight steps keep their order', () => {
     const keys = [...octo.matchAll(/Key = '(step[A-Za-z]+)'/g)].map((match) => match[1]);
     expect(keys).toEqual(['stepPrereqs', 'stepMedia', 'stepAndroid', 'stepSdk', 'stepDeps', 'stepRuntimes', 'stepShortcut', 'stepBuild']);
