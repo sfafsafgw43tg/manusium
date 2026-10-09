@@ -637,7 +637,8 @@ function renderSettings(v: HTMLElement): void {
     h('span', { class: 'theme-preview-bar' }, h('i'), h('i'), h('i')),
     h('span', { class: 'theme-preview-body' },
       h('span', { class: 'theme-preview-rail' }, h('i'), h('i'), h('i'), h('i')),
-      h('span', { class: 'theme-preview-page' }, h('i', { class: 'wide' }), h('i'), h('i'), h('i', { class: 'short' }))));
+      h('span', { class: 'theme-preview-page' }, h('i', { class: 'wide' }), h('i'), h('i'), h('i', { class: 'short' })),
+      h('span', { class: 'theme-preview-art' }, h('span', { class: 'theme-art-ring' }), h('span', { class: 'theme-art-icon' }))));
   const markTheme = (active: Settings['ui']['theme']) => {
     for (const item of v.querySelectorAll<HTMLElement>('.theme-card')) {
       const selected = item.dataset.theme === active;
