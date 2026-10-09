@@ -1304,6 +1304,24 @@ html.vm-mode *::after {
   width: 100%;
   margin-top: 10px;
 }
+.native-fingerprint-draft {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px dashed color-mix(in srgb, var(--warn) 65%, var(--line));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--warn) 6%, var(--bg2));
+}
+.native-fingerprint-draft > :not(.native-draft-banner) { opacity: .72; }
+.native-draft-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin-bottom: 9px;
+  color: var(--warn);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+.native-draft-banner svg { flex: 0 0 auto; margin-top: 1px; }
 .accordion-item {
   border: 1px solid var(--line);
   border-radius: 8px;

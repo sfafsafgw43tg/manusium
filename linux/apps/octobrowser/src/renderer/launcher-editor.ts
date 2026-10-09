@@ -943,7 +943,7 @@ function nativeEnginePrivacySection(d: Draft, draw: () => void, summary: () => v
   reset.onclick = () => { d.enginePrivacy = structuredClone(DEFAULT_ENGINE_PRIVACY); draw(); };
   const controls: HTMLElement[] = [field('enginePrivacy.webRtc', webRtc), field('enginePrivacy.location', location)];
   if (base === 'firefox') controls.push(toggle(d.enginePrivacy.firefox.resistFingerprinting, 'enginePrivacy.resistFingerprinting', (v) => { d.enginePrivacy.firefox.resistFingerprinting = v; summary(); }));
-  return section(t('enginePrivacy.title'), h('p', { class: 'hint', text: t(`enginePrivacy.${base}.hint`) }), h('div', { class: 'row between' }, h('span', { class: 'pill' }, base === 'firefox' ? 'Firefox / Gecko' : 'Chromium'), reset), h('div', { class: 'frows' }, ...controls), h('p', { class: 'hint', text: t('enginePrivacy.limitations') }));
+  return section(t('enginePrivacy.title'), h('p', { class: 'hint', text: t(`enginePrivacy.${base}.hint`) }), h('div', { class: 'row between' }, h('span', { class: 'pill' }, base === 'firefox' ? 'Firefox / Gecko' : 'Chromium'), reset), h('div', { class: 'frows' }, ...controls), h('p', { class: 'hint native-applied-note', text: t('enginePrivacy.nativeApplied') }), h('p', { class: 'hint', text: t('enginePrivacy.limitations') }));
 }
 
 function advanced(b: HTMLElement, d: Draft, draw: () => void, summary: () => void, profile: Profile | null): void {
@@ -959,6 +959,7 @@ function advanced(b: HTMLElement, d: Draft, draw: () => void, summary: () => voi
     b.append(nativeEnginePrivacySection(d, draw, summary));
     b.append(h('p', { class: 'hint' }, icon('info', 14), ' ', t('enginePrivacy.limitations')));
   }
+  const nativeFingerprintStart = b.childElementCount;
   if (d.kind !== 'antidetect') {
     const off = h('button', { class: 'btn small' }, icon('close', 14), h('span', { text: t('fp.disable') }));
     off.onclick = () => { d.fp = null; draw(); };
@@ -1571,6 +1572,12 @@ function advanced(b: HTMLElement, d: Draft, draw: () => void, summary: () => voi
       btnAudit, btnBrowserCheck, btnBrowserleaks, btnCreepjs, btnPixelscan));
 
   b.append(section(t('fp.params'), hw), signalsHost, verifySection);
+  if (d.engine !== 'electron') {
+    const draft = h('div', { class: 'native-fingerprint-draft', role: 'note', 'aria-label': t('enginePrivacy.nativeDraft') });
+    while (b.childElementCount > nativeFingerprintStart) draft.append(b.children[nativeFingerprintStart]);
+    draft.prepend(h('div', { class: 'native-draft-banner' }, icon('info', 14), h('span', { text: t('enginePrivacy.nativeDraft') })));
+    b.append(draft);
+  }
 }
 
 // ------------------------------------------------------------------ Browser settings
@@ -1781,12 +1788,13 @@ function browser(b: HTMLElement, d: Draft, draw: () => void, summary: () => void
 
   // Accordion 5: Browser Settings (Passwords, History, Search, Theme)
   const home = input(d.homePage, { maxlength: '2048', placeholder: d.browserShell === 'chrome' ? GOOGLE_HOME : 'octo://newtab' }, (v) => { d.homePage = v; });
-  const identitySelect = select(d.fp?.browserIdentity ?? 'chrome', [
-    ['chrome', t('identity.chrome')], ['chromium', t('identity.chromium')], ['edge', t('identity.edge')],
-    ['brave', t('identity.brave')], ['opera', t('identity.opera')], ['vivaldi', t('identity.vivaldi')],
-    ['samsung-internet', t('identity.samsung'), true], ['safari', t('identity.safari'), true], ['firefox', t('identity.firefox'), !(S.init?.firefoxAvailable ?? false)], ['firefox-esr', t('identity.firefoxEsr'), !(S.init?.firefoxAvailable ?? false)],
-  ], (value) => { if (d.fp) d.fp.browserIdentity = value; });
-  identitySelect.title = t('identity.firefoxUnavailable');
+  const identityChoices: Array<[string, string] | [string, string, boolean]> = d.engine === 'firefox'
+    ? [['firefox', t('identity.firefox')], ['firefox-esr', t('identity.firefoxEsr')]]
+    : [['chrome', t('identity.chrome')], ['chromium', t('identity.chromium')], ['edge', t('identity.edge')],
+      ['brave', t('identity.brave')], ['opera', t('identity.opera')], ['vivaldi', t('identity.vivaldi')],
+      ['samsung-internet', t('identity.samsung'), true], ['safari', t('identity.safari'), true]];
+  const identitySelect = select(d.fp?.browserIdentity ?? (d.engine === 'firefox' ? 'firefox' : 'chrome'), identityChoices,
+    (value) => { if (d.fp) d.fp.browserIdentity = value; });
   const identityHint = h('p', { class: 'hint', text: t('identity.chromiumOnlyHint') });
 
   const searchEngineSelect = select(d.searchEngine || '', [
@@ -1813,7 +1821,7 @@ function browser(b: HTMLElement, d: Draft, draw: () => void, summary: () => void
     h('div', { class: 'frows' },
       field('profile.homePage', home, 'profile.homePageHint'),
       field('profile.searchEngine', searchEngineSelect, 'profile.searchEngineHint'),
-      field('browserEngine.chromiumVersion', h('div', { class: 'row nowrap', style: 'gap: 8px; flex-wrap: wrap;' }, runtimeSelect, installRuntime, removeRuntime), 'browserEngine.chromiumVersionHint'),
+      ...(d.engine === 'inkbrowser' ? [field('browserEngine.chromiumVersion', h('div', { class: 'row nowrap', style: 'gap: 8px; flex-wrap: wrap;' }, runtimeSelect, installRuntime, removeRuntime), 'browserEngine.chromiumVersionHint')] : []),
       h('div', { class: 'field' }, h('span', { class: 'lbl', text: t('profile.theme') }), theme),
       h('div', { class: 'toggles' },
         toggle(d.appMode, 'profile.appMode', (v) => { d.appMode = v; summary(); }),

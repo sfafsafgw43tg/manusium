@@ -171,31 +171,64 @@ function engineResourceRoots(): string[] {
 }
 
 function isCrossDeviceError(error: unknown): boolean {
-  return !!error && typeof error === 'object' && (error as NodeJS.ErrnoException).code === 'EXDEV';
+  if (!error || typeof error !== 'object') return false;
+  const e = error as NodeJS.ErrnoException;
+  return e.code === 'EXDEV' || /cross[- ]device|different volume|跨设备/i.test(String(e.message ?? ''));
 }
 
-/** Copy a directory through a same-volume staging name, then publish it with rename. */
+function volumeRoot(value: string): string {
+  return path.parse(path.resolve(value)).root.toLowerCase();
+}
+
+function directoryManifest(root: string): string[] {
+  const out: string[] = [];
+  const walk = (dir: string, rel: string) => {
+    for (const name of fs.readdirSync(dir).sort()) {
+      const abs = path.join(dir, name);
+      const childRel = rel ? path.join(rel, name) : name;
+      const stat = fs.lstatSync(abs);
+      if (stat.isDirectory()) { out.push(`d:${childRel}`); walk(abs, childRel); }
+      else if (stat.isSymbolicLink()) out.push(`l:${childRel}:${fs.readlinkSync(abs)}`);
+      else out.push(`f:${childRel}:${stat.size}`);
+    }
+  };
+  walk(root, '');
+  return out;
+}
+
+/** Copy, verify, and publish a directory without ever deleting the source first. */
 function copyDirectoryAtomically(source: string, destination: string): void {
   const staging = `${destination}.partial-${process.pid}-${randomBytes(6).toString('hex')}`;
+  const backup = `${destination}.backup-${process.pid}-${randomBytes(6).toString('hex')}`;
   fs.rmSync(staging, { recursive: true, force: true });
   try {
     fs.cpSync(source, staging, { recursive: true, errorOnExist: false, force: true });
-    fs.renameSync(staging, destination);
+    if (directoryManifest(source).join('\n') !== directoryManifest(staging).join('\n')) throw new Error('Profile copy verification failed.');
+    const hadDestination = fs.existsSync(destination);
+    if (hadDestination) fs.renameSync(destination, backup);
+    try {
+      fs.renameSync(staging, destination);
+    } catch (error) {
+      if (hadDestination && fs.existsSync(backup) && !fs.existsSync(destination)) fs.renameSync(backup, destination);
+      throw error;
+    }
+    if (hadDestination) fs.rmSync(backup, { recursive: true, force: true });
   } catch (error) {
     fs.rmSync(staging, { recursive: true, force: true });
+    fs.rmSync(backup, { recursive: true, force: true });
     throw error;
   }
 }
 
-/** Rename when possible; fall back to a verified same-volume copy for EXDEV. */
+/** Move a profile safely across drives/volumes; never surface EXDEV to the user. */
 function moveDirectoryAcrossDevices(source: string, destination: string): void {
-  try {
-    fs.renameSync(source, destination);
-  } catch (error) {
-    if (!isCrossDeviceError(error)) throw error;
-    copyDirectoryAtomically(source, destination);
-    fs.rmSync(source, { recursive: true, force: true });
+  const knownDifferentVolume = volumeRoot(source) !== volumeRoot(destination);
+  if (!knownDifferentVolume) {
+    try { fs.renameSync(source, destination); return; }
+    catch (error) { if (!isCrossDeviceError(error)) throw error; }
   }
+  copyDirectoryAtomically(source, destination);
+  fs.rmSync(source, { recursive: true, force: true });
 }
 
 /** Proxy chosen in the profile editor / sent to the API. */
@@ -955,10 +988,8 @@ export class Manager {
     fs.mkdirSync(path.dirname(target), { recursive: true });
     try {
       if (fs.existsSync(current)) {
-        if (targetExisted) {
-          fs.cpSync(current, target, { recursive: true, errorOnExist: false, force: true });
-          fs.rmSync(current, { recursive: true, force: true });
-        } else moveDirectoryAcrossDevices(current, target);
+        if (targetExisted) { copyDirectoryAtomically(current, target); fs.rmSync(current, { recursive: true, force: true }); }
+        else moveDirectoryAcrossDevices(current, target);
       }
       else fs.mkdirSync(target, { recursive: true });
       const updated = this.profiles.update(id, { profileDirectory: target });
@@ -967,12 +998,8 @@ export class Manager {
     } catch (error) {
       if (fs.existsSync(target) && !fs.existsSync(current)) {
         try {
-          if (targetExisted) {
-            fs.cpSync(target, current, { recursive: true, force: true });
-            fs.rmSync(target, { recursive: true, force: true });
-          } else {
-            moveDirectoryAcrossDevices(target, current);
-          }
+          if (targetExisted) { copyDirectoryAtomically(target, current); fs.rmSync(target, { recursive: true, force: true }); }
+          else moveDirectoryAcrossDevices(target, current);
         } catch { /* preserve the original error */ }
       }
       throw error;

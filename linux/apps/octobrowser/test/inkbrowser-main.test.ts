@@ -42,6 +42,16 @@ describe('launch order in the manager', () => {
     expect(src).toContain('profile.native-chromium-exited');
   });
 
+  it('moves profile directories across Windows drives with verified copy-then-delete semantics', () => {
+    expect(src).toContain('function volumeRoot(value: string)');
+    expect(src).toContain('const knownDifferentVolume = volumeRoot(source) !== volumeRoot(destination);');
+    expect(src).toContain('directoryManifest(source).join');
+    expect(src).toContain("throw new Error('Profile copy verification failed.')");
+    expect(src).toContain('copyDirectoryAtomically(source, destination)');
+    expect(src).toContain('fs.rmSync(source, { recursive: true, force: true });');
+    expect(src).not.toContain('fs.cpSync(current, target, { recursive: true, errorOnExist: false, force: true });');
+  });
+
   it('new profiles take the Electron default from one constant, and carry it into the profile', () => {
     expect(src).toMatch(/input\.patch\?\.engine \?\? NEW_PROFILE_ENGINE/);
     expect(src).toMatch(/patch: \{ \.\.\.patch, engine \}/);

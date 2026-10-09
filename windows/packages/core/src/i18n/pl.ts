@@ -228,6 +228,8 @@ export const pl: Record<string, string> = {
   'enginePrivacy.resistFingerprinting': 'Firefox Resist Fingerprinting',
   'enginePrivacy.chromium.hint': 'Pokazano tylko ustawienia Chromium obsługiwane przez przygotowany natywny runtime. Są stosowane przed uruchomieniem.',
   'enginePrivacy.firefox.hint': 'Pokazano tylko natywne ustawienia Firefox. Resist Fingerprinting zmienia wartości widoczne dla stron i może pogorszyć zgodność.',
+  'enginePrivacy.nativeApplied': 'Stosowane przez wybrany natywny runtime: ekspozycja WebRTC i uprawnienia lokalizacji; Firefox stosuje także Resist Fingerprinting, gdy opcja jest włączona.',
+  'enginePrivacy.nativeDraft': 'Edytor odcisku poniżej jest przechowywany w profilu dla zgodności, ale standardowy natywny runtime nie stosuje tych wartości spoofingu. Nie są aktywne i nie są używane przy uruchamianiu natywnym.',
   'enginePrivacy.limitations': 'To ustawienia prywatności i testów, nie gwarancja anonimowości ani akceptacji przez strony. Blokada WebRTC może zepsuć rozmowy i udostępnianie ekranu; blokada lokalizacji może zepsuć mapy. Nie stosuje się podszywania UA, GPU, canvas, czcionek ani urządzeń.',
   'profile.keepHistory': 'Zapisuj historię przeglądania',
   'profile.historyNote': 'Domyślnie wyłączone. Po włączeniu lokalnie zapisywane są tylko tytuły i adresy – nigdy treść stron.',
