@@ -1638,8 +1638,18 @@ export function parseWebcamList(raw: string): EmulatorWebcam[] {
 export async function emulatorWebcams(): Promise<EmulatorWebcam[]> {
   const tools = optionalSdk();
   if (!tools?.emulator) return [];
-  try { return (await emulatorCameraReport(tools, CAMERA_LAUNCH_LIMIT_MS, false)).webcams; }
+  try { return (await emulatorWebcamsFrom(tools.emulator, tools.root)).webcams; }
   catch { return []; }
+}
+
+/** Enumerate cameras with the exact emulator binary and SDK root for an AVD. */
+export async function emulatorWebcamsFrom(
+  emulator: string,
+  sdkRoot: string,
+  timeout = CAMERA_LAUNCH_LIMIT_MS,
+): Promise<EmulatorCameraReport> {
+  if (!emulator || !sdkRoot) return { webcams: [], problem: 'none', detail: '' };
+  return emulatorCameraReport({ emulator, root: sdkRoot }, timeout, false);
 }
 
 /** Launches and the media check read the list with this limit. */
@@ -1815,8 +1825,18 @@ export function androidCameraChoicesCached(): Promise<CameraChoices> {
 export async function androidCameraChoices(): Promise<CameraChoices> {
   const tools = optionalSdk();
   if (!tools?.emulator) return { webcams: [], emulatorAvailable: false, problem: '', detail: '' };
-  const report = await emulatorCameraReport(tools, CAMERA_PICKER_LIMIT_MS, true);
-  return { webcams: report.webcams, emulatorAvailable: true, problem: report.problem, detail: report.detail };
+  const candidates = [...new Set([
+    tools.emulator,
+    ...knownRoots().map((root) => locate(root, 'emulator')).filter(Boolean),
+  ])];
+  let last: EmulatorCameraReport = { webcams: [], problem: 'none', detail: '' };
+  for (const emulator of candidates) {
+    const root = path.dirname(path.dirname(emulator));
+    const report = await emulatorCameraReport({ emulator, root }, CAMERA_PICKER_LIMIT_MS, true);
+    if (report.webcams.length) return { webcams: report.webcams, emulatorAvailable: true, problem: '', detail: '' };
+    last = report;
+  }
+  return { webcams: [], emulatorAvailable: true, problem: last.problem, detail: last.detail };
 }
 
 export interface ActiveCameraAssignments {
@@ -3396,7 +3416,10 @@ export async function createAndroidAvd(input: AndroidAvdCreateInput): Promise<{ 
     await runAvdCreate(['create', 'avd', '--name', name, '--package', target.packageName,
       '--path', avdPath, '--device', profile.baseDevice, '--abi', target.abi], target.api, target.packageName);
   }
-  const webcams = await emulatorWebcams();
+  const imageEmulator = await emulatorForPackage(target.packageName) || tools.emulator;
+  const webcams = imageEmulator
+    ? (await emulatorWebcamsFrom(imageEmulator, rootForPackage(target.packageName) || tools.root)).webcams
+    : [];
   const resolvedCameras = resolveActiveCameraAssignments(
     input.cameraFront ?? 'webcam', input.cameraBack ?? 'webcam', input.cameraFrontDevice ?? '', input.cameraBackDevice ?? '', webcams,
     [], input.cameraDevice ?? '',
@@ -3501,7 +3524,9 @@ export async function launchAndroidAvd(input: AndroidLaunchInput): Promise<Andro
   // Only cameras the emulator enumerates are considered. A lens whose camera is
   // no longer active is given another active one, or is off for this launch;
   // it never starts on a picture that is not a camera.
-  const webcams = await emulatorWebcams();
+  const emulatorRoot = rootForPackage(avdSystemPackage(avd)) || tools.root;
+  const webcamReport = await emulatorWebcamsFrom(emulator, emulatorRoot);
+  const webcams = webcamReport.webcams;
   const assignments = resolveActiveCameraAssignments(
     front, back,
     input.cameraFrontDevice ?? avd.cameraFrontDevice ?? '',
@@ -3511,6 +3536,12 @@ export async function launchAndroidAvd(input: AndroidLaunchInput): Promise<Andro
     input.cameraDevice ?? avd.cameraDevice ?? '',
   );
   if (assignments.warning) cameraWarning = [cameraWarning, assignments.warning].filter(Boolean).join(' ');
+  if (!webcams.length && (front === 'webcam' || back === 'webcam')) {
+    const reason = webcamReport.detail || webcamReport.problem === 'timeout'
+      ? 'The selected Android Emulator could not enumerate a host camera. Close camera-using apps, allow desktop camera access in Windows Privacy settings, then refresh.'
+      : 'The selected Android Emulator reported no usable host cameras. Set the AVD cameras to Webcam and cold boot it.';
+    cameraWarning = [cameraWarning, reason].filter(Boolean).join(' ');
+  }
   writeConfigValues(avd.path, mediaConfig(
     assignments.front, assignments.back, input.microphoneEnabled,
     assignments.frontDevice, assignments.backDevice,
@@ -3541,7 +3572,7 @@ export async function launchAndroidAvd(input: AndroidLaunchInput): Promise<Andro
   args.push(...localeArgs(String(input.locale ?? '')));
   // The zone saved in Device Settings is the one Android must report.
   args.push(...timezoneArgsFor(configValue(avd.path, 'octobrowser.timezone')));
-  args.push(...await emulatorTelemetryArgs(emulator, rootForPackage(avdSystemPackage(avd)) || tools.root));
+  args.push(...await emulatorTelemetryArgs(emulator, emulatorRoot));
   // The telephony number is a plain emulator setting (not identity). It is passed only when this build lists the flag.
   const launchNotes: string[] = [];
   const telephone = configValue(avd.path, 'octobrowser.telephony');
@@ -3584,7 +3615,7 @@ export async function launchAndroidAvd(input: AndroidLaunchInput): Promise<Andro
         detached: false,
         stdio: ['ignore', 'pipe', 'pipe'],
         windowsHide: false,
-        env: toolEnv(rootForPackage(avdSystemPackage(avd)) || tools.root),
+        env: toolEnv(emulatorRoot),
       });
     } catch (error) { socksBridge?.close(); reject(emulatorError(error instanceof Error ? error.message : String(error), name)); return; }
     let output = '';

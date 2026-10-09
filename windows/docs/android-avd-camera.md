@@ -7,6 +7,10 @@ app. Every statement below was checked against the code in this repository and
 against Android Emulator documentation; where a behaviour depends on the
 emulator version it is marked as such.
 
+Official references: [AVD management](https://developer.android.com/studio/run/managing-avds),
+[emulator command line](https://developer.android.com/studio/run/emulator-commandline), and
+[extended controls](https://developer.android.com/studio/run/emulator-extended-controls).
+
 ## 1. How a camera is chosen (the rules the app follows)
 
 | Rule | Where it is enforced |
@@ -43,6 +47,12 @@ camera is used.
 3. Set **Back** and **Front** to **Webcam**, one webcam per lens. OctoBrowser lists the cameras that `emulator -webcam-list` names and that send a picture on this computer, and writes the one you choose as `webcamN`. Leave a lens on **None** when it should have no camera.
    OctoBrowser never offers **Emulated** or **VirtualScene** (the emulator's own pictures). Set them here only when you use the emulator outside OctoBrowser.
 4. Save, then **cold boot** the device (Device Manager → ▾ → *Cold Boot Now*). A camera change is read at boot, so a snapshot can keep the old setting.
+
+When more than one Android SDK is installed, OctoBrowser now enumerates cameras
+with the emulator binary belonging to the selected system-image SDK. The camera
+picker also tries each known SDK emulator before reporting an empty list. This
+avoids the common Windows mismatch where Android Studio boots an AVD with one
+emulator version while an older default SDK is used for `-webcam-list`.
 
 Use one host webcam for one lens only. OctoBrowser never sets both lenses to the same `webcamN`: the front lens is Off in that case, because the emulator cannot open one endpoint twice.
 
@@ -156,7 +166,7 @@ OctoBrowser runs the `pm grant` step itself after each start, once Android is up
 | "Camera permission is required to use the camera." (check app), or "Windows is blocking camera access." (OctoBrowser) | Permission not granted, or denied with "Don't ask again". | OctoBrowser grants the camera and microphone to the device's Camera app after each start, and shows a notice if Android refuses. You can also grant it in the prompt, use **Open app settings**, or run the `pm grant` command above. For OctoBrowser, allow desktop apps to use the camera in the Windows privacy settings, then press Refresh. |
 | "Unable to start camera preview. Try another camera." | The webcam index changed after a replug, or the device has no camera service. | Refresh the camera list in OctoBrowser and pick the camera again. Check `emulator -webcam-list`, then cold boot. |
 | A camera is missing from the OctoBrowser list | The emulator does not list it, or it is busy, or it sends no picture. | Run `emulator -webcam-list` in a terminal from the Android SDK emulator folder. Close other camera users, then press Refresh. A camera the emulator does not list cannot be used by the device. |
-| "Windows sees N camera(s), but the Android Emulator lists none of them." (OctoBrowser) | Windows and the browser can see the cameras, but the emulator's own enumeration did not list them. | Read the next line: it is the emulator's own reason when it gave one. Close the apps that use a camera, press Refresh, then check `android-tools.log`, which holds the `-verbose` output. |
+| "Windows sees N camera(s), but the Android Emulator lists none of them." (OctoBrowser) | Windows and the browser can see the cameras, but the emulator's own Media Foundation enumeration did not list them, or the wrong SDK emulator was queried. | The picker now tries the selected image's emulator and all known SDK emulators. If all report none, close Teams, Zoom, OBS and phone-webcam apps, allow desktop camera access in Windows Privacy settings, set the AVD camera to Webcam, cold boot, press Refresh, then check `android-tools.log`, which holds the emulator output. |
 | "The Android Emulator did not finish listing the cameras in time." (OctoBrowser) | The emulator is still opening a camera that does not respond, usually a phone used as a webcam or a virtual camera. | Disconnect the phone or stop its webcam app, close the apps that use the cameras, then press Refresh. |
 | "The Android Emulator said: ..." (OctoBrowser) | The emulator logged a failure while it listed the cameras (for example, Media Foundation could not start). | Send the line and the `android-tools.log` file. The line names the step that failed. |
 | "Some cameras on the emulator's list could not be found by Windows." (OctoBrowser) | A camera the emulator listed is no longer present for the browser (unplugged, or its name changed). | Reconnect it, then press Refresh. |

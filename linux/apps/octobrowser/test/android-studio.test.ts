@@ -9,7 +9,7 @@ import {
   mediaBroadcastCommand, mediaCompanionCameraReadiness, normalizeAndroidLaunchPrefs,
   normalizeCameraRotation, normalizeCameraSources, waitForMediaCompanionCamera, mediaConfig,
   androidCameraChoices,
-  cameraProblemLine, clampCameraLimit, emulatorCameraValues, emulatorWebcams, parseCameraLimit, resolveActiveCameraAssignments,
+  cameraProblemLine, clampCameraLimit, emulatorCameraValues, emulatorWebcams, emulatorWebcamsFrom, parseCameraLimit, resolveActiveCameraAssignments,
   runKeepingOutput,
 } from '../src/main/android-studio';
 import * as fs from 'node:fs';
@@ -17,6 +17,10 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 
 describe('Android Studio local bridge', () => {
+  it('does not invent cameras when an exact emulator binary or SDK root is unavailable', async () => {
+    await expect(emulatorWebcamsFrom('', '')).resolves.toEqual({ webcams: [], problem: 'none', detail: '' });
+  });
+
   it('offers many Android versions with transparent storage estimates', () => {
     const ids = new Set(ANDROID_SYSTEM_IMAGES.map((item) => item.id));
     expect(ids.size).toBe(ANDROID_SYSTEM_IMAGES.length);

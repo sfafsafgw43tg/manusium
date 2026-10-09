@@ -39,7 +39,7 @@ describe('emulator usage metrics', () => {
 
   it('every emulator start and camera-list call goes through the same check', () => {
     const studio = read('apps/octobrowser/src/main/android-studio.ts');
-    expect(studio).toContain('await emulatorTelemetryArgs(emulator, rootForPackage(avdSystemPackage(avd)) || tools.root)');
+    expect(studio).toContain('await emulatorTelemetryArgs(emulator, emulatorRoot)');
     expect(studio).toContain('await emulatorTelemetryArgs(tools.emulator, tools.root)');
   });
 });
