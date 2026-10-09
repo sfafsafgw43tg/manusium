@@ -5,7 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 
-const runtime = path.resolve(process.env.OCTO_FIREFOX_RUNTIME ?? 'resources/engines/gecko/140.0/inkbrowser-firefox');
+const defaultRuntime = `resources/engines/gecko/140.0/inkbrowser-firefox${process.platform === 'win32' ? '.exe' : ''}`;
+const runtime = path.resolve(process.env.OCTO_FIREFOX_RUNTIME ?? defaultRuntime);
 if (!fs.existsSync(runtime)) {
   console.error(`[packaged-firefox] missing runtime: ${runtime}`);
   process.exit(2);

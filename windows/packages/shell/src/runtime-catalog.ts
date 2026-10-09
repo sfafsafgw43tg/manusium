@@ -58,7 +58,21 @@ export function installChromium(entry: ChromiumCatalogEntry, root: string, fetch
   fs.mkdirSync(root, { recursive: true });
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'octo-runtime-')); const archive = path.join(temp, 'runtime.zip'); const unpacked = path.join(temp, 'unpacked');
   try {
-    if (fetch) execFileSync('curl', ['-fL', '--retry', '3', entry.source, '-o', archive], { stdio: 'inherit' });
+    if (fetch) {
+      const downloader = process.platform === 'win32' ? 'curl.exe' : 'curl';
+      const mirrors = [entry.source, entry.source.replace('https://storage.googleapis.com/', 'https://commondatastorage.googleapis.com/')];
+      const errors: string[] = [];
+      let acquired = false;
+      for (const url of mirrors) {
+        try {
+          fs.rmSync(archive, { force: true });
+          execFileSync(downloader, ['-fL', '--retry', '3', '--retry-delay', '2', '--connect-timeout', '20', url, '-o', archive], { stdio: 'inherit' });
+          if (digest(archive) === entry.archiveSha256) { acquired = true; break; }
+          errors.push(`${url}: checksum mismatch`);
+        } catch (error) { errors.push(`${url}: ${String(error instanceof Error ? error.message : error)}`); }
+      }
+      if (!acquired) throw new Error(`all Chromium mirrors failed for ${entry.version}: ${errors.join(' | ')}`);
+    }
     if (digest(archive) !== entry.archiveSha256) throw new Error(`Archive checksum mismatch for ${entry.version}`);
     safeExtract(archive, unpacked);
     const sourceRoot = path.join(unpacked, entry.platform.startsWith('win') ? 'chrome-win64' : 'chrome-linux64');

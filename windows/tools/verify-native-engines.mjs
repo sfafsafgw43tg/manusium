@@ -7,8 +7,9 @@ import { spawn } from 'node:child_process';
 
 const allowMissingFirefox = process.argv.includes('--allow-missing-firefox');
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'octo-native-verify-'));
-const packagedChromium = path.resolve('resources/engines/chromium/155.0.8059.39/inkbrowser-chrome');
-const packagedFirefox = path.resolve('resources/engines/gecko/140.0/inkbrowser-firefox');
+const executableSuffix = process.platform === 'win32' ? '.exe' : '';
+const packagedChromium = path.resolve(`resources/engines/chromium/155.0.8059.39/inkbrowser-chrome${executableSuffix}`);
+const packagedFirefox = path.resolve(`resources/engines/gecko/140.0/inkbrowser-firefox${executableSuffix}`);
 const candidates = {
   chromium: process.env.OCTO_CHROMIUM_PATH || (fs.existsSync(packagedChromium) ? packagedChromium : (process.platform === 'linux' ? '/usr/bin/chromium' : '')),
   firefox: process.env.OCTO_FIREFOX_PATH || (fs.existsSync(packagedFirefox) ? packagedFirefox : (process.platform === 'linux' ? '/usr/bin/firefox' : '')),
