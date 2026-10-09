@@ -44,6 +44,6 @@ describe('launch order in the manager', () => {
 
   it('new profiles take the Electron default from one constant, and carry it into the profile', () => {
     expect(src).toMatch(/input\.patch\?\.engine \?\? NEW_PROFILE_ENGINE/);
-    expect(src).toMatch(/patch: \{ \.\.\.input\.patch, engine \}/);
+    expect(src).toMatch(/patch: \{ \.\.\.patch, engine \}/);
   });
 });

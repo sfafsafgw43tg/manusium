@@ -1414,7 +1414,7 @@ body.vm-mode *::after {
   box-shadow: 0 8px 24px #0007;
 }
 :root[data-browser-shell="octo"] #windowClose:hover {
-  background: color-mix(in srgb, #c94f63 72%, var(--panel));
+  background: color-mix(in srgb, #666 72%, var(--panel));
   color: #fff; transform: translateY(-2px) rotate(-3deg);
 }
 
