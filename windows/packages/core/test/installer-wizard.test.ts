@@ -230,6 +230,13 @@ describe('window structure', () => {
     }
   });
 
+  it('uses the black classic palette and starts Octo.su by default after success', () => {
+    expect(ui).toContain('Surface = [System.Drawing.Color]::FromArgb(15, 15, 19)');
+    expect(ui).toContain('Panel   = [System.Drawing.Color]::FromArgb(24, 24, 31)');
+    expect(ui).toContain('$ui.StartApp.Checked = $true');
+    expect(ui).toContain("Invoke-Open 'octobrowser'");
+  });
+
   it('keeps the screen responsive: the output is drained on a timer, not in a loop', () => {
     expect(ui).toContain('$ui.Timer.Interval = 150');
     expect(ui).toContain('Invoke-WizTick');

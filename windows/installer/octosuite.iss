@@ -49,7 +49,13 @@ SetupIconFile={#RepoRoot}\branding\suite\installer.ico
 UninstallDisplayIcon={app}\OctoBrowser\Octo.su.exe
 UninstallDisplayName={#SuiteName} (Octo.su, OctoDetect.su)
 LicenseFile={#RepoRoot}\LICENSE
-WizardStyle=modern
+; Classic wizard layout with dark OctoSuite artwork. Silent update invocations
+; remain quiet and do not show the post-install launch page.
+WizardStyle=classic
+WizardImageFile={#RepoRoot}\branding\suite\installer-wizard.bmp
+WizardSmallImageFile={#RepoRoot}\branding\suite\installer-wizard-small.bmp
+WizardImageStretch=no
+WizardResizable=no
 Compression=lzma2/ultra64
 SolidCompression=yes
 CloseApplications=yes
@@ -130,7 +136,9 @@ Root: HKA; Subkey: "Software\Classes\octobrowser\DefaultIcon"; ValueType: string
 Root: HKA; Subkey: "Software\Classes\octobrowser\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\OctoBrowser\Octo.su.exe"" ""%1"""; Tasks: protocol
 
 [Run]
-Filename: "{app}\OctoBrowser\Octo.su.exe"; Description: "{cm:LaunchBrowser}"; Flags: nowait postinstall skipifsilent unchecked runasoriginaluser
+; Start the primary browser by default after a normal installation. OctoDetect
+; remains available as an optional second launch and is deliberately unchecked.
+Filename: "{app}\OctoBrowser\Octo.su.exe"; Description: "{cm:LaunchBrowser}"; Flags: nowait postinstall skipifsilent runasoriginaluser
 Filename: "{app}\OctoDetect\OctoDetect.su.exe"; Description: "{cm:LaunchDetect}"; Flags: nowait postinstall skipifsilent unchecked runasoriginaluser
 ; In-app updates run Setup with /SILENT /RELAUNCH=<app id>: start that app again afterwards.
 Filename: "{app}\OctoBrowser\Octo.su.exe"; Flags: nowait runasoriginaluser; Check: RelaunchRequested('octobrowser')
@@ -143,6 +151,17 @@ Type: filesandordirs; Name: "{app}\OctoDetect"
 Type: filesandordirs; Name: "{app}\scripts"
 
 [Code]
+procedure InitializeWizard;
+begin
+  { Match the classic wizard surfaces to the black artwork. }
+  WizardForm.Color := $000A0A0C;
+  WizardForm.Font.Color := clWhite;
+  WizardForm.InnerNotebook.Color := $000A0A0C;
+  WizardForm.OuterNotebook.Color := $000A0A0C;
+  WizardForm.WizardBitmapImage.Visible := True;
+  WizardForm.WizardSmallBitmapImage.Visible := True;
+end;
+
 { True when Setup was started with /RELAUNCH=<AppId> (by the in-app updater). }
 function RelaunchRequested(AppId: String): Boolean;
 begin

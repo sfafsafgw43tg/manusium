@@ -4,11 +4,14 @@
 checkout. It installs what OctoSuite needs to run from the sources: Node.js and git, the
 optional vStudio plugins, the Android SDK tools, the project dependencies, the desktop shortcut
 and the build. The wizard is built with Windows Forms in Windows PowerShell 5.1, which Windows
-10 and 11 include, so there is nothing to install first.
+10 and 11 include, so there is nothing to install first. It uses a black classic-installer
+palette and keeps **Start Octo.su when finished** selected by default on a successful run.
 
 The Inno Setup program installer (`release\OctoSuite-Setup-<version>.exe`, built from
-`installer\octosuite.iss`) is a different thing: it installs the built applications. It keeps
-its own wizard and is not changed by this work.
+`installer\octosuite.iss`) installs the built applications with a classic black-themed wizard
+and OctoSuite artwork. On a normal interactive install, **Start Octo.su** is selected on the
+final page by default; OctoDetect remains an optional unchecked launch. Silent updates do not
+show or launch either app from the post-install page.
 
 ## Run it
 

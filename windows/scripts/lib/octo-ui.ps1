@@ -143,17 +143,17 @@ namespace Octo
 # ------------------------------------------------------------- look and feel
 function Get-WizColors {
   return @{
-    Surface = [System.Drawing.Color]::White
-    Panel   = [System.Drawing.Color]::FromArgb(248, 248, 250)
-    Footer  = [System.Drawing.Color]::FromArgb(243, 243, 246)
-    Border  = [System.Drawing.Color]::FromArgb(218, 218, 226)
-    Text    = [System.Drawing.Color]::FromArgb(24, 24, 27)
-    Muted   = [System.Drawing.Color]::FromArgb(92, 92, 104)
-    Accent  = [System.Drawing.Color]::FromArgb(124, 58, 237)
-    Done    = [System.Drawing.Color]::FromArgb(4, 120, 87)
-    Warn    = [System.Drawing.Color]::FromArgb(180, 83, 9)
-    Fail    = [System.Drawing.Color]::FromArgb(185, 28, 28)
-    Run     = [System.Drawing.Color]::FromArgb(29, 78, 216)
+    Surface = [System.Drawing.Color]::FromArgb(15, 15, 19)
+    Panel   = [System.Drawing.Color]::FromArgb(24, 24, 31)
+    Footer  = [System.Drawing.Color]::FromArgb(10, 10, 14)
+    Border  = [System.Drawing.Color]::FromArgb(55, 55, 68)
+    Text    = [System.Drawing.Color]::FromArgb(240, 240, 246)
+    Muted   = [System.Drawing.Color]::FromArgb(158, 158, 176)
+    Accent  = [System.Drawing.Color]::FromArgb(139, 92, 246)
+    Done    = [System.Drawing.Color]::FromArgb(52, 211, 153)
+    Warn    = [System.Drawing.Color]::FromArgb(251, 191, 36)
+    Fail    = [System.Drawing.Color]::FromArgb(248, 113, 113)
+    Run     = [System.Drawing.Color]::FromArgb(96, 165, 250)
   }
 }
 
@@ -280,6 +280,8 @@ function Build-WizLayout([string]$version) {
   $ui.Sdk = New-Object System.Windows.Forms.TextBox
   $ui.Sdk.SetBounds(24, 66, 572, 24)
   $ui.Sdk.Text = [string](Get-AndroidInstallRoot)
+  $ui.Sdk.BackColor = $c.Panel
+  $ui.Sdk.ForeColor = $c.Text
   $p1.Controls.Add($ui.Sdk)
   $ui.Browse = New-WizButton (T 'uiBrowse') 606 65 130 $false $c
   $p1.Controls.Add($ui.Browse)
@@ -294,22 +296,30 @@ function Build-WizLayout([string]$version) {
   $group.Controls.Add((New-WizLabel (T 'uiProxyServer') 16 28 320 18 $c.Text $null))
   $ui.Proxy = New-Object System.Windows.Forms.TextBox
   $ui.Proxy.SetBounds(16, 48, 360, 24)
+  $ui.Proxy.BackColor = $c.Panel
+  $ui.Proxy.ForeColor = $c.Text
   $group.Controls.Add($ui.Proxy)
   $group.Controls.Add((New-WizLabel (T 'uiProxyHint') 16 76 680 18 $c.Muted $null))
   $ui.EnvVars = New-Object System.Windows.Forms.CheckBox
   $ui.EnvVars.Text = (T 'uiEnvVars')
   $ui.EnvVars.Checked = $true
   $ui.EnvVars.SetBounds(16, 106, 680, 22)
+  $ui.EnvVars.BackColor = $c.Surface
+  $ui.EnvVars.ForeColor = $c.Text
   $group.Controls.Add($ui.EnvVars)
   $ui.AddPath = New-Object System.Windows.Forms.CheckBox
   $ui.AddPath.Text = (T 'uiAddPath')
   $ui.AddPath.Checked = $true
   $ui.AddPath.SetBounds(16, 130, 680, 22)
+  $ui.AddPath.BackColor = $c.Surface
+  $ui.AddPath.ForeColor = $c.Text
   $group.Controls.Add($ui.AddPath)
   $ui.Vm = New-Object System.Windows.Forms.CheckBox
   $ui.Vm.Text = (T 'uiVmMode')
   $ui.Vm.Checked = (Get-WizVmDefault)
   $ui.Vm.SetBounds(16, 154, 680, 22)
+  $ui.Vm.BackColor = $c.Surface
+  $ui.Vm.ForeColor = $c.Text
   $group.Controls.Add($ui.Vm)
   # The tooltip states the scope: the choice applies only to OctoSuite launches.
   $ui.VmTip = New-Object System.Windows.Forms.ToolTip
@@ -349,6 +359,8 @@ function Build-WizLayout([string]$version) {
   $ui.StepList = New-Object System.Windows.Forms.ListView
   $ui.StepList.SetBounds(24, 86, 712, 176)
   $ui.StepList.Font = New-Object System.Drawing.Font('Segoe UI', 9)
+  $ui.StepList.BackColor = $c.Panel
+  $ui.StepList.ForeColor = $c.Text
   New-WizStepColumns $ui.StepList
   $p3.Controls.Add($ui.StepList)
   $p3.Controls.Add((New-WizLabel (T 'uiLogTitle') 24 272 360 18 $c.Text $boldFont))
@@ -359,7 +371,7 @@ function Build-WizLayout([string]$version) {
   $ui.Log.ReadOnly = $true
   $ui.Log.ScrollBars = [System.Windows.Forms.ScrollBars]::Vertical
   $ui.Log.SetBounds(24, 294, 712, 138)
-  $ui.Log.BackColor = [System.Drawing.Color]::FromArgb(250, 250, 251)
+  $ui.Log.BackColor = $c.Panel
   $ui.Log.ForeColor = $c.Text
   $ui.Log.Font = $logFont
   $p3.Controls.Add($ui.Log)
@@ -371,12 +383,16 @@ function Build-WizLayout([string]$version) {
   $ui.Outcome = New-Object System.Windows.Forms.ListView
   $ui.Outcome.SetBounds(24, 84, 712, 214)
   $ui.Outcome.Font = New-Object System.Drawing.Font('Segoe UI', 9)
+  $ui.Outcome.BackColor = $c.Panel
+  $ui.Outcome.ForeColor = $c.Text
   New-WizStepColumns $ui.Outcome
   $p4.Controls.Add($ui.Outcome)
   $ui.StartApp = New-Object System.Windows.Forms.CheckBox
   $ui.StartApp.Text = (T 'uiStartWhenDone')
   $ui.StartApp.Checked = $true
   $ui.StartApp.SetBounds(24, 316, 712, 22)
+  $ui.StartApp.BackColor = $c.Surface
+  $ui.StartApp.ForeColor = $c.Text
   $p4.Controls.Add($ui.StartApp)
   $ui.DoneLog = New-WizLink (T 'uiOpenLog') 24 346 200 18 $c
   $p4.Controls.Add($ui.DoneLog)
