@@ -1,0 +1,45 @@
+# Dependencies & build output
+node_modules/
+dist/
+release/
+out/
+*.tsbuildinfo
+
+# Never commit secrets / signing material
+*.pem
+!scripts/lib/update-public-key.pem
+*.key
+*.pfx
+*.p12
+keys/
+.env
+.env.*
+update-private-key*
+
+# Local runtime data (created by the apps in the user-selected data folder)
+OctoBrowser-data/
+OctoDetect-data/
+*.log
+logs/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Test output
+test-results/
+playwright-report/
+
+# Local companion working copy (extracted studio.zip build tree)
+.studio-build/
+
+# Original source archive (superseded by the working tree)
+mostimportant811.zip
+
+# Android (android/avd-camera-check): Gradle output and local SDK paths
+android/**/build/
+android/**/.gradle/
+android/**/local.properties
+android/**/.idea/

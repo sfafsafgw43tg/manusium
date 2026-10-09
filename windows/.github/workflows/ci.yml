@@ -1,0 +1,130 @@
+# .github/workflows/ci.yml
+#
+# CI for the Windows-only OctoSuite.
+#   windows - typecheck, tests, real Electron E2E, packaging and installer:
+#             unit tests, Playwright E2E in Electron, packaging (electron-builder),
+#             Electron fuse check, Pester tests of the maintenance scripts in
+#             Windows PowerShell 5.1, Inno Setup installer, signed test release,
+#             silent install / verify / smoke start / uninstall.
+#
+# The Windows job signs with a THROW-AWAY key generated in the job. Its
+# artifacts are for testing only and are never published (see release.yml).
+
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 75
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Throw-away update signing key (CI only, never published)
+        run: node tools/update-keygen.mjs
+
+      - name: Typecheck and unit tests
+        run: |
+          npm run typecheck
+          npm test
+
+      - name: Build
+        run: npm run build
+
+      # E2E and Pester failures do not stop the job immediately: packaging, fuse
+      # check and installer tests still run so one CI round reports everything.
+      # The final "Fail on test failures" step turns the job red afterwards.
+      - name: E2E tests (Playwright + Electron)
+        id: e2e
+        continue-on-error: true
+        timeout-minutes: 30
+        run: npx playwright test -c e2e/playwright.config.ts
+
+      - name: Package both apps (electron-builder --dir)
+        run: npm run dist:dir
+
+      - name: Check Electron fuses of the packaged apps
+        run: node tools/check-fuses.mjs
+
+      - name: Maintenance scripts (Pester; scripts run in Windows PowerShell 5.1)
+        id: pester
+        continue-on-error: true
+        timeout-minutes: 20
+        shell: pwsh
+        run: |
+          if (-not (Get-Module -ListAvailable Pester | Where-Object { $_.Version -ge [version]'5.3.0' })) {
+            Install-Module Pester -MinimumVersion 5.3.0 -Force -Scope CurrentUser -SkipPublisherCheck
+          }
+          Import-Module Pester -MinimumVersion 5.3.0
+          $c = New-PesterConfiguration
+          $c.Run.Path = 'scripts/tests'
+          $c.Run.Exit = $true
+          $c.Output.Verbosity = 'Detailed'
+          $c.TestResult.Enabled = $true
+          $c.TestResult.OutputPath = 'test-results/pester.xml'
+          Invoke-Pester -Configuration $c
+
+      - name: Install Inno Setup 6
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup --no-progress -y }
+
+      - name: Build installer
+        run: npm run installer
+
+      - name: Sign test manifest and write checksums
+        run: |
+          node tools/sign-manifest.mjs --severity optional --notes-en "CI test build" --notes-pl "Kompilacja testowa CI"
+          node tools/hash-files.mjs
+          node tools/hash-files.mjs --verify
+
+      - name: Installer E2E (install, verify, smoke start, uninstall)
+        shell: pwsh
+        run: ./tools/ci/installer-e2e.ps1
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results/
+          if-no-files-found: ignore
+
+      - name: Fail on test failures
+        if: steps.e2e.outcome == 'failure' || steps.pester.outcome == 'failure'
+        shell: pwsh
+        run: |
+          Write-Output "::error title=Test failures::E2E: ${{ steps.e2e.outcome }}, Pester: ${{ steps.pester.outcome }}"
+          Write-Error "E2E: ${{ steps.e2e.outcome }}, Pester: ${{ steps.pester.outcome }} - see the steps above and the test-results artifact."
+          exit 1
+
+      - name: Upload test installer (CI key - NOT for distribution)
+        uses: actions/upload-artifact@v4
+        with:
+          name: OctoSuite-CI-test-build-not-for-distribution
+          path: |
+            release/OctoSuite-Setup-*.exe
+            release/latest.json
+            release/latest.json.sig
+            release/SHA256SUMS.txt
+          retention-days: 7

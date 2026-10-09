@@ -1,0 +1,34 @@
+<!doctype html>
+<!-- apps/octobrowser/src/renderer/launcher.html - profile manager / launcher of Octo.su. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:">
+  <title>Octo.su</title>
+  <link rel="stylesheet" href="launcher.css">
+</head>
+<body>
+  <header id="appTitlebar" class="app-titlebar" aria-label="Octo.su window controls">
+    <div class="app-title">Octo.su</div>
+    <div id="appDrag" class="app-drag" aria-hidden="true"></div>
+    <div class="window-controls" role="group" aria-label="Window controls">
+      <button id="windowMinimize" class="window-control" type="button" aria-label="Minimize" title="Minimize"></button>
+      <button id="windowMaximize" class="window-control" type="button" aria-label="Maximize" title="Maximize"></button>
+      <button id="windowClose" class="window-control window-close" type="button" aria-label="Close" title="Close"></button>
+    </div>
+  </header>
+  <div id="app">
+    <aside id="rail">
+      <div id="railHead"><button id="railToggle" class="icon-btn" type="button" aria-label="Collapse navigation" title="Collapse navigation"></button></div>
+      <nav id="nav"></nav>
+      <div id="sideFoot"></div>
+    </aside>
+    <aside id="side2" class="hidden"></aside>
+    <main><section id="view"></section></main>
+  </div>
+  <footer id="statusbar"></footer>
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true"><div class="modal-box" id="modalBox"></div></div>
+  <div id="toasts" aria-live="polite"></div>
+  <script src="launcher.js"></script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- branding/octobrowser/logo.svg - OctoBrowser.su transparent octopus mark.
+     Based on the supplied artwork: a friendly vivid-purple octopus with bright eyes. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="violet" x1="42" y1="28" x2="214" y2="222" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6400e8"/>
+      <stop offset="1" stop-color="#4b00c2"/>
+    </linearGradient>
+  </defs>
+  <g fill="url(#violet)">
+    <!-- head and mantle -->
+    <path d="M128 30c-34 0-55 27-55 62 0 24 9 42 27 53h58c18-11 27-29 27-53 0-35-21-62-57-62Z"/>
+    <!-- eight rounded tentacles -->
+    <path d="M104 130c-18 5-32 0-42-17-5-9-14-10-22-4-5 4-8 9-12 14 7-25 22-32 35-24 10 6 14 21 29 20Z"/>
+    <path d="M94 142c-16 12-33 15-50 9-11-4-18 1-21 10-2 6-2 12-2 19 9-22 25-26 40-19 13 6 24 2 39-8Z"/>
+    <path d="M107 150c-9 18-23 29-42 34-10 3-13 11-10 20 2 6 6 11 10 15-4-25 7-35 23-38 13-2 23-13 29-29Z"/>
+    <path d="M121 151c-2 22-11 37-28 47-9 5-10 14-4 21 4 5 9 8 15 11-13-22-7-35 7-44 11-8 17-21 17-36Z"/>
+    <path d="M135 151c2 22 11 37 28 47 9 5 10 14 4 21-4 5-9 8-15 11 13-22 7-35-7-44-11-8-17-21-17-36Z"/>
+    <path d="M149 150c9 18 23 29 42 34 10 3 13 11 10 20-2 6-6 11-10 15 4-25-7-35-23-38-13-2-23-13-29-29Z"/>
+    <path d="M162 142c16 12 33 15 50 9 11-4 18 1 21 10 2 6 2 12 2 19-9-22-25-26-40-19-13 6-24 2-39-8Z"/>
+    <path d="M152 130c18 5 32 0 42-17 5-9 14-10 22-4 5 4 8 9 12 14-7-25-22-32-35-24-10 6-14 21-29 20Z"/>
+    <!-- body joins the tentacles cleanly -->
+    <path d="M78 121c0 22 18 38 50 38s50-16 50-38c0-14-9-25-23-29h-54c-14 4-23 15-23 29Z"/>
+  </g>
+  <!-- friendly white eyes, with the small violet pupils from the supplied mark -->
+  <g fill="#ffffff">
+    <circle cx="106" cy="121" r="12"/>
+    <circle cx="150" cy="121" r="12"/>
+  </g>
+  <g fill="#5700cf">
+    <circle cx="109" cy="122" r="4.8"/>
+    <circle cx="147" cy="122" r="4.8"/>
+  </g>
+  <g fill="#ffffff">
+    <circle cx="111" cy="119" r="1.8"/>
+    <circle cx="145" cy="119" r="1.8"/>
+  </g>
+</svg>

@@ -1,0 +1,74 @@
+# apps/octobrowser/electron-builder.yml - packaging of Octo.su for Windows and Linux.
+# Windows produces a portable folder + zip; Linux produces a portable directory,
+# AppImage, and Debian package. All code is pre-bundled by tools/build.mjs.
+appId: su.octo.browser
+productName: Octo.su
+executableName: Octo.su
+copyright: Copyright © 2026 OctoSuite contributors
+electronVersion: 44.4.5
+directories:
+  output: ../../release/octobrowser
+  buildResources: build-resources
+files:
+  - package.json
+  - dist/**/*
+  - "!dist/**/*.map"
+asar: true
+npmRebuild: false
+nodeGypRebuild: false
+buildDependenciesFromSource: false
+extraResources:
+  # Optional, local-only vStudio media companion used by the Android AVD flow.
+  # It is copied into an AVD only on explicit user action; no bundled script runs.
+  - from: ../../studio.zip
+    to: studio.zip
+  - from: ../../licenses
+    to: licenses
+  # WebExtensions must be available as unpacked real files: Electron cannot
+  # load an extension directly from inside app.asar.
+  - from: ../../resources/addons
+    to: addons
+  # Native Chromium and Firefox runtimes are staged before packaging and must
+  # remain external files so their executables and supporting libraries work.
+  - from: ../../resources/engines
+    to: engines
+win:
+  icon: dist/assets/icon.ico
+  target:
+    - target: dir
+      arch: [x64]
+    - target: zip
+      arch: [x64]
+  # Code signing: set CSC_LINK / CSC_KEY_PASSWORD (never commit the certificate).
+  signAndEditExecutable: true
+  requestedExecutionLevel: asInvoker
+linux:
+  executableName: Octo.su
+  icon: dist/assets/icon-256.png
+  category: Network
+  synopsis: Isolated multi-engine privacy browser
+  description: Native Chromium and Firefox profiles with isolated storage and engine-specific privacy controls.
+  target:
+    - target: dir
+      arch: [x64]
+    - target: AppImage
+      arch: [x64]
+    - target: deb
+      arch: [x64]
+  maintainer: octosuite@users.noreply.github.com
+  desktop:
+    Name: Octo.su
+    Comment: Isolated multi-engine privacy browser
+    Categories: Network;WebBrowser;
+    StartupWMClass: Octo.su
+# Electron fuses (hardening of the Electron binary itself).
+electronFuses:
+  runAsNode: false
+  enableCookieEncryption: true
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
+  loadBrowserProcessSpecificV8Snapshot: false
+  grantFileProtocolExtraPrivileges: false
+publish: null

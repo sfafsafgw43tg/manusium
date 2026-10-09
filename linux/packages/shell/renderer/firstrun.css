@@ -1,0 +1,47 @@
+/* packages/shell/renderer/firstrun.css - one-screen setup. */
+/* `hidden` must always win over the display rules below (the old wizard showed
+   every step at once because `.step { display: flex }` overrode it). */
+[hidden] { display: none !important; }
+
+/* Fill the window with fixed positioning instead of 100vh: on Windows with
+   display scaling 100vh could be computed for the pre-show size and leave a
+   black band under the content. */
+.setup { position: fixed; inset: 0; display: flex; flex-direction: column; background: var(--bg); }
+.setup-body { flex: 1; min-height: 0; overflow: auto; padding: 30px 36px 18px; display: flex; flex-direction: column; gap: 22px; }
+
+.setup-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.head-text { min-width: 0; }
+h1 { font-size: 22px; font-weight: 650; margin: 0 0 6px; line-height: 1.25; }
+.setup-head p { margin: 0; font-size: 13.5px; }
+
+.seg { display: inline-flex; flex: none; padding: 3px; gap: 3px; background: var(--bg2); border: 1px solid var(--line); border-radius: 9px; }
+.seg button { border: 0; background: transparent; color: var(--muted); padding: 7px 14px; border-radius: 7px; font-size: 13px; }
+.seg button:hover { color: var(--text); background: var(--panel2); }
+.seg button[aria-checked="true"] { background: var(--accent-bg); color: #fff; box-shadow: inset 0 0 0 1px var(--accent); }
+
+.group { display: flex; flex-direction: column; gap: 8px; }
+.lbl { font-size: 13px; font-weight: 600; color: var(--text); }
+.row { display: flex; gap: 10px; }
+.row input { flex: 1; min-width: 0; }
+.row .btn { flex: none; }
+.hint { font-size: 12.5px; color: var(--muted); margin: 0; }
+.hint code { font: 12px var(--mono); color: var(--text); word-break: break-all; }
+.ok-note { color: var(--text); }
+.err:empty { display: none; }
+.err { color: var(--bad); min-height: 0; }
+
+.opts { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+.opt-title { display: flex; flex-direction: column; gap: 2px; padding: 12px 16px 4px; }
+.opt-title b { font-size: 13.5px; }
+.opt-title small { font-size: 12.5px; }
+.opt { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 14px 16px; cursor: pointer; }
+.opt + .opt { border-top: 1px solid var(--line); }
+.opt-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.opt-text b { font-weight: 600; font-size: 13.5px; }
+.opt-text small { font-size: 12.5px; }
+
+.setup-foot { flex: none; display: flex; align-items: center; gap: 10px; padding: 14px 36px; border-top: 1px solid var(--line); background: var(--bg2); }
+.setup-foot .status { flex: 1; min-width: 0; font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.setup-foot .status.bad { color: var(--bad); }
+.setup-foot .version { font-size: 12px; color: var(--dim); }
+.setup-foot .btn.primary { min-width: 130px; }

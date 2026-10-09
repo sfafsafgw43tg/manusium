@@ -1,0 +1,5 @@
+# Fingerprinting script hosts (starter list, hand-maintained, not exhaustive).
+# Format is the same as trackers.txt. Regenerate rules/fingerprinting.json with: npm run build
+fpjs.io
+openfpcdn.io
+fpcdn.io

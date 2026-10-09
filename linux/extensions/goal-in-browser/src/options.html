@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GOAL in Browser: Settings</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body class="options">
+    <main>
+      <header class="page-head">
+        <div>
+          <h1>GOAL in Browser</h1>
+          <p class="muted">Settings stay on this device. Nothing is sent to the developer or anyone else.</p>
+        </div>
+        <label class="switch"><input type="checkbox" data-setting="protectionEnabled" /><span>Protection on</span></label>
+      </header>
+      <p id="status" class="status" role="status"></p>
+
+      <section class="card">
+        <h2>Level</h2>
+        <p class="note">A preset sets the options below. Change any option to make your own mix.</p>
+        <div class="segmented" role="group" aria-label="Preset">
+          <button type="button" data-preset="standard" aria-pressed="false">Standard</button>
+          <button type="button" data-preset="strict" aria-pressed="false">Strict</button>
+          <button type="button" data-preset="ultra" aria-pressed="false">Ultra</button>
+        </div>
+        <p id="preset-text" class="note"></p>
+        <p id="preset-note" class="note warn" hidden></p>
+      </section>
+
+      <section class="card">
+        <h2>Status</h2>
+        <p id="summary" class="note"></p>
+        <ul id="report" class="report"></ul>
+      </section>
+
+      <section class="card">
+        <h2>Blocking</h2>
+        <div class="field">
+          <div><strong>Ads and malware domains</strong><p class="note">Blocks requests to the domains in the bundled StevenBlack hosts list. See Lists below.</p></div>
+          <input type="checkbox" data-setting="adList" aria-label="Ads and malware domains" />
+        </div>
+        <div class="field">
+          <div><strong>Tracker domains</strong><p class="note">Blocks requests to a curated set of tracker domains shipped with this extension.</p></div>
+          <input type="checkbox" data-setting="trackerList" aria-label="Tracker domains" />
+        </div>
+        <div class="field">
+          <div><strong>Fingerprinting scripts</strong><p class="note">Blocks requests to known fingerprinting script hosts. It does not change or fake any value a page reads.</p></div>
+          <input type="checkbox" data-setting="fingerprintList" aria-label="Fingerprinting scripts" />
+        </div>
+        <div class="field">
+          <div><strong>Upgrade to HTTPS</strong><p class="note">Loads http:// pages over https:// where possible. Localhost and IP addresses stay on http.</p></div>
+          <input type="checkbox" data-setting="httpsUpgrade" aria-label="Upgrade to HTTPS" />
+        </div>
+        <div class="field">
+          <div><strong>Link pings and CSP reports</strong><p class="note">Blocks ping requests (used for link tracking) and Content-Security-Policy violation reports.</p></div>
+          <input type="checkbox" data-setting="blockPings" aria-label="Link pings and CSP reports" />
+        </div>
+        <div class="field">
+          <div><strong>Third-party scripts</strong><p class="note">Blocks scripts loaded from other sites. Many sites will stop working. Use the allowlist for those.</p></div>
+          <input type="checkbox" data-setting="blockThirdPartyScripts" aria-label="Third-party scripts" />
+        </div>
+        <div class="field">
+          <div><strong>Third-party frames</strong><p class="note">Blocks embedded frames from other sites, such as many ad and video frames.</p></div>
+          <input type="checkbox" data-setting="blockThirdPartyFrames" aria-label="Third-party frames" />
+        </div>
+        <div class="field">
+          <div><strong>Tracking-link cleanup</strong><p class="note">Removes click and campaign identifiers such as utm_* and fbclid from addresses you open. Needs access to all sites.</p></div>
+          <input type="checkbox" data-setting="stripTrackingParams" aria-label="Tracking-link cleanup" />
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Cookies and site data</h2>
+        <div class="field">
+          <div><strong>Block third-party cookies</strong><p class="note">A Chrome setting. Sites with an exception, or that use the Storage Access API, may still receive them.</p></div>
+          <input type="checkbox" data-setting="blockThirdPartyCookies" aria-label="Block third-party cookies" />
+        </div>
+        <div class="field">
+          <div><strong>Clear site data when the browser starts</strong><p class="note">Removes cookies, cache and site storage for normal websites at each start. You will be signed out. Installed web apps, history, passwords and downloads are not removed. Best effort.</p></div>
+          <input type="checkbox" data-setting="clearOnStart" aria-label="Clear site data when the browser starts" />
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Privacy signals and headers</h2>
+        <div class="field">
+          <div><strong>Send Do Not Track</strong><p class="note">Sends DNT: 1. Most sites ignore it.</p></div>
+          <input type="checkbox" data-setting="doNotTrack" aria-label="Send Do Not Track" />
+        </div>
+        <div class="field">
+          <div><strong>Send Global Privacy Control</strong><p class="note">Sends Sec-GPC: 1. It is a request only; sites must choose to honour it. Needs access to all sites.</p></div>
+          <input type="checkbox" data-setting="globalPrivacyControl" aria-label="Send Global Privacy Control" />
+        </div>
+        <div class="field">
+          <div><strong>Referrer</strong><p class="note">What other sites learn about the page you came from. The origin-only option needs access to all sites.</p></div>
+          <select data-setting="referrerPolicy" aria-label="Referrer">
+            <option value="default">Chrome default</option>
+            <option value="origin">Origin only (needs access)</option>
+            <option value="none">No referrer (may break sites)</option>
+          </select>
+        </div>
+        <div class="field">
+          <div><strong>WebRTC IP handling</strong><p class="note">Limits which network addresses a page can learn through WebRTC.</p></div>
+          <select data-setting="webRtcPolicy" aria-label="WebRTC IP handling">
+            <option value="default">Chrome default</option>
+            <option value="default_public_interface_only">Public interface only</option>
+            <option value="disable_non_proxied_udp">Disable non-proxied UDP (may break calls)</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Chrome web services and ad APIs</h2>
+        <div class="field">
+          <div><strong>Privacy Sandbox ad APIs</strong><p class="note">Turns off Topics, Protected Audience (FLEDGE) and ad measurement, where Chrome lets an extension turn them off.</p></div>
+          <input type="checkbox" data-setting="privacySandboxOff" aria-label="Privacy Sandbox ad APIs" />
+        </div>
+        <div class="field">
+          <div><strong>Hyperlink auditing</strong><p class="note">Turns off link ping requests.</p></div>
+          <input type="checkbox" data-setting="hyperlinkAuditingOff" aria-label="Hyperlink auditing" />
+        </div>
+        <div class="field">
+          <div><strong>Error-page suggestions</strong><p class="note">Error pages will not call web services for suggestions.</p></div>
+          <input type="checkbox" data-setting="errorSuggestionsOff" aria-label="Error-page suggestions" />
+        </div>
+        <div class="field">
+          <div><strong>Address-bar search suggestions</strong><p class="note">Text you type is not sent to the search provider for suggestions.</p></div>
+          <input type="checkbox" data-setting="searchSuggestionsOff" aria-label="Address-bar search suggestions" />
+        </div>
+        <div class="field">
+          <div><strong>Translation service</strong><p class="note">Pages are not sent to Chrome's translation service.</p></div>
+          <input type="checkbox" data-setting="translationOff" aria-label="Translation service" />
+        </div>
+        <div class="field">
+          <div><strong>Network prediction</strong><p class="note">Chrome does not pre-connect to sites it predicts you will open.</p></div>
+          <input type="checkbox" data-setting="networkPredictionOff" aria-label="Network prediction" />
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Site permissions</h2>
+        <p class="note">These set Chrome's default for all sites. Whether they override exceptions you already made in Chrome is not verified. Check chrome://settings/content.</p>
+        <div class="field">
+          <div><strong>Location</strong></div>
+          <select data-setting="locationPermission" aria-label="Location">
+            <option value="ask">Ask (Chrome default)</option>
+            <option value="block">Block</option>
+          </select>
+        </div>
+        <div class="field">
+          <div><strong>Notifications</strong></div>
+          <select data-setting="notificationPermission" aria-label="Notifications">
+            <option value="block">Block</option>
+            <option value="ask">Ask (Chrome default)</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Toolbar</h2>
+        <div class="field">
+          <div><strong>Count on toolbar icon</strong><p class="note">Shows how many requests were matched on the current tab.</p></div>
+          <input type="checkbox" data-setting="showBadgeCount" aria-label="Count on toolbar icon" />
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Site access</h2>
+        <p class="note">
+          Three options need permission to read and change data on all sites. Chrome shows that warning when you allow it.
+          Protection without these options does not need it.
+        </p>
+        <p id="access-status" class="note"></p>
+        <button id="access-remove" type="button" class="danger" disabled>Remove access to all sites</button>
+      </section>
+
+      <section class="card">
+        <h2>Allowlist</h2>
+        <p class="note">
+          Sites listed here are excluded from blocking, the HTTPS upgrade and tracking-link cleanup. A domain also covers its subdomains.
+          Privacy headers and Chrome settings still apply.
+        </p>
+        <div class="inline">
+          <input id="allow-input" type="text" placeholder="example.com" aria-label="Domain to allow" />
+          <button id="allow-add" type="button">Add</button>
+        </div>
+        <ul id="allow-list" class="list"></ul>
+      </section>
+
+      <section class="card">
+        <h2>Custom blocked domains</h2>
+        <p class="note">Blocks these domains on other sites. Enter one domain per line. Never blocks a page you open directly.</p>
+        <textarea id="custom-text" rows="6" aria-label="Custom blocked domains"></textarea>
+        <div class="page-foot">
+          <button id="custom-save" type="button">Save custom list</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Lists</h2>
+        <ul id="lists" class="list"></ul>
+      </section>
+
+      <section class="card">
+        <h2>Reset</h2>
+        <p class="note">Sets every option back to Standard, clears the allowlist and custom list, and removes access to all sites.</p>
+        <button id="reset" type="button" class="danger">Reset to Standard</button>
+      </section>
+
+      <footer class="page-foot">
+        <p id="version" class="muted"></p>
+      </footer>
+    </main>
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

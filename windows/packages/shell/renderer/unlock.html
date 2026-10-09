@@ -1,0 +1,41 @@
+<!doctype html>
+<!-- packages/shell/renderer/unlock.html - master-password window (hasło główne). -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:;">
+  <title>Unlock</title>
+  <link rel="stylesheet" href="shared.css">
+  <link rel="stylesheet" href="unlock.css">
+</head>
+<body>
+  <div class="unlock">
+    <h1 data-i18n="unlock.title"></h1>
+    <p class="muted" data-i18n="unlock.desc"></p>
+
+    <form id="form" autocomplete="off">
+      <input type="password" id="password" spellcheck="false" autocomplete="current-password"
+             data-i18n-ph="unlock.placeholder" autofocus>
+      <button class="btn primary" type="submit" id="submit" data-i18n="unlock.submit"></button>
+    </form>
+
+    <div class="err" id="err"></div>
+
+    <div class="info" data-i18n="unlock.notStored"></div>
+    <div class="note" data-i18n="security.malwareNotice"></div>
+
+    <footer>
+      <button class="btn link" id="forgot" type="button" data-i18n="unlock.forgot"></button>
+      <span class="spacer"></span>
+      <button class="btn" id="cancel" type="button" data-i18n="common.cancel"></button>
+    </footer>
+  </div>
+  <!-- Inline icon sprite: no network, no external files. -->
+  <svg hidden aria-hidden="true">
+    <symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="8" cy="15" r="4"/><path d="M11 12 20 3M17 6l2 2M15 8l2 2"/>
+    </symbol>
+  </svg>
+  <script src="unlock.js"></script>
+</body>
+</html>
