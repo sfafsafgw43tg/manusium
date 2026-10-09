@@ -213,6 +213,9 @@ describe('browser entry UI', () => {
 
   it('keeps page position while async local data fills in without a blocking loading screen', () => {
     expect(launcher).toContain('const viewScroll = new Map<string, number>()');
+    expect(launcher).toContain('const tableScroll = new Map<string, number>()');
+    expect(launcher).toContain("const table = v.querySelector<HTMLElement>('.tbody')");
+    expect(launcher).toContain('table.scrollTop = wantedTable');
     expect(launcher).toContain('restoreViewScroll(targetView, v)');
     expect(launcher).toContain('Async pages paint their structure immediately');
     expect(launcherUi).not.toContain('export function loadingPopout');

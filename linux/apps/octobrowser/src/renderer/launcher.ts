@@ -206,10 +206,20 @@ function render(): void {
 
 let lastView = '';
 const viewScroll = new Map<string, number>();
+// Profiles and proxies keep their own scrollable table body while the page
+// shell itself is intentionally overflow-hidden. Keep that inner position as
+// well as the generic page position when an IPC update causes a rerender.
+const tableScroll = new Map<string, number>();
 
 function restoreViewScroll(view: View, host: HTMLElement): void {
   const wanted = viewScroll.get(view) ?? 0;
-  const apply = () => { if (S.view === view) host.scrollTop = wanted; };
+  const wantedTable = tableScroll.get(view) ?? 0;
+  const apply = () => {
+    if (S.view !== view) return;
+    host.scrollTop = wanted;
+    const table = host.querySelector<HTMLElement>('.tbody');
+    if (table) table.scrollTop = wantedTable;
+  };
   apply();
   // Async pages can grow after their IPC result arrives. Restore once after
   // layout too, without continuously fighting a user who starts scrolling.
@@ -224,7 +234,11 @@ function renderPage(): void {
   side2.classList.toggle('hidden', S.view !== 'profiles');
   if (S.view === 'profiles') renderFolders(side2);
   const v = $('view');
-  if (lastView) viewScroll.set(lastView, v.scrollTop);
+  if (lastView) {
+    viewScroll.set(lastView, v.scrollTop);
+    const table = v.querySelector<HTMLElement>('.tbody');
+    if (table) tableScroll.set(lastView, table.scrollTop);
+  }
   const targetView = S.view;
   clear(v);
   v.className = `view-${targetView}`;
