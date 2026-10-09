@@ -781,7 +781,11 @@ export class Manager {
         executable = discoverFirefoxRuntime(resourcesPath, path.join(this.ctx.layout.engine, 'runtimes', 'gecko'));
         if (executable) break;
       }
-      if (!executable && process.platform === 'linux') {
+      // A source checkout or an incomplete installer may not have a packaged
+      // Gecko tree yet. Both supported desktop platforms can repair that state
+      // with the pinned, checksum-verified catalog artifact. Never substitute
+      // Chromium or Electron when this repair fails.
+      if (!executable && (process.platform === 'linux' || process.platform === 'win32')) {
         try {
           const entry = geckoCatalogEntry();
           executable = installFirefoxRuntime(entry, path.join(this.ctx.layout.engine, 'runtimes', 'gecko')).executablePath;
