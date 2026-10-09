@@ -91,7 +91,10 @@ try {
     // deterministic wrapper to firefox-bin.
     fs.writeFileSync(executablePath, '#!/bin/sh\nset -eu\nHERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\nexec "$HERE/firefox-bin" "$@"\n', { mode: 0o755 });
   } else if (sourceStagedExecutable !== executablePath) {
-    fs.renameSync(sourceStagedExecutable, executablePath);
+    // Keep Mozilla's original firefox.exe. The launcher resolves its companion
+    // firefox-bin.exe and adjacent resources by the upstream name; renaming it
+    // in place can make a correctly extracted runtime fail before startup.
+    fs.copyFileSync(sourceStagedExecutable, executablePath);
   }
   if (process.platform !== 'win32') fs.chmodSync(executablePath, 0o755);
   fs.writeFileSync(path.join(staged, 'runtime.json'), `${JSON.stringify({ schema: 'octo.engine-manifest.v1', kind: 'gecko', protocol: 'juggler', version: entry.version, executable: entry.executable, platforms: [target], capabilities: ['window', 'tabs', 'navigation', 'storage', 'crash-recovery'], sha256: sha256(executablePath), executableSha256: sha256(executablePath), source: { url: acquiredFrom, mirrors, archiveSha512: entry.archiveSha512, license } }, null, 2)}\n`);

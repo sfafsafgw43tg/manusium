@@ -186,6 +186,8 @@ describe('steps and the console installer', () => {
     expect(chromium).not.toContain("execFileSync('unzip', ['-q', '-o', cache");
     expect(firefox).toContain("'/norestart'");
     expect(firefox).toContain('3010');
+    expect(firefox).toContain('fs.copyFileSync(sourceStagedExecutable, executablePath)');
+    expect(firefox).not.toContain('fs.renameSync(sourceStagedExecutable, executablePath)');
     const runtimeStep = functionBody(octo, 'Get-SetupSteps');
     expect(runtimeStep).toContain("tools\\verify-native-engines.mjs");
     expect(runtimeStep).toContain('Native Chromium/Firefox verification failed');
