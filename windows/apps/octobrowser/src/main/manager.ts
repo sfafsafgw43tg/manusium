@@ -169,6 +169,35 @@ const DOLPHIN_SYNC_API_URL = 'https://darkwing.dolphin-anty-api.com/api/v1';
 function engineResourceRoots(): string[] {
   return [...new Set([process.resourcesPath, path.join(process.cwd(), 'resources')])];
 }
+
+function isCrossDeviceError(error: unknown): boolean {
+  return !!error && typeof error === 'object' && (error as NodeJS.ErrnoException).code === 'EXDEV';
+}
+
+/** Copy a directory through a same-volume staging name, then publish it with rename. */
+function copyDirectoryAtomically(source: string, destination: string): void {
+  const staging = `${destination}.partial-${process.pid}-${randomBytes(6).toString('hex')}`;
+  fs.rmSync(staging, { recursive: true, force: true });
+  try {
+    fs.cpSync(source, staging, { recursive: true, errorOnExist: false, force: true });
+    fs.renameSync(staging, destination);
+  } catch (error) {
+    fs.rmSync(staging, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+/** Rename when possible; fall back to a verified same-volume copy for EXDEV. */
+function moveDirectoryAcrossDevices(source: string, destination: string): void {
+  try {
+    fs.renameSync(source, destination);
+  } catch (error) {
+    if (!isCrossDeviceError(error)) throw error;
+    copyDirectoryAtomically(source, destination);
+    fs.rmSync(source, { recursive: true, force: true });
+  }
+}
+
 /** Proxy chosen in the profile editor / sent to the API. */
 export type ProxyInput =
   | { mode: 'none' }
@@ -929,7 +958,7 @@ export class Manager {
         if (targetExisted) {
           fs.cpSync(current, target, { recursive: true, errorOnExist: false, force: true });
           fs.rmSync(current, { recursive: true, force: true });
-        } else fs.renameSync(current, target);
+        } else moveDirectoryAcrossDevices(current, target);
       }
       else fs.mkdirSync(target, { recursive: true });
       const updated = this.profiles.update(id, { profileDirectory: target });
@@ -938,8 +967,12 @@ export class Manager {
     } catch (error) {
       if (fs.existsSync(target) && !fs.existsSync(current)) {
         try {
-          if (targetExisted) { fs.cpSync(target, current, { recursive: true, force: true }); fs.rmSync(target, { recursive: true, force: true }); }
-          else fs.renameSync(target, current);
+          if (targetExisted) {
+            fs.cpSync(target, current, { recursive: true, force: true });
+            fs.rmSync(target, { recursive: true, force: true });
+          } else {
+            moveDirectoryAcrossDevices(target, current);
+          }
         } catch { /* preserve the original error */ }
       }
       throw error;
