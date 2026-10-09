@@ -35,10 +35,31 @@
       "description": "Native Chromium and Firefox profiles with isolated storage and engine-specific privacy controls.",
       "maintainer": "octosuite@users.noreply.github.com",
       "target": [
-        { "target": "dir", "arch": ["x64"] },
-        { "target": "AppImage", "arch": ["x64"] },
-        { "target": "deb", "arch": ["x64"] }
-      ]
+        {
+          "target": "dir",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "syncDesktopName": true,
+      "desktop": {
+        "entry": {
+          "StartupWMClass": "Octo.su"
+        }
+      }
     },
     "publish": null
   }

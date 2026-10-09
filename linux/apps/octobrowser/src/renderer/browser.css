@@ -1403,3 +1403,30 @@ body.vm-mode *::after {
 @media (prefers-reduced-motion: reduce) {
   .window-control::before, .window-control svg, #newTab svg { transition: none !important; }
 }
+
+/* Octo/Electron keeps the two utility controls in the top strip and places
+   the close action in the otherwise unused lower-right corner. */
+:root[data-browser-shell="octo"] #windowClose {
+  position: fixed; right: 12px; bottom: 12px; z-index: 80;
+  width: 36px; height: 36px; border-radius: 12px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line) 75%, transparent);
+  box-shadow: 0 8px 24px #0007;
+}
+:root[data-browser-shell="octo"] #windowClose:hover {
+  background: color-mix(in srgb, #c94f63 72%, var(--panel));
+  color: #fff; transform: translateY(-2px) rotate(-3deg);
+}
+
+/* Bespoke Ink motion: a soft lift and active-tab settle rather than generic fades. */
+@keyframes ink-tab-settle { 0% { opacity: .65; transform: translateY(5px) scale(.985); } 65% { transform: translateY(-1px) scale(1.005); } 100% { opacity: 1; transform: none; } }
+.tab, .icon-btn, .window-control, #omnibox, #newTab { transition: background-color .22s cubic-bezier(.2,.8,.2,1), color .18s ease, border-color .22s ease, box-shadow .28s ease, transform .22s cubic-bezier(.2,.8,.2,1); }
+.tab.active { animation: ink-tab-settle .34s cubic-bezier(.2,.8,.2,1) both; }
+.tab:hover { transform: translateY(-1px); box-shadow: 0 5px 16px #0003; }
+#newTab:hover, .icon-btn:hover:not(:disabled) { transform: translateY(-2px) scale(1.04); box-shadow: 0 6px 18px #0004; }
+#omnibox:focus-within { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent), 0 12px 28px #0006; }
+.window-control:hover { transform: translateY(-1px); }
+@media (prefers-reduced-motion: reduce) {
+  .tab.active, .tab:hover, #newTab:hover, .icon-btn:hover:not(:disabled), .window-control:hover { animation: none; transform: none; }
+  .tab, .icon-btn, .window-control, #omnibox, #newTab { transition: none; }
+}

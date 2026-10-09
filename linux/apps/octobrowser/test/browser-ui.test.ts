@@ -76,7 +76,8 @@ describe('browser entry UI', () => {
     expect(launcherEditor).toContain("['manual', t('fp.v.manual')]");
     expect(launcherEditor).toContain("['off', t('fp.v.off')]");
     expect(manager).toContain("browserEngineFor(p.engine) === 'firefox'");
-    expect(manager).toContain('cannot apply Octo fingerprint/WebGL settings');
+    expect(manager).toContain("patch.fingerprint = { ...patch.fingerprint, enabled: false }");
+    expect(manager).toContain("clean.fingerprint = { ...fingerprint, enabled: false }");
     expect(i18nEn).toContain("'browserEngine.firefoxNote':");
   });
 

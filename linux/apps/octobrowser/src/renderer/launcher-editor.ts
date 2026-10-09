@@ -402,7 +402,7 @@ function general(b: HTMLElement, d: Draft, creating: boolean, p: Profile | null,
       d.browserShell = k === 'tor' ? 'octo' : 'chrome';
       d.baseChromeLook = d.browserShell === 'chrome';
       Object.assign(d, kindDefaults(k, S.init.addons.filter((a) => a.kind !== 'external-app').map((a) => a.id)));
-      if (k !== 'tor' && !d.fp) void api.invoke<Fingerprint>('mgr:fingerprint-new', 'windows11').then((fp) => { d.fp = fp; draw(); });
+      if (k !== 'tor' && !d.fp && d.engine === 'electron') void api.invoke<Fingerprint>('mgr:fingerprint-new', 'windows11').then((fp) => { d.fp = fp; draw(); });
       if (k === 'tor') d.fp = null;
       if (k === 'tor') d.proxy = { ...d.proxy, mode: 'none', keep: false };
       draw();

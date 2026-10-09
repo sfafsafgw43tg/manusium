@@ -165,6 +165,10 @@ const PROFILE_READY_TIMEOUT_MS = 30_000;
 const DOLPHIN_API_URL = 'https://dolphin-anty-api.com';
 const DOLPHIN_SYNC_API_URL = 'https://darkwing.dolphin-anty-api.com/api/v1';
 
+/** Packaged resources plus the checked-out resources tree used by Linux dev runs. */
+function engineResourceRoots(): string[] {
+  return [...new Set([process.resourcesPath, path.join(process.cwd(), 'resources')])];
+}
 /** Proxy chosen in the profile editor / sent to the API. */
 export type ProxyInput =
   | { mode: 'none' }
@@ -649,7 +653,16 @@ export class Manager {
       if (gate) return gate;
       let exe: string | null = null;
       try {
-        exe = discoverEngineRuntime('chromium', { resourcesPath: process.resourcesPath, env: { ...process.env, OCTO_CHROMIUM_RUNTIME: path.join(this.ctx.layout.engine, 'runtimes', 'chromium') }, version: p.chromiumRuntime ?? DEFAULT_CHROMIUM_VERSION }).executablePath;
+        const env = { ...process.env, OCTO_CHROMIUM_RUNTIME: path.join(this.ctx.layout.engine, 'runtimes', 'chromium') };
+        let discovered: string | null = null;
+        for (const resourcesPath of engineResourceRoots()) {
+          try {
+            discovered = discoverEngineRuntime('chromium', { resourcesPath, env, version: p.chromiumRuntime ?? DEFAULT_CHROMIUM_VERSION }).executablePath;
+            break;
+          } catch { /* try the next trusted root */ }
+        }
+        if (!discovered) throw new EngineRunnerError('runtime-missing', 'No packaged Chromium runtime found');
+        exe = discovered;
       } catch (error) {
         // Development installations may still use the historical per-user
         // InkBrowser location. Packaged builds must provide runtime.json and
@@ -691,7 +704,11 @@ export class Manager {
     // system Firefox. Never fall back to Chromium or Electron.
     if (browserEngineFor(p.engine) === 'firefox' && p.kind !== 'tor' && p.protection.level !== 'tor') {
       const configured = this.ctx.settings.load().firefox.firefoxPath;
-      let executable = discoverFirefoxRuntime(process.resourcesPath, path.join(this.ctx.layout.engine, 'runtimes', 'gecko'));
+      let executable: string | null = null;
+      for (const resourcesPath of engineResourceRoots()) {
+        executable = discoverFirefoxRuntime(resourcesPath, path.join(this.ctx.layout.engine, 'runtimes', 'gecko'));
+        if (executable) break;
+      }
       if (!executable && process.platform === 'linux') {
         try {
           const entry = geckoCatalogEntry();
@@ -860,12 +877,16 @@ export class Manager {
     if (!PROFILE_KINDS.includes(input.kind)) throw new Error('invalid kind');
     const cookies = input.cookies ? this.parseCookiesOrThrow(input.cookies) : null; // validate BEFORE creating
     const engine = input.patch?.engine ?? NEW_PROFILE_ENGINE;
-    this.validateEngineProfileSettings(engine, input.patch?.fingerprint);
+    const patch = { ...input.patch } as Partial<Profile>;
+    if (browserEngineFor(engine) !== 'electron' && patch.fingerprint?.enabled === true) {
+      patch.fingerprint = { ...patch.fingerprint, enabled: false };
+    }
+    this.validateEngineProfileSettings(engine, patch.fingerprint);
     if (input.patch?.profileDirectory) this.validateProfileDirectory(input.patch.profileDirectory);
     const p = this.profiles.create({
       name: String(input.name ?? '').trim().slice(0, 64) || `${this.t('profile.defaultName')} ${this.profiles.list().length + 1}`,
       kind: input.kind,
-      patch: { ...input.patch, engine },
+      patch: { ...patch, engine },
     });
     if (input.proxy && input.proxy.mode !== 'keep' && input.proxy.mode !== 'none') this.setProfileProxy(p.id, input.proxy);
     if (cookies?.length) this.queueCookies(p.id, cookies);
@@ -1365,7 +1386,10 @@ export class Manager {
     if (requestedDirectory && path.resolve(requestedDirectory).toLowerCase() !== path.resolve(current.profileDirectory ?? this.ctx.layout.profileDir(id)).toLowerCase()) {
       this.moveProfileDirectory(id, requestedDirectory);
     }
-    this.validateEngineProfileSettings(clean.engine ?? current.engine, clean.fingerprint ?? current.fingerprint);
+    const selectedEngine = browserEngineFor(clean.engine ?? current.engine);
+    const fingerprint = clean.fingerprint as FingerprintConfig | undefined;
+    if (selectedEngine !== 'electron' && fingerprint?.enabled === true) clean.fingerprint = { ...fingerprint, enabled: false };
+    this.validateEngineProfileSettings(selectedEngine, clean.fingerprint ?? current.fingerprint);
     let updated = this.profiles.update(id, clean);
     if (proxy && proxy.mode !== 'keep') updated = this.setProfileProxy(id, proxy);
     this.children.get(id)?.channel.send({ t: 'profile-updated', profile: updated, proxyQuota: this.proxyQuota(updated) });
@@ -1377,9 +1401,6 @@ export class Manager {
   private validateEngineProfileSettings(engineValue: unknown, fingerprint: unknown): void {
     const engine = browserEngineFor(engineValue);
     const fp = fingerprint as FingerprintConfig | undefined;
-    if (engine !== 'electron' && fp?.enabled === true) {
-      throw new Error(`${engine === 'firefox' ? 'Firefox Core' : 'Chromium Core'} currently cannot apply Octo fingerprint/WebGL settings. Choose Octo.su (Electron), or turn fingerprinting off before saving.`);
-    }
     if (engine === 'electron' && fp?.enabled === true) {
       const report = validateProfileFingerprintConsistency(fp, engineVersion().major);
       const errors = report.issues.filter((issue) => issue.severity === 'error');
@@ -2122,7 +2143,8 @@ export class Manager {
       kinds: PROFILE_KINDS,
       windowsSandbox: windowsSandboxAvailable(),
       torBrowser: !!findTorBrowser(ctx.settings.load().tor.torBrowserPath),
-      firefoxAvailable: firefoxAvailability(ctx.settings.load().firefox.firefoxPath).available,
+      firefoxAvailable: firefoxAvailability(ctx.settings.load().firefox.firefoxPath).available
+        || engineResourceRoots().some((resourcesPath) => !!discoverFirefoxRuntime(resourcesPath, path.join(ctx.layout.engine, 'runtimes', 'gecko'))),
       inkbrowserInstalled: !!findInkBrowser(),
       chromiumRuntimes: listInstalled(path.join(ctx.layout.engine, 'runtimes', 'chromium')),
       settings: ctx.settings.load(),
