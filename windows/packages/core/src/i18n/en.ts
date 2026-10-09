@@ -244,6 +244,8 @@ export const en: Record<string, string> = {
   'profile.passwordsNote': 'Off by default. When enabled, Chromium keeps passwords only in this profile’s local browser data. It takes effect after the profile is reopened.',
   'profile.appMode': 'App window mode',
   'profile.appModeHint': 'Open this profile as an app-like window with reduced browser chrome. Chromium uses app mode; Firefox uses a kiosk-style presentation.',
+  'profile.ordinaryBrowser': 'Ordinary browser mode',
+  'profile.ordinaryBrowserHint': 'Use the selected engine’s normal user agent, graphics, canvas, hardware and page APIs. This disables InkBrowser identity overlays; it does not hide the app or guarantee anonymity.',
   'profile.smartPaste': 'Smart paste in address bar',
   'profile.smartPasteHint': 'Cleans copied whitespace, line breaks, quotes, and www. prefixes without reading clipboard contents until you paste.',
   'profile.restoreSession': 'Restore tabs from the last session',

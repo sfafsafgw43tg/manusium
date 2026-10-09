@@ -52,7 +52,7 @@ type Sandbox = Profile['sandbox'];
 type BrowserShell = Profile['browserShell'];
 interface Draft {
   name: string; kind: Kind; engine: BrowserEngine | ''; chromiumRuntime?: string; status: string; tags: string[]; folder: string; profileDirectory?: string; notes: string; startPages: string[];
-  homePage: string; searchEngine?: string; theme: 'dark' | 'light'; browserShell: BrowserShell; baseChromeLook: boolean; appMode: boolean; smartPaste: boolean; keepHistory: boolean; savePasswords: boolean; restoreSession: boolean; deleteOnClose: boolean;
+  homePage: string; searchEngine?: string; theme: 'dark' | 'light'; browserShell: BrowserShell; baseChromeLook: boolean; ordinaryBrowser: boolean; appMode: boolean; smartPaste: boolean; keepHistory: boolean; savePasswords: boolean; restoreSession: boolean; deleteOnClose: boolean;
   protection: { level: Level; overrides: Record<string, unknown> }; dns: Profile['dns']; sandbox: Sandbox; mobile: Profile['mobile']; addons: string[]; vstudioWebOnLaunch: boolean;
   mediaCapture: Profile['mediaCapture']; enginePrivacy: EnginePrivacySettings;
   fp: Fingerprint | null; proxy: ProxyDraft;
@@ -157,7 +157,7 @@ function kindDefaults(kind: Kind, addons: string[]): Pick<Draft, 'protection' | 
 function newDraft(): Draft {
   const folder = S.folder && S.folder !== '__none' ? S.folder : '';
   return {
-    name: '', kind: 'antidetect', engine: 'inkbrowser', chromiumRuntime: '155.0.8059.39', status: '', tags: [], folder, profileDirectory: '', notes: '', startPages: [], homePage: '', searchEngine: '', theme: 'dark', browserShell: 'chrome', baseChromeLook: true, appMode: false, smartPaste: true,
+    name: '', kind: 'antidetect', engine: 'inkbrowser', chromiumRuntime: '155.0.8059.39', status: '', tags: [], folder, profileDirectory: '', notes: '', startPages: [], homePage: '', searchEngine: '', theme: 'dark', browserShell: 'chrome', baseChromeLook: true, ordinaryBrowser: false, appMode: false, smartPaste: true,
     dns: { mode: 'inherit', dohTemplate: '' },
     ...kindDefaults('antidetect', S.init.addons.filter((a) => a.kind !== 'external-app').map((a) => a.id)),
     vstudioWebOnLaunch: false,
@@ -179,7 +179,7 @@ function draftFrom(p: Profile): Draft {
   const c = structuredClone(p);
   return {
     name: c.name, kind: c.kind, engine: browserEngineFor(c.engine), chromiumRuntime: c.chromiumRuntime, status: c.status ?? '', tags: c.tags ?? [], folder: c.folder ?? '', profileDirectory: c.profileDirectory ?? '', notes: c.notes ?? '', startPages: c.startPages ?? [],
-    homePage: c.homePage === 'octo://newtab' ? '' : c.homePage, searchEngine: c.searchEngine ?? '', theme: c.theme, browserShell: c.browserShell, baseChromeLook: c.baseChromeLook === true, appMode: c.appMode === true, smartPaste: c.smartPaste !== false, keepHistory: c.keepHistory, savePasswords: c.savePasswords === true, restoreSession: c.restoreSession, deleteOnClose: c.deleteOnClose,
+    homePage: c.homePage === 'octo://newtab' ? '' : c.homePage, searchEngine: c.searchEngine ?? '', theme: c.theme, browserShell: c.browserShell, baseChromeLook: c.baseChromeLook === true, ordinaryBrowser: c.ordinaryBrowser === true, appMode: c.appMode === true, smartPaste: c.smartPaste !== false, keepHistory: c.keepHistory, savePasswords: c.savePasswords === true, restoreSession: c.restoreSession, deleteOnClose: c.deleteOnClose,
     protection: { level: c.protection.level, overrides: c.protection.overrides ?? {} }, dns: c.dns, sandbox: c.sandbox, mobile: c.mobile ?? { device: 'none', orientation: 'portrait' }, addons: c.addons,
     vstudioWebOnLaunch: c.vstudioWebOnLaunch === true,
     mediaCapture: c.mediaCapture ?? { cameraLabel: '', microphoneLabel: '' }, enginePrivacy: sanitizeEnginePrivacy(c.enginePrivacy ?? DEFAULT_ENGINE_PRIVACY),
@@ -317,7 +317,7 @@ export function openEditor(p: Profile | null): void {
       save.disabled = true;
       const patch: Record<string, unknown> = {
         engine: d.engine || NEW_PROFILE_ENGINE, chromiumRuntime: d.chromiumRuntime, status: d.status, tags: d.tags, folder: d.folder.trim(), profileDirectory: d.profileDirectory?.trim() || undefined, notes: d.notes, startPages: d.startPages,
-        homePage: d.homePage.trim() || 'octo://newtab', searchEngine: d.searchEngine || undefined, theme: d.theme, browserShell: d.browserShell, baseChromeLook: d.baseChromeLook, appMode: d.appMode, smartPaste: d.smartPaste, keepHistory: d.keepHistory, savePasswords: d.savePasswords, restoreSession: d.restoreSession,
+        homePage: d.homePage.trim() || 'octo://newtab', searchEngine: d.searchEngine || undefined, theme: d.theme, browserShell: d.browserShell, baseChromeLook: d.baseChromeLook, ordinaryBrowser: d.ordinaryBrowser, appMode: d.appMode, smartPaste: d.smartPaste, keepHistory: d.keepHistory, savePasswords: d.savePasswords, restoreSession: d.restoreSession,
         deleteOnClose: d.deleteOnClose, protection: d.protection, dns: d.dns, sandbox: d.sandbox, mobile: d.mobile, addons: d.addons,
         vstudioWebOnLaunch: d.vstudioWebOnLaunch,
         mediaCapture: d.mediaCapture, enginePrivacy: d.enginePrivacy,
@@ -1829,10 +1829,12 @@ function browser(b: HTMLElement, d: Draft, draw: () => void, summary: () => void
       ...(d.engine === 'inkbrowser' ? [field('browserEngine.chromiumVersion', h('div', { class: 'row nowrap', style: 'gap: 8px; flex-wrap: wrap;' }, runtimeSelect, installRuntime, removeRuntime), 'browserEngine.chromiumVersionHint')] : []),
       h('div', { class: 'field' }, h('span', { class: 'lbl', text: t('profile.theme') }), theme),
       h('div', { class: 'toggles' },
+        toggle(d.ordinaryBrowser, 'profile.ordinaryBrowser', (v) => { d.ordinaryBrowser = v; if (v && d.fp) d.fp.enabled = false; summary(); }),
         toggle(d.appMode, 'profile.appMode', (v) => { d.appMode = v; summary(); }),
         toggle(d.smartPaste, 'profile.smartPaste', (v) => { d.smartPaste = v; summary(); }),
         toggle(d.keepHistory, 'profile.keepHistory', (v) => { d.keepHistory = v; summary(); }),
         toggle(d.savePasswords, 'profile.savePasswords', (v) => { d.savePasswords = v; summary(); })),
+      h('p', { class: 'hint', text: t('profile.ordinaryBrowserHint') }),
       h('p', { class: 'hint', text: t('profile.appModeHint') }),
       h('p', { class: 'hint', text: t('profile.smartPasteHint') })),
     true));

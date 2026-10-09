@@ -199,6 +199,8 @@ export interface Profile {
   searchEngine?: SearchEngine;
   /** Use the familiar Chrome-style tabs and address bar instead of the OctoBrowser layout. */
   baseChromeLook: boolean;
+  /** Keep the selected engine’s ordinary identity and page APIs; no app-owned signal overrides. */
+  ordinaryBrowser: boolean;
   /** Present the browser as an app-like window with reduced browser chrome. */
   appMode: boolean;
   /** Normalize pasted address-bar text without changing ordinary typing. */
@@ -357,6 +359,7 @@ export function defaultProfile(kind: ProfileKind, name: string, id = newProfileI
     theme: 'dark',
     browserShell,
     baseChromeLook: browserShell === 'chrome',
+    ordinaryBrowser: kind !== 'antidetect' && kind !== 'phone',
     appMode: false,
     smartPaste: true,
     fingerprint: fingerprintFor(kind, seed),
@@ -466,6 +469,7 @@ export function sanitizeProfile(input: unknown): Profile {
     browserShell,
     searchEngine: typeof p.searchEngine === 'string' && Object.keys(SEARCH_ENGINES).includes(p.searchEngine) ? (p.searchEngine as SearchEngine) : undefined,
     baseChromeLook: browserShell === 'chrome' || browserShell === 'chromium',
+    ordinaryBrowser: typeof p.ordinaryBrowser === 'boolean' ? p.ordinaryBrowser : base.ordinaryBrowser,
     appMode: typeof p.appMode === 'boolean' ? p.appMode : base.appMode,
     smartPaste: typeof p.smartPaste === 'boolean' ? p.smartPaste : base.smartPaste,
     fingerprint: sanitizeFingerprint(p.fingerprint, base.fingerprint),

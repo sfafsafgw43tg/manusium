@@ -67,7 +67,7 @@ export interface Profile {
   mediaCapture: { cameraLabel: string; microphoneLabel: string };
   mobile: { device: MobileDeviceId; orientation: 'portrait' | 'landscape'; osVersion?: '15' | '14' | '13' | '12' | '18.0' | '17.5' | '16.7' };
   addons: string[]; vstudioWebOnLaunch: boolean; encrypted: boolean; deleteOnClose: boolean; keepHistory: boolean; savePasswords: boolean; restoreSession: boolean; homePage: string; searchEngine?: string;
-  theme: 'dark' | 'light'; browserShell: 'octo' | 'chrome' | 'chromium' | 'firefox' | 'safari'; baseChromeLook: boolean; appMode?: boolean; smartPaste?: boolean; fingerprint: Fingerprint;
+  theme: 'dark' | 'light'; browserShell: 'octo' | 'chrome' | 'chromium' | 'firefox' | 'safari'; baseChromeLook: boolean; ordinaryBrowser?: boolean; appMode?: boolean; smartPaste?: boolean; fingerprint: Fingerprint;
   enginePrivacy: { chromium: { webRtc: 'default' | 'disable-non-proxied-udp'; location: 'ask' | 'block' }; firefox: { webRtc: 'default' | 'disabled'; location: 'ask' | 'block'; resistFingerprinting: boolean } };
   tags: string[]; folder: string; profileDirectory?: string; sortOrder: number; status: string; notes: string; startPages: string[];
   proxyCheck?: ProxyCheck; stats: { launches: number; lastLaunchAt: string; worktimeSec: number };

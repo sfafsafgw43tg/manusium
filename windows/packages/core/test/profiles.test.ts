@@ -35,6 +35,7 @@ describe('ProfileManager', () => {
       const embeddedBrowser = profile.kind !== 'tor';
       expect(profile.browserShell).toBe(embeddedBrowser ? 'chrome' : 'octo');
       expect(profile.baseChromeLook).toBe(embeddedBrowser);
+      expect(profile.ordinaryBrowser).toBe(true);
     }
   });
 
@@ -95,6 +96,17 @@ describe('ProfileManager', () => {
     const reopened = new ProfileManager(layout, undefined, FAST_KDF);
     expect(reopened.get(app.id).appMode).toBe(true);
     expect(reopened.get(app.id).smartPaste).toBe(false);
+  });
+
+  it('persists Ordinary browser mode independently and keeps antidetect profiles opt-in', () => {
+    const { layout, pm } = setup();
+    const ordinary = pm.create({ name: 'Ordinary', kind: 'custom', patch: { ordinaryBrowser: true } });
+    const configured = pm.create({ name: 'Configured', kind: 'antidetect', patch: { ordinaryBrowser: false } });
+    expect(ordinary.ordinaryBrowser).toBe(true);
+    expect(configured.ordinaryBrowser).toBe(false);
+    const reopened = new ProfileManager(layout, undefined, FAST_KDF);
+    expect(reopened.get(ordinary.id).ordinaryBrowser).toBe(true);
+    expect(reopened.get(configured.id).ordinaryBrowser).toBe(false);
   });
 
   it('persists manual profile order and moves only the requested subset', () => {

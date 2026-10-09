@@ -200,7 +200,9 @@ export class ProfileRuntime {
     // Resolve the saved profile identity only after the profile route is active.
     // Auto locale/timezone/geolocation values therefore use the profile's exit IP.
     const geo = await this.geoForFingerprint();
-    this.fp = resolveFingerprint(this.profile.fingerprint, geo, this.lang);
+    this.fp = this.profile.ordinaryBrowser
+      ? { kind: 'disabled', enabled: false }
+      : resolveFingerprint(this.profile.fingerprint, geo, this.lang);
     this.mobile = null;
     await this.controller.install(this.fp.enabled ? this.fp.userAgent : null, this.fp.enabled ? (this.fp.acceptLanguage ?? '') : '');
 
@@ -348,7 +350,9 @@ export class ProfileRuntime {
   /** Re-resolve identity after the profile or its proxy changes. */
   private async refreshIdentity(): Promise<void> {
     const geo = await this.geoForFingerprint();
-    this.fp = resolveFingerprint(this.profile.fingerprint, geo, this.lang);
+    this.fp = this.profile.ordinaryBrowser
+      ? { kind: 'disabled', enabled: false }
+      : resolveFingerprint(this.profile.fingerprint, geo, this.lang);
     this.mobile = null;
     this.controller.updateIdentity(this.fp.enabled ? this.fp.userAgent : null, this.fp.enabled ? (this.fp.acceptLanguage ?? '') : '');
   }
