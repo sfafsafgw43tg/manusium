@@ -58,7 +58,7 @@ Eight steps, in this order. The console installer runs the same list.
 | Android Studio and Java 17 | no | Completed with warnings | Android Studio and OpenJDK 17 when they are missing |
 | Android SDK tools | no | Completed with warnings | `sdkmanager`, platform-tools, emulator, build-tools, in the chosen folder |
 | Project dependencies | yes | Result failed; the other steps still run | `npm ci` (or `npm install`), and the Electron binary |
-| Native runtimes | yes | Result failed; the other steps still run | Downloads and checksum-verifies the pinned Chromium and Firefox runtimes for the current supported platform |
+| Native runtimes | yes | Result failed; the other steps still run | Downloads and checksum-verifies the pinned Chromium and Firefox runtimes for the current supported platform; if an official endpoint fails, retries an official mirror and rejects every archive whose checksum is wrong |
 | Desktop shortcut | no | Completed with warnings | Octo.su on the desktop |
 | Build | yes | Result failed; the other steps still run | `npm run build` for both applications |
 
@@ -113,7 +113,7 @@ same lines live, and *Open log file* opens the file.
 | `packages/shell/test/ps-scripts.test.ts` | Window structure, console fallback, hidden console, brace balance | `npm test` |
 | `scripts/tests/octo-wizard.Tests.ps1` | Helper functions: proxy address, step result, markers, flags, time left | Pester on Windows (`npm run test:scripts`) |
 
-The runtime staging commands use official Google/Mozilla URLs and pinned checksums; Windows Firefox extraction requires Windows Installer. The PowerShell itself was checked with a syntax parser (tree-sitter PowerShell grammar) and the
+The runtime staging commands use official Google/Mozilla URLs and pinned checksums, with fallback to the official Google storage or Mozilla CDN mirror; Windows Firefox extraction requires Windows Installer. The launcher also includes winter, spring, summer, autumn, and Valentine seasonal themes with lightweight CSS particle/glow animation that is disabled for reduced-motion and VM mode. The PowerShell itself was checked with a syntax parser (tree-sitter PowerShell grammar) and the
 message-key check; the window was not run in an environment with a desktop.
 
 ## Checks to run on Windows before a release

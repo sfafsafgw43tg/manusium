@@ -36,6 +36,28 @@
 :root[data-app-theme="halloweenNight"] { --bg:#151226; --bg2:#211b3d; --panel:#2d2450; --panel2:#3c2e62; --panel3:#3c2e62; --line:#66528b; --line2:#f0bb62; --text:#fff2c9; --muted:#d6c2e7; --dim:#a98fc4; --accent:#f0bb62; --accent-h:#ffd987; --accent-bg:#4b365e; }
 :root[data-app-theme="kush"] { --bg:#13241b; --bg2:#1b3425; --panel:#254a31; --panel2:#315e3e; --panel3:#315e3e; --line:#4f8756; --line2:#b9db72; --text:#eff8d6; --muted:#c2d6a4; --dim:#8eae7a; --accent:#b9db72; --accent-h:#d8f29a; --accent-bg:#376342; }
 :root[data-app-theme="tactical"] { --bg:#202522; --bg2:#292f2b; --panel:#343b36; --panel2:#414a42; --panel3:#414a42; --line:#626d62; --line2:#c1cbbd; --text:#edf2e9; --muted:#bec9bd; --dim:#8d9b8e; --accent:#c1cbbd; --accent-h:#edf4e8; --accent-bg:#4b574c; }
+:root[data-app-theme="winterNight"] { --bg:#091323; --bg2:#10233a; --panel:#173452; --panel2:#214664; --panel3:#2b5775; --line:#376786; --line2:#a8dff3; --text:#eefaff; --muted:#b6d9e8; --dim:#7ea8bc; --accent:#9ce8ff; --accent-h:#d7f8ff; --accent-bg:#24516d; }
+:root[data-app-theme="winterDay"] { --bg:#dcecf5; --bg2:#edf7fb; --panel:#f8fdff; --panel2:#d3ebf4; --panel3:#b8dce8; --line:#9fc6d5; --line2:#4f91ae; --text:#173342; --muted:#4f7180; --dim:#7193a0; --accent:#2d8bb0; --accent-h:#17647f; --accent-bg:#c5e8f2; color-scheme: light; }
+:root[data-app-theme="springBloom"] { --bg:#17251f; --bg2:#20362c; --panel:#2d4b39; --panel2:#3b6047; --panel3:#4a7353; --line:#668a64; --line2:#b6df91; --text:#f2ffe9; --muted:#c5d9b2; --dim:#91ae83; --accent:#c4ef87; --accent-h:#e3ffba; --accent-bg:#456a4b; }
+:root[data-app-theme="summerSolstice"] { --bg:#241b12; --bg2:#3a2815; --panel:#55401e; --panel2:#705225; --panel3:#8a672b; --line:#a7823d; --line2:#ffe09a; --text:#fff8df; --muted:#e7c985; --dim:#b69a5a; --accent:#ffd166; --accent-h:#ffe6a3; --accent-bg:#745324; }
+:root[data-app-theme="autumnHarvest"] { --bg:#291817; --bg2:#40221b; --panel:#5a2e21; --panel2:#713b27; --panel3:#874b2c; --line:#a7643a; --line2:#f1b36c; --text:#fff4e3; --muted:#e0b99a; --dim:#b78567; --accent:#ffad5a; --accent-h:#ffd09a; --accent-bg:#783d29; }
+:root[data-app-theme="valentines"] { --bg:#281522; --bg2:#3b1d30; --panel:#552841; --panel2:#703652; --panel3:#884263; --line:#a75a77; --line2:#ffb3c9; --text:#fff1f6; --muted:#e1b6c6; --dim:#b78299; --accent:#ff9fbd; --accent-h:#ffd0df; --accent-bg:#7a3b58; }
+:root[data-app-theme="winterNight"] body::before,
+:root[data-app-theme="winterDay"] body::before { content:""; position:fixed; inset:-35%; z-index:0; pointer-events:none; opacity:.48; background-image:radial-gradient(circle, #fff 0 1.2px, transparent 1.8px),radial-gradient(circle, #d7f7ff 0 1px, transparent 1.7px); background-size:67px 67px, 103px 103px; animation:seasonal-snow 22s linear infinite; }
+:root[data-app-theme="winterNight"] body::after,
+:root[data-app-theme="winterDay"] body::after { content:""; position:fixed; inset:0; z-index:0; pointer-events:none; background:radial-gradient(circle at 15% 0%, #a8eaff20, transparent 38%),radial-gradient(circle at 90% 100%, #5bb9d622, transparent 40%); animation:seasonal-glow 10s ease-in-out infinite alternate; }
+:root[data-app-theme="springBloom"] body::before { content:"✦  ·  ✿  ·  ✦  ·  ❀"; position:fixed; inset:-12% 0 0; z-index:0; pointer-events:none; color:#d5ff9a55; font-size:28px; letter-spacing:55px; line-height:100px; white-space:pre-wrap; animation:seasonal-float 18s linear infinite; }
+:root[data-app-theme="summerSolstice"] body::before { content:""; position:fixed; inset:0; z-index:0; pointer-events:none; background:radial-gradient(circle at 80% 5%, #ffe08a44, transparent 22%),linear-gradient(120deg, transparent 35%, #ffd1660b 50%, transparent 65%); background-size:auto, 240% 100%; animation:seasonal-sun 16s ease-in-out infinite alternate; }
+:root[data-app-theme="autumnHarvest"] body::before { content:"🍂  ·  🍁  ·  🍂  ·  🍁"; position:fixed; inset:-10% 0 0; z-index:0; pointer-events:none; opacity:.28; font-size:24px; letter-spacing:38px; line-height:120px; white-space:pre-wrap; animation:seasonal-fall 20s linear infinite; }
+:root[data-app-theme="valentines"] body::before { content:"♥  ·  ♡  ·  ♥  ·  ♡"; position:fixed; inset:-10% 0 0; z-index:0; pointer-events:none; color:#ffb3c955; font-size:25px; letter-spacing:42px; line-height:130px; white-space:pre-wrap; animation:seasonal-float 15s ease-in-out infinite alternate; }
+@keyframes seasonal-snow { from { transform:translate3d(-2%, -3%, 0) rotate(0deg); } to { transform:translate3d(5%, 8%, 0) rotate(3deg); } }
+@keyframes seasonal-glow { from { opacity:.55; transform:scale(1); } to { opacity:.9; transform:scale(1.06); } }
+@keyframes seasonal-float { from { transform:translate3d(-2%, -4%, 0) rotate(-2deg); } to { transform:translate3d(5%, 6%, 0) rotate(3deg); } }
+@keyframes seasonal-sun { from { background-position:0 0, 0 0; } to { background-position:0 0, 100% 0; } }
+@keyframes seasonal-fall { from { transform:translate3d(3%, -10%, 0) rotate(-3deg); } to { transform:translate3d(-5%, 12%, 0) rotate(7deg); } }
+body > * { position:relative; z-index:1; }
+@media (prefers-reduced-motion: reduce) { body::before, body::after { animation:none !important; } }
+html.vm-mode body::before, html.vm-mode body::after { display:none !important; }
 * { box-sizing: border-box; }
 * { scrollbar-width: thin; scrollbar-color: var(--line2) transparent; }
 ::-webkit-scrollbar { width: 10px; height: 10px; }

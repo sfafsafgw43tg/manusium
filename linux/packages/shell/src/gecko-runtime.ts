@@ -82,7 +82,18 @@ export function installFirefoxRuntime(entry: GeckoCatalogEntry, root: string, fe
   try {
     if (fetch) {
       const downloader = process.platform === 'win32' ? 'curl.exe' : 'curl';
-      execFileSync(downloader, ['-fL', '--retry', '3', entry.source, '-o', archive], { stdio: 'inherit' });
+      const mirrors = [entry.source, entry.source.replace('https://ftp.mozilla.org/pub/', 'https://download-installer.cdn.mozilla.net/pub/')];
+      const errors: string[] = [];
+      let acquired = false;
+      for (const url of mirrors) {
+        try {
+          fs.rmSync(archive, { force: true });
+          execFileSync(downloader, ['-fL', '--retry', '3', '--retry-delay', '2', '--connect-timeout', '20', url, '-o', archive], { stdio: 'inherit' });
+          if (sha512(archive) === entry.archiveSha512) { acquired = true; break; }
+          errors.push(`${url}: checksum mismatch`);
+        } catch (error) { errors.push(`${url}: ${String(error instanceof Error ? error.message : error)}`); }
+      }
+      if (!acquired) throw new Error(`all Firefox mirrors failed: ${errors.join(' | ')}`);
     }
     if (sha512(archive) !== entry.archiveSha512) throw new Error(`Firefox archive SHA-512 mismatch for ${entry.version}`);
     fs.mkdirSync(unpacked, { recursive: true });

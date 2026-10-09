@@ -620,6 +620,12 @@ function renderSettings(v: HTMLElement): void {
     ['frutigerAero', 'Frutiger Aero', 'settings.theme.frutigerAero'], ['liquidGlass', 'Liquid Glass', 'settings.theme.liquidGlass'],
   ];
   const funThemes: Array<[Settings['ui']['theme'], string, string]> = [
+    ['winterNight', 'Winter Night', 'settings.theme.winterNight'],
+    ['winterDay', 'Winter Day', 'settings.theme.winterDay'],
+    ['springBloom', 'Spring Bloom', 'settings.theme.springBloom'],
+    ['summerSolstice', 'Summer Solstice', 'settings.theme.summerSolstice'],
+    ['autumnHarvest', 'Autumn Harvest', 'settings.theme.autumnHarvest'],
+    ['valentines', 'Valentine Glow', 'settings.theme.valentines'],
     ['halloweenDay', 'Halloween Day', 'settings.theme.halloweenDay'],
     ['halloweenNight', 'Halloween Night', 'settings.theme.halloweenNight'],
     ['kush', 'Kush Garden', 'settings.theme.kush'],

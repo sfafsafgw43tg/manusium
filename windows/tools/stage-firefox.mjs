@@ -28,6 +28,26 @@ const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'octo-firefox-stage-'));
 const archive = path.join(temp, entry.format === 'msi' ? 'firefox.msi' : 'firefox.tar.xz');
 const digest = (file) => crypto.createHash('sha512').update(fs.readFileSync(file)).digest('hex');
 const sha256 = (file) => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+const mirrors = [entry.source, entry.source.replace('https://ftp.mozilla.org/pub/', 'https://download-installer.cdn.mozilla.net/pub/')];
+function downloadVerified() {
+  const curl = process.platform === 'win32' ? 'curl.exe' : 'curl';
+  const errors = [];
+  for (const url of mirrors) {
+    try {
+      fs.rmSync(archive, { force: true });
+      console.log(`[stage-firefox] downloading ${url}`);
+      execFileSync(curl, ['-fL', '--retry', '3', '--retry-delay', '2', '--connect-timeout', '20', url, '-o', archive], { stdio: 'inherit' });
+      const actual = digest(archive);
+      if (actual === entry.archiveSha512) return url;
+      errors.push(`${url}: checksum ${actual}`);
+      fs.rmSync(archive, { force: true });
+    } catch (error) {
+      errors.push(`${url}: ${String(error?.message ?? error)}`);
+      fs.rmSync(archive, { force: true });
+    }
+  }
+  throw new Error(`all Firefox mirrors failed (expected ${entry.archiveSha512}): ${errors.join(' | ')}`);
+}
 const reuseExisting = process.argv.includes('--reuse-existing');
 if (reuseExisting) {
   try {
@@ -42,9 +62,7 @@ if (reuseExisting) {
   } catch { /* incomplete output: perform a fresh verified stage */ }
 }
 try {
-  const curl = process.platform === 'win32' ? 'curl.exe' : 'curl';
-  execFileSync(curl, ['-fL', '--retry', '3', entry.source, '-o', archive], { stdio: 'inherit' });
-  if (digest(archive) !== entry.archiveSha512) throw new Error('Mozilla archive SHA-512 mismatch');
+  const acquiredFrom = downloadVerified();
   const unpacked = path.join(temp, 'unpacked'); fs.mkdirSync(unpacked);
   let sourceRoot;
   if (entry.format === 'tar.xz') {
@@ -74,8 +92,8 @@ try {
     fs.renameSync(sourceStagedExecutable, executablePath);
   }
   if (process.platform !== 'win32') fs.chmodSync(executablePath, 0o755);
-  fs.writeFileSync(path.join(staged, 'runtime.json'), `${JSON.stringify({ schema: 'octo.engine-manifest.v1', kind: 'gecko', protocol: 'juggler', version: entry.version, executable: entry.executable, platforms: [target], capabilities: ['window', 'tabs', 'navigation', 'storage', 'crash-recovery'], sha256: sha256(executablePath), executableSha256: sha256(executablePath), source: { url: entry.source, archiveSha512: entry.archiveSha512, license } }, null, 2)}\n`);
-  fs.writeFileSync(path.join(staged, 'NOTICE.firefox.txt'), `Firefox ${entry.version} from Mozilla.org.\nSource: ${entry.source}\nArchive SHA-512: ${entry.archiveSha512}\n${license}\n`);
+  fs.writeFileSync(path.join(staged, 'runtime.json'), `${JSON.stringify({ schema: 'octo.engine-manifest.v1', kind: 'gecko', protocol: 'juggler', version: entry.version, executable: entry.executable, platforms: [target], capabilities: ['window', 'tabs', 'navigation', 'storage', 'crash-recovery'], sha256: sha256(executablePath), executableSha256: sha256(executablePath), source: { url: acquiredFrom, mirrors, archiveSha512: entry.archiveSha512, license } }, null, 2)}\n`);
+  fs.writeFileSync(path.join(staged, 'NOTICE.firefox.txt'), `Firefox ${entry.version} from Mozilla.org.\nSource: ${acquiredFrom}\nMirrors: ${mirrors.join(', ')}\nArchive SHA-512: ${entry.archiveSha512}\n${license}\n`);
   fs.rmSync(out, { recursive: true, force: true }); fs.renameSync(staged, out);
   console.log(`[stage-firefox] staged ${entry.version} (${target}) at ${out}`);
 } finally { fs.rmSync(temp, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 }); }
