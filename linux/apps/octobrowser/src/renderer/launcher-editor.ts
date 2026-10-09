@@ -342,7 +342,7 @@ export function openEditor(p: Profile | null): void {
     box.append(tabs, h('div', { class: 'ed-body' }, main, side), foot);
     draw();
     if (creating) void api.invoke<Fingerprint>('mgr:fingerprint-new', 'windows11').then((fp) => {
-      if (!d.fp && d.kind !== 'tor' && d.engine === 'electron') { d.fp = fp; draw(); }
+      if (!d.fp && d.kind !== 'tor') { d.fp = fp; draw(); }
     }).catch(() => undefined);
   }, 'editor');
 }
@@ -402,7 +402,7 @@ function general(b: HTMLElement, d: Draft, creating: boolean, p: Profile | null,
       d.browserShell = k === 'tor' ? 'octo' : 'chrome';
       d.baseChromeLook = d.browserShell === 'chrome';
       Object.assign(d, kindDefaults(k, S.init.addons.filter((a) => a.kind !== 'external-app').map((a) => a.id)));
-      if (k !== 'tor' && !d.fp && d.engine === 'electron') void api.invoke<Fingerprint>('mgr:fingerprint-new', 'windows11').then((fp) => { d.fp = fp; draw(); });
+      if (k !== 'tor' && !d.fp) void api.invoke<Fingerprint>('mgr:fingerprint-new', 'windows11').then((fp) => { if (!d.fp) { d.fp = fp; draw(); } });
       if (k === 'tor') d.fp = null;
       if (k === 'tor') d.proxy = { ...d.proxy, mode: 'none', keep: false };
       draw();
@@ -423,9 +423,14 @@ function general(b: HTMLElement, d: Draft, creating: boolean, p: Profile | null,
       d.engine = choice === 'chromium' ? 'inkbrowser' : choice;
       d.browserShell = choice === 'chromium' ? 'chrome' : choice === 'firefox' ? 'firefox' : 'octo';
       d.baseChromeLook = choice === 'chromium';
-      // Native engines do not apply the Electron page shim. Do not leave a
-      // fingerprint configured that the selected engine cannot honor.
-      d.fp = null;
+      // Keep the complete Advanced editor visible while switching bases. The
+      // manager still normalizes unsupported Electron page-shim fields before
+      // native launch; only enginePrivacy is applied by native runtimes.
+      if (!d.fp && d.kind !== 'tor') {
+        void api.invoke<Fingerprint>('mgr:fingerprint-new', 'windows11').then((fp) => {
+          if (!d.fp && d.engine === (choice === 'chromium' ? 'inkbrowser' : choice)) { d.fp = fp; draw(); }
+        });
+      }
       draw();
     };
     baseGrid.append(card);
@@ -924,31 +929,36 @@ function phoneOperatingSystem(b: HTMLElement, d: Draft, draw: () => void, summar
     h('p', { class: 'hint', text: t('mobile.restartHint') })));
 }
 
+function nativeEnginePrivacySection(d: Draft, draw: () => void, summary: () => void): HTMLElement {
+  const base = d.engine === 'firefox' ? 'firefox' : 'chromium';
+  const reset = h('button', { class: 'btn small' }, icon('refresh', 14), h('span', { text: t('enginePrivacy.reset') }));
+  const webRtc = base === 'firefox'
+    ? select(d.enginePrivacy.firefox.webRtc, [['default', t('enginePrivacy.webRtc.default')], ['disabled', t('enginePrivacy.webRtc.disabled')]], (v) => { d.enginePrivacy.firefox.webRtc = v as 'default' | 'disabled'; summary(); })
+    : select(d.enginePrivacy.chromium.webRtc, [['default', t('enginePrivacy.webRtc.default')], ['disable-non-proxied-udp', t('enginePrivacy.webRtc.disableUdp')]], (v) => { d.enginePrivacy.chromium.webRtc = v as 'default' | 'disable-non-proxied-udp'; summary(); });
+  const location = select(base === 'firefox' ? d.enginePrivacy.firefox.location : d.enginePrivacy.chromium.location, [['ask', t('enginePrivacy.location.ask')], ['block', t('enginePrivacy.location.block')]], (v) => {
+    if (base === 'firefox') d.enginePrivacy.firefox.location = v as 'ask' | 'block';
+    else d.enginePrivacy.chromium.location = v as 'ask' | 'block';
+    summary();
+  });
+  reset.onclick = () => { d.enginePrivacy = structuredClone(DEFAULT_ENGINE_PRIVACY); draw(); };
+  const controls: HTMLElement[] = [field('enginePrivacy.webRtc', webRtc), field('enginePrivacy.location', location)];
+  if (base === 'firefox') controls.push(toggle(d.enginePrivacy.firefox.resistFingerprinting, 'enginePrivacy.resistFingerprinting', (v) => { d.enginePrivacy.firefox.resistFingerprinting = v; summary(); }));
+  return section(t('enginePrivacy.title'), h('p', { class: 'hint', text: t(`enginePrivacy.${base}.hint`) }), h('div', { class: 'row between' }, h('span', { class: 'pill' }, base === 'firefox' ? 'Firefox / Gecko' : 'Chromium'), reset), h('div', { class: 'frows' }, ...controls), h('p', { class: 'hint', text: t('enginePrivacy.limitations') }));
+}
+
 function advanced(b: HTMLElement, d: Draft, draw: () => void, summary: () => void, profile: Profile | null): void {
   if (d.kind === 'tor') { b.append(h('p', { class: 'info', text: t('edit.torFixed') })); return; }
   if (d.kind === 'phone') { phoneOperatingSystem(b, d, draw, summary); return; }
   if (!d.fp) {
-    const base = d.engine === 'firefox' ? 'firefox' : d.engine === 'electron' ? 'electron' : 'chromium';
-    const reset = h('button', { class: 'btn small' }, icon('refresh', 14), h('span', { text: t('enginePrivacy.reset') }));
-    const webRtc = base === 'firefox'
-      ? select(d.enginePrivacy.firefox.webRtc, [['default', t('enginePrivacy.webRtc.default')], ['disabled', t('enginePrivacy.webRtc.disabled')]], (v) => { d.enginePrivacy.firefox.webRtc = v as 'default' | 'disabled'; summary(); })
-      : select(d.enginePrivacy.chromium.webRtc, [['default', t('enginePrivacy.webRtc.default')], ['disable-non-proxied-udp', t('enginePrivacy.webRtc.disableUdp')]], (v) => { d.enginePrivacy.chromium.webRtc = v as 'default' | 'disable-non-proxied-udp'; summary(); });
-    const location = select(base === 'firefox' ? d.enginePrivacy.firefox.location : d.enginePrivacy.chromium.location, [['ask', t('enginePrivacy.location.ask')], ['block', t('enginePrivacy.location.block')]], (v) => {
-      if (base === 'firefox') d.enginePrivacy.firefox.location = v as 'ask' | 'block';
-      else d.enginePrivacy.chromium.location = v as 'ask' | 'block';
-      summary();
-    });
-    reset.onclick = () => { d.enginePrivacy = structuredClone(DEFAULT_ENGINE_PRIVACY); draw(); };
-    const controls: HTMLElement[] = [field('enginePrivacy.webRtc', webRtc), field('enginePrivacy.location', location)];
-    if (base === 'firefox') {
-      controls.push(toggle(d.enginePrivacy.firefox.resistFingerprinting, 'enginePrivacy.resistFingerprinting', (v) => { d.enginePrivacy.firefox.resistFingerprinting = v; summary(); }));
-    }
-    b.append(section(t('enginePrivacy.title'), h('p', { class: 'hint', text: t(`enginePrivacy.${base}.hint`) }), h('div', { class: 'row between' }, h('span', { class: 'pill' }, base === 'firefox' ? 'Firefox / Gecko' : 'Chromium'), reset), h('div', { class: 'frows' }, ...controls)),
-      h('p', { class: 'hint', text: t('enginePrivacy.limitations') }));
+    if (d.engine !== 'electron') b.append(nativeEnginePrivacySection(d, draw, summary));
     return;
   }
   const fp = d.fp;
   const ch = () => summary();
+  if (d.engine !== 'electron') {
+    b.append(nativeEnginePrivacySection(d, draw, summary));
+    b.append(h('p', { class: 'hint' }, icon('info', 14), ' ', t('enginePrivacy.limitations')));
+  }
   if (d.kind !== 'antidetect') {
     const off = h('button', { class: 'btn small' }, icon('close', 14), h('span', { text: t('fp.disable') }));
     off.onclick = () => { d.fp = null; draw(); };
