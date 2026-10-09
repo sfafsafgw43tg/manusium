@@ -63,8 +63,11 @@ export function listInstalledGecko(root: string, platform = process.platform, ar
     const executablePath = path.join(rootDir, entry.executable);
     let installed = false;
     try {
-      const manifest = JSON.parse(fs.readFileSync(path.join(rootDir, 'runtime.json'), 'utf8')) as { version?: string; executableSha256?: string; platform?: string };
-      installed = manifest.version === entry.version && manifest.platform === entry.platform && fs.existsSync(executablePath) && manifest.executableSha256 === sha256(executablePath);
+      const manifest = JSON.parse(fs.readFileSync(path.join(rootDir, 'runtime.json'), 'utf8')) as { version?: string; executableSha256?: string; sha256?: string; platforms?: string[] };
+      installed = manifest.version === entry.version
+        && (manifest.platforms ?? []).includes(entry.platform)
+        && fs.existsSync(executablePath)
+        && (manifest.executableSha256 ?? manifest.sha256) === sha256(executablePath);
     } catch { /* incomplete runtime */ }
     return { entry, rootDir, executablePath, installed };
   });
