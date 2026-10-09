@@ -625,11 +625,21 @@ export class Manager {
   }
 
   async launch(id: string, opts: { passphrase?: string; forceRestricted?: boolean; debugPort?: number }): Promise<{ status: string; detail?: string }> {
-    const p = this.profiles.get(id);
+    let p = this.profiles.get(id);
     const running = this.children.get(id);
     if (running) {
       running.channel.send({ t: 'focus' });
       return { status: 'focused' };
+    }
+    // Older profiles may still carry an Electron page-shim fingerprint after
+    // being switched to a native engine. Migrate that stale flag before the
+    // native compatibility gate; never refuse a profile for a setting that is
+    // no longer applicable to its selected engine.
+    if (browserEngineFor(p.engine) !== 'electron' && p.fingerprint?.enabled === true) {
+      this.profiles.update(id, { fingerprint: { ...p.fingerprint, enabled: false } });
+      p = this.profiles.get(id);
+      this.ctx.logger.info('profile.native-fingerprint-migrated', { profile: id, engine: browserEngineFor(p.engine) });
+      this.pushProfiles();
     }
 
     // InkBrowser: the standalone Chromium base, started as its own process in its own profile folder.
