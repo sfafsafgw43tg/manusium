@@ -564,6 +564,14 @@ function renderUpdates(v: HTMLElement): void {
 function renderSettings(v: HTMLElement): void {
   const s = init.settings;
   v.append(h('div', { class: 'view-head' }, h('h1', { text: t('launcher.nav.settings') })));
+  const settingsSearch = input('', { type: 'search', class: 'settings-search', placeholder: t('settings.searchSettings'), 'aria-label': t('settings.searchSettings') });
+  v.append(h('div', { class: 'settings-search-row' }, icon('search', 15), settingsSearch));
+  settingsSearch.oninput = () => {
+    const needle = settingsSearch.value.trim().toLocaleLowerCase();
+    for (const panel of v.querySelectorAll<HTMLElement>('.panel')) {
+      panel.classList.toggle('hidden', !!needle && !panel.innerText.toLocaleLowerCase().includes(needle));
+    }
+  };
   const lang = select(init.lang, [['en', 'English'], ['pl', 'Polski']], async (val) => {
     if ((await run(api.invoke('mgr:set-language', val))) !== undefined) {
       confirmDialog(t('settings.langRestart'), () => api.invoke('mgr:relaunch'), 'toast.saved');
@@ -601,6 +609,26 @@ function renderSettings(v: HTMLElement): void {
       h('span', { class: 'hint', text: t('settings.dataDirHint') }),
       h('span', { class: 'hint', text: t('settings.dataDirHint2') })),
   ));
+
+  const archiveBody = h('div', { class: 'archive-list' }, h('p', { class: 'muted', text: t('settings.archiveLoading') }));
+  v.append(h('div', { class: 'panel profile-archive-panel' }, h('h2', { text: t('settings.profileArchive') }),
+    h('p', { class: 'hint', text: t('settings.profileArchiveHint') }), archiveBody));
+  void run(api.invoke<Array<{ id: string; name: string; kind: string; archivedAt?: string }>>('mgr:archived')).then((archived) => {
+    archiveBody.replaceChildren();
+    if (!archived?.length) {
+      archiveBody.append(h('p', { class: 'muted', text: t('settings.archiveEmpty') }));
+      return;
+    }
+    for (const profile of archived) {
+      const restore = h('button', { class: 'btn small', text: t('settings.archiveRestore') });
+      restore.onclick = async () => {
+        if ((await run(api.invoke('mgr:archive-restore', profile.id))) === undefined) return;
+        restore.parentElement?.remove();
+        if (!archiveBody.children.length) archiveBody.append(h('p', { class: 'muted', text: t('settings.archiveEmpty') }));
+      };
+      archiveBody.append(h('div', { class: 'archive-row' }, h('div', { class: 'grow' }, h('b', { text: profile.name }), h('span', { class: 'muted small', text: `${profile.kind} · ${profile.archivedAt ? new Date(profile.archivedAt).toLocaleString() : ''}` })), restore));
+    }
+  });
 
   v.append(pluginsPanel());
 

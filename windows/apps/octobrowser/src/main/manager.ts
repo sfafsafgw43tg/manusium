@@ -601,21 +601,21 @@ export class Manager {
     this.launcher?.webContents.send('mgr:profiles', this.profileList());
   }
 
-  private profileList(trashed = false) {
-    const profiles = trashed ? this.profiles.listTrash() : this.profiles.list();
+  private profileList(trashed = false, archived = false) {
+    const profiles = trashed ? this.profiles.listTrash() : archived ? this.profiles.listArchived() : this.profiles.list();
     return profiles.map((p) => ({
       ...p,
-      running: !trashed && this.isRunning(p.id),
-      ready: !trashed && (this.children.get(p.id)?.ready ?? (this.nativeChromium.has(p.id) || this.nativeFirefox.has(p.id))),
-      stopping: !trashed && (this.children.get(p.id)?.stopping ?? false),
-      startedAt: !trashed ? (this.children.get(p.id)?.startedAt ?? this.nativeChromium.get(p.id)?.startedAt ?? this.nativeFirefox.get(p.id)?.startedAt ?? 0) : 0,
-      sealed: trashed ? false : this.profiles.isVaultLocked(p.id),
-      hasVault: trashed ? false : this.profiles.hasVault(p.id),
-      needsResealing: trashed ? false : this.profiles.needsResealing(p.id),
-      issues: trashed ? [] : checkConsistency(effectiveSettings(p.protection), { extensionsCount: p.addons.length, proxyActive: p.network.mode === 'proxy' }),
+      running: !trashed && !archived && this.isRunning(p.id),
+      ready: !trashed && !archived && (this.children.get(p.id)?.ready ?? (this.nativeChromium.has(p.id) || this.nativeFirefox.has(p.id))),
+      stopping: !trashed && !archived && (this.children.get(p.id)?.stopping ?? false),
+      startedAt: !trashed && !archived ? (this.children.get(p.id)?.startedAt ?? this.nativeChromium.get(p.id)?.startedAt ?? this.nativeFirefox.get(p.id)?.startedAt ?? 0) : 0,
+      sealed: trashed || archived ? false : this.profiles.isVaultLocked(p.id),
+      hasVault: trashed || archived ? false : this.profiles.hasVault(p.id),
+      needsResealing: trashed || archived ? false : this.profiles.needsResealing(p.id),
+      issues: trashed || archived ? [] : checkConsistency(effectiveSettings(p.protection), { extensionsCount: p.addons.length, proxyActive: p.network.mode === 'proxy' }),
       hasProxyCredentials: this.ctx.secrets.has(`proxy:${p.id}`),
       pendingCookies: this.ctx.secrets.has(`cookies:${p.id}`),
-      fingerprintWarnings: trashed ? [] : fingerprintWarnings(p.fingerprint, engineVersion().major),
+      fingerprintWarnings: trashed || archived ? [] : fingerprintWarnings(p.fingerprint, engineVersion().major),
     }));
   }
 
@@ -1497,6 +1497,19 @@ export class Manager {
     this.pushProfiles();
   }
 
+  /** Move a closed profile to the recoverable Settings archive. */
+  private archiveProfile(id: string): void {
+    if (this.isRunning(id)) throw new Error(this.t('err.closeProfileFirst'));
+    this.profiles.archive(id);
+    this.pushProfiles();
+  }
+
+  private restoreArchivedProfile(id: string): Profile {
+    const p = this.profiles.unarchive(id);
+    this.pushProfiles();
+    return p;
+  }
+
   private restoreProfile(id: string): Profile {
     const p = this.profiles.restore(id);
     this.pushProfiles();
@@ -2236,6 +2249,7 @@ export class Manager {
       filtersUpdatedAt: this.adblock.updatedAt ?? null,
     }));
     handle('mgr:profiles', L, () => this.profileList());
+    handle('mgr:archived', L, () => this.profileList(false, true));
     handle('mgr:chromium-catalog', L, () => listInstalled(path.join(ctx.layout.engine, 'runtimes', 'chromium')));
     handle('mgr:firefox-runtime-status', L, () => {
       const userRoot = path.join(ctx.layout.engine, 'runtimes', 'gecko');
@@ -2915,13 +2929,14 @@ export class Manager {
       userAgent: userAgentFor(FP_OSES.includes(os) ? os : 'windows11', engineVersion().major),
       engine: engineVersion(),
     }));
-    handle('mgr:profile-bulk', L, async (_e, action: 'start' | 'stop' | 'remove' | 'folder' | 'status' | 'tags', ids: string[], arg?: unknown) => {
+    handle('mgr:profile-bulk', L, async (_e, action: 'start' | 'stop' | 'remove' | 'archive' | 'folder' | 'status' | 'tags', ids: string[], arg?: unknown) => {
       const out: Record<string, unknown> = {};
       for (const id of ([] as string[]).concat(ids).map(String)) {
         try {
           if (action === 'start') out[id] = await this.launch(id, {});
           else if (action === 'stop') out[id] = this.stop(id);
           else if (action === 'remove') { this.removeProfile(id); out[id] = true; }
+          else if (action === 'archive') { this.archiveProfile(id); out[id] = true; }
           else if (action === 'folder') out[id] = !!this.updateProfile(id, { folder: String(arg ?? '').slice(0, 48) });
           else if (action === 'status') out[id] = !!this.updateProfile(id, { status: String(arg ?? '').slice(0, 32) } as Partial<Profile>);
           else if (action === 'tags') out[id] = !!this.updateProfile(id, { tags: Array.isArray(arg) ? arg.map(String) : [] });
@@ -2955,6 +2970,8 @@ export class Manager {
       return p;
     });
     handle('mgr:remove', L, (_e, id: string) => { this.removeProfile(String(id)); return true; });
+    handle('mgr:archive', L, (_e, id: string) => { this.archiveProfile(String(id)); return true; });
+    handle('mgr:archive-restore', L, (_e, id: string) => this.restoreArchivedProfile(String(id)));
     handle('mgr:trash', L, () => this.profileList(true));
     handle('mgr:trash-restore', L, (_e, id: string) => this.restoreProfile(String(id)));
     handle('mgr:trash-delete', L, (_e, id: string) => { this.permanentlyDeleteProfile(String(id)); return true; });

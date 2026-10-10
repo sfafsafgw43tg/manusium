@@ -39,6 +39,18 @@ describe('ProfileManager', () => {
     }
   });
 
+  it('moves profiles to the recoverable archive and restores them', () => {
+    const { pm } = setup();
+    const profile = pm.create({ name: 'Archived profile', kind: 'custom' });
+    pm.archive(profile.id);
+    expect(pm.list().some((p) => p.id === profile.id)).toBe(false);
+    expect(pm.listArchived().find((p) => p.id === profile.id)?.archivedAt).toEqual(expect.any(String));
+    expect(pm.lastUsed()?.id).not.toBe(profile.id);
+    const restored = pm.unarchive(profile.id);
+    expect(restored.archivedAt).toBeUndefined();
+    expect(pm.get(profile.id).name).toBe('Archived profile');
+  });
+
   it('applies kind-specific defaults (Tor: no add-ons, Temporary: delete on close)', () => {
     const { pm } = setup();
     const tor = pm.list().find((p) => p.kind === 'tor')!;

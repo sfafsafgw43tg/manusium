@@ -271,6 +271,7 @@ function rowMenu(anchor: HTMLElement, p: Profile): void {
   if (p.running) items.push({ icon: 'stop', label: t('ui.forceStop'), danger: true, fn: () => void stopProfile(p, true) });
   items.push('sep',
     { icon: 'refreshCircle', label: t('profile.reset'), danger: true, fn: () => confirmDialog(t('profile.resetConfirm', { name: p.name }), () => api.invoke('mgr:reset', p.id), 'toast.profileReset') },
+    { icon: 'archive', label: t('profile.archive'), fn: () => confirmDialog(t('profile.archiveConfirm', { name: p.name }), () => api.invoke('mgr:archive', p.id), 'toast.profileArchived') },
     { icon: 'trash', label: t('profile.moveToTrash'), danger: true, fn: () => confirmDialog(t('profile.deleteConfirm', { name: p.name }), () => api.invoke('mgr:remove', p.id), 'toast.profileDeleted') });
   popupMenu(anchor, items);
 }
@@ -946,6 +947,7 @@ export function renderProfiles(v: HTMLElement): void {
       b('stop', 'ui.stop', () => void bulk('stop')),
       b('folder', 'ui.moveToFolder', () => moveDialog(sel)),
       b('tag', 'ui.setStatus', () => statusDialog(sel)),
+      b('archive', 'profile.archive', () => confirmDialog(t('ui.archiveMany', { n: sel.length }), async () => { await bulk('archive'); S.selected.clear(); return true; }, 'toast.profileArchived')),
       b('trash', 'profile.moveToTrash', () => confirmDialog(t('ui.deleteMany', { n: sel.length }), async () => { await bulk('remove'); S.selected.clear(); return true; }, 'toast.profileDeleted'), 'danger'),
       h('div', { class: 'grow' }), clearSel));
   }

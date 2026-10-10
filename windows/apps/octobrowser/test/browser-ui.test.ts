@@ -502,6 +502,16 @@ describe('browser entry UI', () => {
     expect(i18nEn).toContain("'time.yesterday': 'Yesterday'");
     expect(i18nPl).toContain("'time.yesterday': 'Wczoraj'");
   });
+
+  it('exposes profile archiving and searchable launcher Settings', () => {
+    expect(launcherProfiles).toContain("api.invoke('mgr:archive'");
+    expect(launcherProfiles).toContain("api.invoke('mgr:profile-bulk', action");
+    expect(launcher).toContain("placeholder: t('settings.searchSettings')");
+    expect(launcher).toContain("'mgr:archived'");
+    expect(launcher).toContain("'mgr:archive-restore'");
+    expect(launcherCss).toContain('.settings-search-row');
+    expect(launcherCss).toContain('.archive-row');
+  });
 });
 
 describe('tab right-click dropdown', () => {

@@ -160,6 +160,8 @@ export interface Profile {
   updatedAt: string;
   /** Set when the profile is moved to the local Trash. Its browser data stays intact until permanently erased. */
   trashedAt?: string;
+  /** Set when the profile is moved to the user-visible Archive. Archived data remains recoverable. */
+  archivedAt?: string;
   protection: ProtectionConfig;
   network: NetworkConfig;
   dns: DnsConfig;
@@ -642,10 +644,16 @@ export class ProfileManager {
     ensureDir(this.layout.profileDownloadsDir(id));
   }
 
-  /** Active profiles only. Trashed profiles are intentionally unavailable to launch. */
+  /** Active profiles only. Trashed and archived profiles are intentionally unavailable to launch. */
   list(): Profile[] {
     this.syncProfileDirectories();
-    return this.store.load().profiles.filter((p) => !p.trashedAt).map((p) => this.bindProfile(p));
+    return this.store.load().profiles.filter((p) => !p.trashedAt && !p.archivedAt).map((p) => this.bindProfile(p));
+  }
+
+  /** Archived profiles remain visible in Settings and retain their browser data. */
+  listArchived(): Profile[] {
+    this.syncProfileDirectories();
+    return this.store.load().profiles.filter((p) => !p.trashedAt && !!p.archivedAt).map((p) => this.bindProfile(p));
   }
 
   /** Local Trash contents; profile settings and browser data are retained. */
@@ -669,7 +677,7 @@ export class ProfileManager {
 
   lastUsed(): Profile | undefined {
     const doc = this.store.load();
-    return doc.profiles.find((p) => p.id === doc.lastUsedId && !p.trashedAt) ?? doc.profiles.find((p) => !p.trashedAt);
+    return doc.profiles.find((p) => p.id === doc.lastUsedId && !p.trashedAt && !p.archivedAt) ?? doc.profiles.find((p) => !p.trashedAt && !p.archivedAt);
   }
 
   setLastUsed(id: string): void {
@@ -779,9 +787,36 @@ export class ProfileManager {
       const p = d.profiles.find((x) => x.id === id);
       if (!p) throw new Error(`Profile not found: ${id}`);
       p.trashedAt = new Date().toISOString();
+      delete p.archivedAt;
       p.updatedAt = p.trashedAt;
-      if (d.lastUsedId === id) d.lastUsedId = d.profiles.find((x) => !x.trashedAt)?.id;
+      if (d.lastUsedId === id) d.lastUsedId = d.profiles.find((x) => !x.trashedAt && !x.archivedAt)?.id;
     });
+  }
+
+  /** Move a closed profile to the recoverable Archive without touching its data. */
+  archive(id: string): void {
+    this.get(id);
+    this.store.update((d) => {
+      const p = d.profiles.find((x) => x.id === id);
+      if (!p) throw new Error(`Profile not found: ${id}`);
+      p.archivedAt = new Date().toISOString();
+      p.updatedAt = p.archivedAt;
+      if (d.lastUsedId === id) d.lastUsedId = d.profiles.find((x) => !x.trashedAt && !x.archivedAt)?.id;
+    });
+  }
+
+  /** Restore an archived profile to the normal Profiles list. */
+  unarchive(id: string): Profile {
+    this.getAny(id);
+    let restored: Profile | undefined;
+    this.store.update((d) => {
+      const p = d.profiles.find((x) => x.id === id);
+      if (!p) throw new Error(`Profile not found: ${id}`);
+      delete p.archivedAt;
+      p.updatedAt = new Date().toISOString();
+      restored = p;
+    });
+    return this.bindProfile(restored!);
   }
 
   /** Restore a profile from the local Trash. */
