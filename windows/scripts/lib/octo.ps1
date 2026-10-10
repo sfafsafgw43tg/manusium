@@ -23,7 +23,7 @@
 #   reset-profile   [-Profile name|id]                     (reset-profile.bat)
 #   backup-profile  [-Profile name|id] [-Destination dir]  (backup-profile.bat)
 #   restore-profile [-Profile name|id] [-Archive file.zip] (restore-profile.bat)
-# Common switches: -Yes (do not ask for confirmation), -Lang en|pl
+# Common switches: -Yes (do not ask for confirmation), -Background (complete hidden setup), -Lang en|pl
 #
 # Security rules implemented here:
 #   * paths are always quoted / passed as objects (spaces, Polish characters, '&', '!')
@@ -48,6 +48,10 @@ param(
   [switch]$Interactive,
   # -NoGui keeps everything in the console (used by CI and by the other scripts).
   [switch]$NoGui,
+  # -Background runs the complete source setup without a wizard or console. Progress and
+  # failures are written to the normal installer log; UAC dialogs remain visible when Windows
+  # requires approval for Visual Studio, drivers, or another privileged installer.
+  [switch]$Background,
   [switch]$CheckOnly,
   [switch]$NoBackup,
   [switch]$DeleteData,
@@ -2871,6 +2875,11 @@ $script:FailShown = $false
 try {
   Initialize-Log
   Write-Log 'info' ("start lang={0} ps={1}" -f $Lang, $PSVersionTable.PSVersion)
+  if ($Background) {
+    $NoGui = $true
+    $script:Yes = $true
+    Write-Log 'info' 'background setup requested; using default paths and installing all available prerequisites'
+  }
   switch ($Command.ToLowerInvariant()) {
     'open' { Invoke-Open 'octobrowser' }
     'open-detect' { Invoke-Open 'octodetect' }

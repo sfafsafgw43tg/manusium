@@ -14,6 +14,7 @@ rem Android SDK and its system images.
 rem Extra arguments are passed through:
 rem   install.bat -NoGui        run in this console instead of the window
 rem   install.bat -Interactive  ask the old y/N questions again
+rem   install.bat -Background   run the complete setup hidden; inspect %LOCALAPPDATA%\InkBrowser\logs\ for progress
 setlocal EnableExtensions DisableDelayedExpansion
 rem The graphical installer needs no console at all, so the first pass
 rem re-launches this file through lib\hidden.vbs (Windows Script Host, window
@@ -23,6 +24,14 @@ rem by policy everything simply runs in this window instead of failing.
 set "OCTO_WANTS_CONSOLE="
 echo %* | find /i "-nogui" >nul 2>&1 && set "OCTO_WANTS_CONSOLE=1"
 echo %* | find /i "-interactive" >nul 2>&1 && set "OCTO_WANTS_CONSOLE=1"
+set "OCTO_WANTS_BACKGROUND="
+echo %* | find /i "-background" >nul 2>&1 && set "OCTO_WANTS_BACKGROUND=1"
+if defined OCTO_WANTS_BACKGROUND if not defined OCTO_WANTS_CONSOLE (
+  if not defined OCTO_HIDDEN if exist "%SystemRoot%\System32\wscript.exe" if exist "%~dp0lib\hidden.vbs" (
+    start "" /b "%SystemRoot%\System32\wscript.exe" //nologo //B "%~dp0lib\hidden.vbs" "%~f0" %*
+    endlocal & exit /b 0
+  )
+)
 if not defined OCTO_WANTS_CONSOLE (
   if not defined OCTO_HIDDEN (
     if exist "%SystemRoot%\System32\wscript.exe" (

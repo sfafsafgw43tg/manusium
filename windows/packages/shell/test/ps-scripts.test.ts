@@ -53,6 +53,16 @@ describe('octo.ps1 stays parseable', () => {
 });
 
 describe('install.bat covers every dependency', () => {
+  it('supports a hidden complete background setup without hiding UAC requirements', () => {
+    expect(source).toContain('[switch]$Background');
+    expect(source).toContain("background setup requested; using default paths");
+    expect(source).toContain('if ($Background)');
+    const installBat = fs.readFileSync(path.resolve(__dirname, '..', '..', '..', 'scripts', 'install.bat'), 'utf8');
+    expect(installBat).toContain('OCTO_WANTS_BACKGROUND');
+    expect(installBat).toContain('hidden.vbs');
+    expect(installBat).toContain('-Background');
+  });
+
   it('installs the media plugin prerequisites independently of Android', () => {
     expect(source).toContain('$MediaPrereqs = @(');
     for (const id of ['Python.Python.3.12', 'OBSProject.OBSStudio', 'VB-Audio.Cable']) {
