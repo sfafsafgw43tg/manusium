@@ -184,6 +184,9 @@ describe('steps and the console installer', () => {
     expect(chromium).toContain('fetching Chromium source');
     expect(chromium).toContain('autoninja');
     expect(chromium).toContain("const parentIsGclientCheckout = fs.existsSync(parentGclient);");
+    expect(chromium).toContain("['rev-list', '-n', '1', tag]");
+    expect(chromium).toContain("['checkout', '--detach', pinnedCommit]");
+    expect(chromium).not.toContain("['checkout', '--detach', `refs/tags/${version}`]");
     expect(chromium).toContain('resuming Chromium source checkout (no history, parallel)');
     expect(chromium).toContain("'--no-history'");
     expect(chromium).toContain("'sync', '-n', '-v'");

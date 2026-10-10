@@ -150,7 +150,10 @@ async function sourceCheckout(source, version, skipSync) {
   if (!fs.existsSync(versionFile)) fail(`Chromium source checkout is incomplete: ${source} is missing chrome/VERSION; run gclient sync and retry`);
   const actual = chromiumVersion(source);
   if (actual !== version) {
-    await run('git', ['checkout', '--detach', `refs/tags/${version}`], source, `checking out Chromium ${version}`);
+    const tag = `refs/tags/${version}`;
+    const pinnedCommit = runCapture('git', ['rev-list', '-n', '1', tag], source, `resolving Chromium tag ${tag}`).trim();
+    if (!/^[0-9a-f]{40}$/i.test(pinnedCommit)) fail(`Chromium tag ${tag} did not resolve to a commit`);
+    await run('git', ['checkout', '--detach', pinnedCommit], source, `checking out Chromium ${version} (${pinnedCommit})`);
   } else {
     await run('git', ['status', '--short'], source, 'checking source tree status');
   }
