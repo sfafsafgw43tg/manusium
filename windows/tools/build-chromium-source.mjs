@@ -77,13 +77,13 @@ function sourceCheckout(source, version, skipSync) {
       // `fetch chromium` is only valid in an empty parent directory. A
       // previous interrupted fetch leaves a .gclient file behind, and the
       // official tool requires gclient sync to resume that checkout.
-      run('gclient', ['sync', '--with_branch_heads', '--with_tags'], parent, 'resuming Chromium source checkout');
+      run('gclient', ['sync', '--no-history'], parent, 'resuming Chromium source checkout (no history)');
     } else {
       const parentEntries = fs.existsSync(parent)
         ? fs.readdirSync(parent).filter((entry) => entry !== '.DS_Store')
         : [];
       if (parentEntries.length > 0) fail(`source checkout is incomplete at ${source}; remove or repair the existing directory, then retry`);
-      run('fetch', ['--nohooks', 'chromium'], parent, 'fetching Chromium source');
+      run('fetch', ['--nohooks', '--no-history', 'chromium'], parent, 'fetching Chromium source (no history)');
     }
   }
   if (!fs.existsSync(versionFile)) fail(`Chromium source checkout is incomplete: ${source} is missing chrome/VERSION; run gclient sync and retry`);
@@ -96,7 +96,7 @@ function sourceCheckout(source, version, skipSync) {
   const checkedOut = chromiumVersion(source);
   if (checkedOut !== version) fail(`source VERSION is ${checkedOut}, expected ${version}`);
   if (!skipSync) {
-    run('gclient', ['sync', '--with_branch_heads', '--with_tags'], parent, 'synchronizing Chromium dependencies');
+    run('gclient', ['sync', '--no-history'], parent, 'synchronizing Chromium dependencies (no history)');
     run('gclient', ['runhooks'], parent, 'running Chromium hooks');
   }
   return runCapture('git', ['rev-parse', 'HEAD'], source, 'recording Chromium source revision');
