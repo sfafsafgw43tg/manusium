@@ -186,9 +186,8 @@ describe('steps and the console installer', () => {
     expect(chromium).toContain("const parentIsGclientCheckout = fs.existsSync(parentGclient);");
     expect(chromium).toContain('resuming Chromium source checkout (no history, parallel)');
     expect(chromium).toContain("'--no-history'");
-    expect(chromium).toContain("'--nohooks'");
-    expect(chromium).toContain("'--verbose'");
-    expect(chromium).toContain('`--jobs=${jobs}`');
+    expect(chromium).toContain("'sync', '-n', '-v'");
+    expect(chromium).toContain('`-j${jobs}`');
     expect(chromium).toContain("'depot-tools.allowGlobalGitConfig', 'false'");
     expect(chromium).toContain("['sync', '--help']");
     expect(chromium).toContain("syncHelp.includes('--no-history')");
