@@ -1626,6 +1626,11 @@ function Ensure-ChromiumBuildToolchain {
   # First gclient run installs depot_tools' managed Python and Windows helpers.
   $gclient = Join-Path $depot 'gclient.bat'
   if (Test-Path -LiteralPath $gclient) {
+    # depot_tools prints a recommendation on every invocation unless this
+    # explicit opt-out is present. Keep the user's global Git configuration
+    # from being rewritten by depot_tools and silence the harmless warning.
+    $git = Resolve-Tool 'git'
+    if ($git) { [void](Invoke-Native $git @('config', '--global', 'depot-tools.allowGlobalGitConfig', 'false') $depot -Quiet) }
     $bootstrap = Invoke-Native $gclient @() $depot
     if ($bootstrap.code -ne 0) { Warn "depot_tools bootstrap failed with exit code $($bootstrap.code)."; return $false }
   }

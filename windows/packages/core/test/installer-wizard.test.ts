@@ -189,6 +189,7 @@ describe('steps and the console installer', () => {
     expect(chromium).toContain("'--nohooks'");
     expect(chromium).toContain("'--verbose'");
     expect(chromium).toContain("'--jobs'");
+    expect(chromium).toContain("'depot-tools.allowGlobalGitConfig', 'false'");
     expect(chromium).toContain('fetching Chromium source (no history)');
     expect(chromium).toContain('synchronizing Chromium dependencies (no history, parallel)');
     expect(chromium).toContain('isKnownPartial');
@@ -216,6 +217,7 @@ describe('steps and the console installer', () => {
     expect(runtimeStep).toContain('Ensure-ChromiumBuildToolchain');
     expect(octo).toContain('chromium/tools/depot_tools.git');
     expect(octo).toContain('Microsoft.VisualStudio.BuildTools');
+    expect(octo).toContain("'depot-tools.allowGlobalGitConfig', 'false'");
   });
 
   it('the eight steps keep their order', () => {

@@ -71,6 +71,7 @@ function sourceCheckout(source, version, skipSync) {
   const sourceGit = path.join(source, '.git');
   const parentGclient = path.join(parent, '.gclient');
   const syncArgs = ['sync', '--no-history', '--nohooks', '--verbose', '--jobs', String(Math.max(2, Math.min(12, os.cpus().length)))];
+  run('git', ['config', '--global', 'depot-tools.allowGlobalGitConfig', 'false'], parent, 'suppressing depot_tools global Git recommendation');
   const hasChromiumCheckout = fs.existsSync(versionFile) && fs.existsSync(sourceGit);
   let parentEntries = fs.existsSync(parent)
     ? fs.readdirSync(parent).filter((entry) => entry !== '.DS_Store')
