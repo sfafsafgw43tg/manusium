@@ -728,6 +728,7 @@ function Start-WizRun([string[]]$keys) {
   $script:Wiz.Cancelling = $false
   $script:Wiz.CurrentStep = ''
   $script:Wiz.LastOutput = ''
+  $script:Wiz.LastProgressLogAt = -15
   $script:Wiz.Outcome = $null
   $script:Wiz.Watch = [System.Diagnostics.Stopwatch]::StartNew()
   Add-WizLogLine ''
@@ -792,8 +793,22 @@ function Invoke-WizTick {
 function Read-WizLine([string]$line) {
   $fields = ConvertFrom-WizardMarker $line
   if ($null -eq $fields) {
-    $script:Wiz.LastOutput = ([string]$line).Trim()
-    Add-WizLogLine $line
+    $text = ([string]$line).Trim()
+    $script:Wiz.LastOutput = $text
+    # Git progress is written with carriage returns. When captured through a
+    # pipe those updates become separate lines, which used to flood the UI
+    # during the Chromium checkout. Keep the newest value in the live header,
+    # but write only an occasional checkpoint to the visible log.
+    $isGitProgress = $text -match '^(remote:\s*)?(Counting objects|Compressing objects|Receiving objects|Resolving deltas|Updating files)'
+    if ($isGitProgress) {
+      $seconds = if ($script:Wiz.Watch) { [int][Math]::Floor($script:Wiz.Watch.Elapsed.TotalSeconds) } else { 0 }
+      if (($seconds - [int]$script:Wiz.LastProgressLogAt) -ge 15) {
+        Add-WizLogLine $text
+        $script:Wiz.LastProgressLogAt = $seconds
+      }
+    } else {
+      Add-WizLogLine $line
+    }
     return
   }
   switch ([string]$fields[1]) {

@@ -160,6 +160,14 @@ describe('the graphical installer', () => {
     expect(uiSource).toContain("@($steps | Where-Object { $_.Status -eq 'done' -or $_.Status -eq 'warn' }).Count");
   });
 
+  it('coalesces repetitive Git progress while retaining a live heartbeat', () => {
+    expect(uiSource).toContain('$isGitProgress = $text -match');
+    expect(uiSource).toContain('$script:Wiz.LastProgressLogAt');
+    expect(source).toContain('$lastGitProgressAt = [datetime]::MinValue');
+    expect(source).toContain('$isGitProgress = $line.Trim() -match');
+    expect(source).toContain('TotalSeconds -ge 15');
+  });
+
   it('offers an install folder and checks it before anything runs', () => {
     expect(uiSource).toContain('FolderBrowserDialog');
     expect(uiSource).toContain('Test-FolderWritable $sdk');

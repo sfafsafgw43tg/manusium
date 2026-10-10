@@ -273,6 +273,7 @@ describe('window structure', () => {
     expect(ui).toContain('$runner.TryReadLine([ref]$line)');
     expect(ui).toContain('uiStillWorking');
     expect(ui).toContain('Chromium\'s source checkout can legitimately take a long time');
-    expect(ui).toContain('$script:Wiz.LastOutput = ([string]$line).Trim()');
+    expect(ui).toContain('$text = ([string]$line).Trim()');
+    expect(ui).toContain('$script:Wiz.LastOutput = $text');
   });
 });

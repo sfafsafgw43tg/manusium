@@ -1376,6 +1376,7 @@ function Invoke-Native([string]$exe, [string[]]$argList, [string]$workDir, [swit
   $previous = $ErrorActionPreference
   $ErrorActionPreference = 'Continue'
   $lines = New-Object System.Collections.Generic.List[string]
+  $lastGitProgressAt = [datetime]::MinValue
   $oldDir = $null
   if ($workDir) {
     $oldDir = [System.IO.Directory]::GetCurrentDirectory()
@@ -1386,7 +1387,16 @@ function Invoke-Native([string]$exe, [string[]]$argList, [string]$workDir, [swit
     & $exe @argList 2>&1 | ForEach-Object {
       $line = if ($_ -is [System.Management.Automation.ErrorRecord]) { [string]$_.Exception.Message } else { [string]$_ }
       $lines.Add($line)
-      if (-not $Quiet) { Write-Host $line }
+      if (-not $Quiet) {
+        # A terminal renders Git's carriage-return progress in place. Through
+        # PowerShell's pipe each update becomes a new line, so show occasional
+        # checkpoints while retaining every line in the returned diagnostics.
+        $isGitProgress = $line.Trim() -match '^(remote:\s*)?(Counting objects|Compressing objects|Receiving objects|Resolving deltas|Updating files)'
+        if (-not $isGitProgress -or ([datetime]::UtcNow - $lastGitProgressAt).TotalSeconds -ge 15) {
+          Write-Host $line
+          if ($isGitProgress) { $lastGitProgressAt = [datetime]::UtcNow }
+        }
+      }
       try { [System.Windows.Forms.Application]::DoEvents() } catch { }
     }
     $code = $LASTEXITCODE
