@@ -1,9 +1,10 @@
 # The OctoSuite setup wizard
 
 `scripts\install.bat` and `scripts\first-install.bat` open the setup wizard in a source
-checkout. It installs what OctoSuite needs to run from the sources: Node.js and git, the
-optional vStudio plugins, the Android SDK tools, the project dependencies, the desktop shortcut
-and the build. The wizard is built with Windows Forms in Windows PowerShell 5.1, which Windows
+checkout. The default pass installs only what the Chromium desktop app needs: Node.js and git,
+project dependencies, the source-built Chromium runtime, the optional desktop shortcut, and the
+application build. Android/media plugins and Firefox are separate feature flows and are skipped
+when unavailable; they are not allowed to block the desktop app. The wizard is built with Windows Forms in Windows PowerShell 5.1, which Windows
 10 and 11 include, so there is nothing to install first. It uses a black classic-installer
 palette and keeps **Start Octo.su when finished** selected by default on a successful run.
 
@@ -26,8 +27,8 @@ Where Windows Forms is missing (Server Core) the console path is used automatica
 
 ## The pages
 
-1. **Install OctoSuite** (setup options). The folder for the Android SDK and its system images
-   (optional; the default is `%LOCALAPPDATA%\Android\Sdk`), and the optional settings:
+1. **Install OctoSuite** (setup options). Android SDK settings remain available for the separate
+   Android feature flow (the default is `%LOCALAPPDATA%\Android\Sdk`), along with these optional settings:
    - *Proxy server*: `host:port` or `http(s)://host:port`. Used for the downloads and the
      package managers of this installation only. Credentials are refused.
    - *Use system environment variables (recommended)*: sets `ANDROID_HOME` and
@@ -126,10 +127,10 @@ message-key check; the window was not run in an environment with a desktop.
    steps after it are shown as skipped, the result is failed, and no success message appears.
    Reconnect and *Retry*.
 6. Make a required step fail after the first one (for example, block the Electron download so
-   that *Project dependencies* fails): the other steps still run, the result is failed, the page
+   that *Project dependencies* fails): later steps are skipped, the result is failed, the page
    names the step, and no success message appears. Reconnect and *Retry*.
-7. Make an optional step fail (for example, block winget): the result is completed with
-   warnings, and the page names the step.
+7. Make the optional shortcut step fail: the result is completed with warnings, and the page
+   names the skipped/failed optional step. The app remains usable from `scripts\open.bat`.
 8. Tick *Use system environment variables* and *Add Android SDK tools to user PATH (recommended)*,
    run the installer, and check `ANDROID_HOME` and the user PATH in a new terminal. Untick them,
    run again, and check that nothing was added.
