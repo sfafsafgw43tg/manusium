@@ -67,6 +67,13 @@ function ensureTool(tool) {
 function sourceCheckout(source, version, skipSync) {
   const parent = path.dirname(source);
   fs.mkdirSync(parent, { recursive: true });
+  // install.bat bootstraps depot_tools before this script runs. Prevent the
+  // wrapper from silently self-updating again at the start of every fetch;
+  // that is the source of the apparent pause at "Updating depot_tools...".
+  if (!process.env.DEPOT_TOOLS_UPDATE) {
+    process.env.DEPOT_TOOLS_UPDATE = '0';
+    console.log('[build-chromium-source] using the bootstrapped depot_tools; automatic self-update disabled');
+  }
   const versionFile = path.join(source, 'chrome', 'VERSION');
   const sourceGit = path.join(source, '.git');
   const parentGclient = path.join(parent, '.gclient');
@@ -101,7 +108,7 @@ function sourceCheckout(source, version, skipSync) {
       // `fetch chromium` is only valid in an empty parent directory. A
       // previous interrupted fetch leaves a .gclient file behind, and the
       // official tool requires gclient sync to resume that checkout.
-      run('gclient', syncArgs, parent, 'resuming Chromium source checkout (no history, parallel)');
+       run('gclient', syncArgs, parent, 'resuming Chromium source checkout (no history, parallel)');
     } else {
       if (parentEntries.length > 0) fail(`source checkout is incomplete at ${source}; remove or repair the existing directory, then retry`);
       run('fetch', ['--nohooks', '--no-history', 'chromium'], parent, 'fetching Chromium source (no history)');
@@ -117,7 +124,9 @@ function sourceCheckout(source, version, skipSync) {
   const checkedOut = chromiumVersion(source);
   if (checkedOut !== version) fail(`source VERSION is ${checkedOut}, expected ${version}`);
   if (!skipSync) {
+    console.log('[build-chromium-source] phase: synchronizing Chromium dependencies');
     run('gclient', syncArgs, parent, 'synchronizing Chromium dependencies (no history, parallel)');
+    console.log('[build-chromium-source] phase: installing Chromium build hooks and tools');
     run('gclient', ['runhooks'], parent, 'running Chromium hooks');
   }
   return runCapture('git', ['rev-parse', 'HEAD'], source, 'recording Chromium source revision');

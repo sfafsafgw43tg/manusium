@@ -192,6 +192,9 @@ describe('steps and the console installer', () => {
     expect(chromium).toContain("['sync', '--help']");
     expect(chromium).toContain("syncHelp.includes('--no-history')");
     expect(chromium).toContain('lacks --no-history for gclient sync');
+    expect(chromium).toContain("process.env.DEPOT_TOOLS_UPDATE = '0'");
+    expect(chromium).toContain('automatic self-update disabled');
+    expect(chromium).toContain('phase: synchronizing Chromium dependencies');
     expect(chromium).toContain('fetching Chromium source (no history)');
     expect(chromium).toContain('synchronizing Chromium dependencies (no history, parallel)');
     expect(chromium).toContain('isKnownPartial');
