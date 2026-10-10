@@ -2004,6 +2004,29 @@ function Invoke-EnsureDependencies {
   return $true
 }
 
+# Validate one staged native runtime without trusting its filename alone. Chromium on
+# Windows must explicitly identify itself as a modified source build; a renamed vendor
+# archive is not accepted. Both engines must carry a manifest hash matching the file.
+function Test-NativeRuntimeReady([string]$kind, [string]$target) {
+  $isWindows = $target -like 'win32-*'
+  $version = if ($kind -eq 'chromium') { '155.0.8059.39' } else { '140.0' }
+  $root = if ($kind -eq 'chromium') { Join-Path $InstallRoot "resources\engines\chromium\$version" } else { Join-Path $InstallRoot "resources\engines\gecko\$version" }
+  $exeName = if ($kind -eq 'chromium') { if ($isWindows) { 'inkbrowser-chrome.exe' } else { 'inkbrowser-chrome' } } else { if ($isWindows) { 'inkbrowser-firefox.exe' } else { 'inkbrowser-firefox' } }
+  $exe = Join-Path $root $exeName
+  $manifestPath = Join-Path $root 'runtime.json'
+  if (-not (Test-Path -LiteralPath $exe) -or -not (Test-Path -LiteralPath $manifestPath)) { return $false }
+  try {
+    $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    if ([string]$manifest.version -ne $version -or [string]$manifest.kind -ne $kind) { return $false }
+    if (@($manifest.platforms) -notcontains $target) { return $false }
+    if ($kind -eq 'chromium' -and $isWindows -and ([string]$manifest.distribution -ne 'source-built' -or $manifest.modified -ne $true)) { return $false }
+    $expected = if ($manifest.executableSha256) { [string]$manifest.executableSha256 } else { [string]$manifest.sha256 }
+    if ($expected -notmatch '^[0-9a-fA-F]{64}$') { return $false }
+    $actual = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash
+    return $actual.Equals($expected, [System.StringComparison]::OrdinalIgnoreCase)
+  } catch { return $false }
+}
+
 # The setup broken into named steps. The console installer, the installer window and the
 # work process (wizard-run) all walk exactly this list, so they can never drift apart.
 # Only the first step (Node.js/git) is fatal, as in the console installer: when it fails the rest
@@ -2029,8 +2052,19 @@ function Get-SetupSteps {
         $stageChromium = if ($target -eq 'win32-x64') { 'stage:chromium:windows' } else { 'stage:chromium' }
         $stageFirefox = if ($target -eq 'win32-x64') { 'stage:firefox:windows' } else { 'stage:firefox:linux' }
         try {
-          Invoke-Npm @('run', $stageChromium)
-          Invoke-Npm @('run', $stageFirefox)
+          # Do not rebuild or overwrite an already verified runtime on every install.
+          # Windows Chromium is source-built only; the stage script deliberately rejects
+          # Chrome for Testing archives, so a missing runtime must remain a hard failure.
+          if (-not (Test-NativeRuntimeReady 'chromium' $target)) {
+            Invoke-Npm @('run', $stageChromium)
+          } else {
+            Say 'Verified source-built Chromium runtime already present; reusing it.' 'Green'
+          }
+          if (-not (Test-NativeRuntimeReady 'gecko' $target)) {
+            Invoke-Npm @('run', $stageFirefox)
+          } else {
+            Say 'Verified Firefox runtime already present; reusing it.' 'Green'
+          }
           $nodeExe = Resolve-Tool 'node'
           if (-not $nodeExe) { throw 'Node.js is unavailable for native runtime verification.' }
           $check = Invoke-Native $nodeExe @('tools\verify-native-engines.mjs') $InstallRoot
@@ -2351,6 +2385,10 @@ function Test-Ready {
   foreach ($a in @('octobrowser', 'octodetect')) {
     if (-not (Test-Path -LiteralPath (Join-Path $InstallRoot "apps\$a\dist\main.js"))) { return $false }
   }
+  $target = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'win32-arm64' } else { 'win32-x64' }
+  if ($env:OS -ne 'Windows_NT') { $target = 'linux-x64' }
+  if (-not (Test-NativeRuntimeReady 'chromium' $target)) { return $false }
+  if (-not (Test-NativeRuntimeReady 'gecko' $target)) { return $false }
   return $true
 }
 
