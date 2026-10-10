@@ -184,10 +184,13 @@ describe('steps and the console installer', () => {
     expect(chromium).toContain('fetching Chromium source');
     expect(chromium).toContain('autoninja');
     expect(chromium).toContain("const parentIsGclientCheckout = fs.existsSync(parentGclient);");
-    expect(chromium).toContain('resuming Chromium source checkout (no history)');
+    expect(chromium).toContain('resuming Chromium source checkout (no history, parallel)');
     expect(chromium).toContain("'--no-history'");
+    expect(chromium).toContain("'--nohooks'");
+    expect(chromium).toContain("'--verbose'");
+    expect(chromium).toContain("'--jobs'");
     expect(chromium).toContain('fetching Chromium source (no history)');
-    expect(chromium).toContain('synchronizing Chromium dependencies (no history)');
+    expect(chromium).toContain('synchronizing Chromium dependencies (no history, parallel)');
     expect(chromium).toContain("source checkout is incomplete at ${source}");
     expect(chromium).toContain('`fetch chromium` is only valid in an empty parent directory');
     expect(chromium).toContain("distribution: 'source-built'");

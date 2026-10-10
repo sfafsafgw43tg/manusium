@@ -728,6 +728,7 @@ function Start-WizRun([string[]]$keys) {
   $script:Wiz.Cancelling = $false
   $script:Wiz.CurrentStep = ''
   $script:Wiz.LastOutput = ''
+  $script:Wiz.LastOutputAt = 0
   $script:Wiz.LastProgressLogAt = -15
   $script:Wiz.Outcome = $null
   $script:Wiz.Watch = [System.Diagnostics.Stopwatch]::StartNew()
@@ -783,7 +784,8 @@ function Invoke-WizTick {
   # activity instead of making the user think the download has frozen.
   if ($script:Wiz.CurrentStep -and $script:Wiz.LastOutput -and $script:Wiz.Watch) {
     $age = [int][Math]::Floor($script:Wiz.Watch.Elapsed.TotalSeconds)
-    $activity = [string]$script:Wiz.LastOutput
+    $idle = $age - [int]$script:Wiz.LastOutputAt
+    $activity = if ($idle -ge 10) { 'waiting for depot_tools/gclient output; download is still active' } else { [string]$script:Wiz.LastOutput }
     if ($activity.Length -gt 120) { $activity = $activity.Substring(0, 120) + '...' }
     $script:Ui.StepNow.Text = (T 'uiStillWorking' $script:Wiz.CurrentStep ("{0}s · {1}" -f $age, $activity))
   }
@@ -796,6 +798,7 @@ function Read-WizLine([string]$line) {
     $text = ([string]$line).Trim()
     if ($text -match '^Still working on:\s*(.+)$') { $text = "Chromium checkout active: $($matches[1])" }
     $script:Wiz.LastOutput = $text
+    if ($script:Wiz.Watch) { $script:Wiz.LastOutputAt = [int][Math]::Floor($script:Wiz.Watch.Elapsed.TotalSeconds) }
     # Git progress is written with carriage returns. When captured through a
     # pipe those updates become separate lines, which used to flood the UI
     # during the Chromium checkout. Keep the newest value in the live header,
@@ -927,7 +930,7 @@ function Show-SetupUi {
   $script:Wiz = @{
     Page = 1; Runner = $null; Watch = $null; Cancelling = $false; Outcome = $null
     ReportedOk = $false; ReportedKey = ''; LogPath = ''; StartApp = $false
-    CurrentStep = ''; LastOutput = ''
+    CurrentStep = ''; LastOutput = ''; LastOutputAt = 0
     Sdk = ''; Proxy = ''; EnvVars = $true; AddPath = $true; Vm = $false
     RunTotal = 0; RunDone = 0; Steps = @()
   }
