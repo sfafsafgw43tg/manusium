@@ -10,6 +10,7 @@ import {
   electronWinstallerArtifactsPresent,
   esbuildBinaryPath,
   esbuildPlatformPackage,
+  existingDependencyArtifactsPresent,
   ensureDependencies,
   fingerprintInputPaths,
   fingerprintOf,
@@ -284,6 +285,7 @@ describe('ensureDependencies', () => {
 
     put('package-lock.json', '{"lockfileVersion":3,"packages":{"changed":{}}}\n');
     // Both npm commands are interrupted: nothing is recorded any more.
+    rmSync(path.join(root, 'node_modules', 'electron'), { recursive: true, force: true });
     const interrupted = recordingRunner(() => 1);
     expect(ensureDependencies(root, { run: interrupted.run, log: () => {} }).status).toBe(2);
     expect(existsSync(path.join(root, STAMP_PATH))).toBe(false);
@@ -305,6 +307,17 @@ describe('ensureDependencies', () => {
     const runner = recordingRunner(() => 1);
     expect(ensureDependencies(root, { run: runner.run, log: () => {} }).status).toBe(2);
     expect(runner.calls.map((c) => c.args[0])).toEqual(['ci', 'install']);
+    expect(existsSync(path.join(root, STAMP_PATH))).toBe(false);
+  });
+
+  it('continues with a verified existing tree when both npm commands fail', () => {
+    makeProject();
+    fakeInstall();
+    expect(existingDependencyArtifactsPresent(root, { devDependencies: { electron: '39.0.0' } })).toBe(true);
+    const messages: string[] = [];
+    const runner = recordingRunner(() => 1);
+    expect(ensureDependencies(root, { run: runner.run, log: (line: string) => messages.push(line) }).status).toBe(0);
+    expect(messages.join('\n')).toContain('using the existing verified dependency tree');
     expect(existsSync(path.join(root, STAMP_PATH))).toBe(false);
   });
 

@@ -118,6 +118,19 @@ export function electronWinstallerArtifactsPresent(root) {
 }
 
 /**
+ * Allows a transient registry/network/npm failure to be skipped only when the
+ * already-present dependency tree can still build and launch the app. This is
+ * deliberately not a general "ignore npm" switch: a fresh or partial install
+ * still fails, and every build tool declared by the root manifest is checked.
+ */
+export function existingDependencyArtifactsPresent(root, pkg) {
+  if (electronRequired(pkg) && (!electronPackagePresent(root) || !electronBinaryPresent(root))) return false;
+  if (pkg?.devDependencies?.esbuild && !esbuildBinaryPath(root)) return false;
+  if (pkg?.devDependencies?.typescript && !existsSync(path.join(root, 'node_modules', 'typescript', 'bin', 'tsc'))) return false;
+  return electronWinstallerArtifactsPresent(root);
+}
+
+/**
  * Repairs only the native package scripts this project uses. It does not approve
  * arbitrary package scripts: esbuild is required by the build, while the
  * electron-winstaller selector is needed only when that packaging dependency exists.
@@ -260,10 +273,16 @@ export function ensureDependencies(root, { checkOnly = false, run = runCommand, 
     // The record goes first: an install that is interrupted (closed window, Ctrl+C, a
     // dropped network) must never look complete to the next start.
     rmSync(path.join(root, STAMP_PATH), { force: true });
-    if (run('npm', ['ci', '--no-audit', '--no-fund', '--ignore-scripts', '--include=optional'], root) !== 0) {
-      log('npm ci did not finish. Retrying with npm install.');
-      if (run('npm', ['install', '--no-audit', '--no-fund', '--ignore-scripts', '--include=optional'], root) !== 0) {
-        log('Dependency installation failed. Read the messages above, then start again.');
+    const ciStatus = run('npm', ['ci', '--no-audit', '--no-fund', '--ignore-scripts', '--include=optional'], root);
+    if (ciStatus !== 0) {
+      log(`npm ci failed with exit code ${ciStatus}. Retrying with npm install.`);
+      const installStatus = run('npm', ['install', '--no-audit', '--no-fund', '--ignore-scripts', '--include=optional'], root);
+      if (installStatus !== 0) {
+        if (existingDependencyArtifactsPresent(root, pkg)) {
+          log(`npm install also failed with exit code ${installStatus}; using the existing verified dependency tree and continuing.`);
+          return { status: 0, plan };
+        }
+        log(`Dependency installation failed: npm ci=${ciStatus}, npm install=${installStatus}. A complete usable dependency tree was not found.`);
         return { status: 2, plan };
       }
     }
