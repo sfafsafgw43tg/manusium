@@ -797,6 +797,9 @@ export function resolveFingerprint(fp: FingerprintConfig, geoInput: GeoInfo | un
   const screen = on && (fp.screen.mode === 'manual' || fp.screen.mode === 'custom' || fp.screen.mode === 'random')
     ? { width: fp.screen.width, height: fp.screen.height, availWidth: fp.screen.width, availHeight: fp.screen.height - (osKey === 'win' ? 40 : osKey === 'mac' ? 25 : 27) }
     : null;
+  const viewport = on && (fp.windowSize?.mode === 'custom' || screen)
+    ? (fp.windowSize?.mode === 'custom' ? { width: fp.windowSize.width, height: fp.windowSize.height } : { width: screen!.width, height: screen!.height })
+    : null;
   const isAppleSilicon = fp.os === 'macos' && /Apple M\d/.test(fp.webglInfo.renderer);
   const portsActive = on && (fp.ports.mode === 'protect' || fp.ports.mode === 'enable');
   const dntActive = on && (fp.doNotTrack === true || fp.doNotTrack === 'enable');
@@ -837,7 +840,7 @@ export function resolveFingerprint(fp: FingerprintConfig, geoInput: GeoInfo | un
     cores: on && (fp.cpu.mode === 'manual' || fp.cpu.mode === 'custom') ? fp.cpu.cores : null,
     memory: on && (fp.memory.mode === 'manual' || fp.memory.mode === 'custom') ? Math.min(8, fp.memory.gb) : null,
     screen,
-    windowSize: on && fp.windowSize?.mode === 'custom' ? { width: fp.windowSize.width, height: fp.windowSize.height } : null,
+    windowSize: viewport,
     fonts: on ? fp.fonts : 'real',
     fontList: on && fp.fonts === 'custom' ? (fp.fontList ?? fontPresets(fp.os)) : (fp.fontList ?? fontPresets(fp.os)),
     audio: on ? fp.audio : 'real',
