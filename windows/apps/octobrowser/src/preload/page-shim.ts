@@ -783,6 +783,9 @@ export function pageShim(c: PageConfig, eventName: string): void {
             ),
           });
         });
+        if (P === proto('SVGGraphicsElement')) {
+          method(P, 'getBBox', (_s, args, orig) => adjust(orig(...args) as DOMRect));
+        }
       }
     }
     if (fp.fonts === 'noise' || fp.fonts === 'custom' || fp.canvas === 'noise') {
@@ -795,6 +798,20 @@ export function pageShim(c: PageConfig, eventName: string): void {
       getter(TM, 'actualBoundingBoxDescent', (_s, orig) => Number(orig()) * f);
       getter(TM, 'fontBoundingBoxAscent', (_s, orig) => Number(orig()) * f);
       getter(TM, 'fontBoundingBoxDescent', (_s, orig) => Number(orig()) * f);
+    }
+    if ((fp.fonts === 'noise' || fp.fonts === 'custom') && fp.fontList?.length) {
+      const FS = proto('FontFaceSet');
+      const allowed = new Set(fp.fontList.map((name) => name.trim().toLocaleLowerCase()).filter(Boolean));
+      method(FS, 'check', (_self, args, orig) => {
+        const spec = String(args[0] ?? '');
+        const quoted = [...spec.matchAll(/["']([^"']+)["']/g)].map((m) => m[1]);
+        const unquoted = spec.replace(/["'][^"']+["']/g, '').match(/(?:^|\s)([A-Za-z][A-Za-z0-9 _-]*)\s*$/)?.[1];
+        const families = [...quoted, ...(unquoted ? [unquoted] : [])]
+          .map((name) => name.trim().toLocaleLowerCase())
+          .filter((name) => name && !['serif', 'sans-serif', 'monospace', 'system-ui', 'cursive', 'fantasy', 'emoji'].includes(name));
+        if (!families.length) return orig(...args);
+        return families.some((name) => allowed.has(name));
+      });
     }
 
     // ---- WebRTC ----
