@@ -1252,12 +1252,16 @@ function advanced(b: HTMLElement, d: Draft, draw: () => void, summary: () => voi
   hw.append(frowWithInfo(t('fp.canvas'), t('fp.info.canvas'), seg(fp.canvas === 'off' ? 'off' : fp.canvas === 'real' ? 'real' : 'noise', [['noise', t('fp.v.noise')], ['real', t('fp.v.real')], ['off', t('fp.v.off')]], (v) => { fp.canvas = v; ch(); renderSignalsCard(); })));
   hw.append(frowWithInfo(t('fp.clientRects'), t('fp.info.clientRects'), seg(fp.clientRects, [['noise', t('fp.v.noise')], ['real', t('fp.v.real')]], (v) => { fp.clientRects = v; ch(); renderSignalsCard(); })));
   hw.append(frowWithInfo(t('fp.audio'), t('fp.info.audio'), seg(fp.audio, [['noise', t('fp.v.noise')], ['real', t('fp.v.real')]], (v) => { fp.audio = v; ch(); renderSignalsCard(); })));
-  hw.append(frowWithInfo(t('fp.webgl'), t('fp.info.webgl'), seg(fp.webgl === 'off' ? 'off' : fp.webgl === 'real' ? 'real' : 'noise', [['noise', t('fp.v.noise')], ['real', t('fp.v.real')], ['off', t('fp.v.off')]], (v) => { fp.webgl = v; ch(); renderSignalsCard(); })));
+  hw.append(frowWithInfo(t('fp.webgl'), t('fp.info.webgl'), seg(fp.webgl === 'off' ? 'off' : fp.webgl === 'real' ? 'real' : 'noise', [['noise', t('fp.v.noise')], ['real', t('fp.v.real')], ['off', t('fp.v.off')]], (v) => { fp.webgl = v; void drawGpu(); ch(); renderSignalsCard(); })));
 
   // 10. WebGL Metadata
   const gpuBox = h('div', { class: 'gpu' });
   const drawGpu = async () => {
     clear(gpuBox);
+    if (fp.webgl === 'off') {
+      gpuBox.append(h('p', { class: 'hint', text: t('fp.webglGpuHidden') }));
+      return;
+    }
     if (fp.webglInfo.mode === 'real') return;
     const m = await meta(fp.os);
     const gpus = m?.gpus ?? [];
@@ -1987,8 +1991,11 @@ function summaryPanel(d: Draft, renew: () => Promise<void>, creating: boolean): 
     row(t('fp.userAgent'), fp.userAgent, 'ua');
     row(t('fp.webrtc'), t(`fp.v.${fp.webrtc.mode === 'disable-udp' ? 'disableUdp' : fp.webrtc.mode}`) + (fp.webrtc.mode === 'manual' && fp.webrtc.publicIp ? ` · ${fp.webrtc.publicIp}` : ''));
     row(t('fp.canvas'), t(`fp.v.${fp.canvas}`));
-    row(t('fp.webgl'), t(`fp.v.${fp.webgl}`));
-    row(t('fp.webglInfo'), fp.webglInfo.mode === 'manual' || fp.webglInfo.mode === 'custom' ? fp.webglInfo.renderer.replace(/^ANGLE \(([^,]+), (.+?)( \(0x[0-9A-F]+\))? Direct3D.*$/, '$2').replace(/^ANGLE \(Apple, ANGLE Metal Renderer: (.+?),.*$/, '$1') : t('fp.v.real'));
+    const webglRenderer = fp.webglInfo.mode === 'manual' || fp.webglInfo.mode === 'custom'
+      ? fp.webglInfo.renderer.replace(/^ANGLE \(([^,]+), (.+?)( \(0x[0-9A-F]+\))? Direct3D.*$/, '$2').replace(/^ANGLE \(Apple, ANGLE Metal Renderer: (.+?),.*$/, '$1')
+      : t('fp.v.real');
+    row(t('fp.webgl'), fp.webgl === 'off' ? t('fp.v.off') : `${t(`fp.v.${fp.webgl}`)} · ${webglRenderer}`);
+    row(t('fp.webglInfo'), fp.webgl === 'off' ? t('fp.v.off') : webglRenderer);
     row(t('fp.webgpu'), t(`fp.v.${fp.webgpu}`));
     row(t('fp.clientRects'), t(`fp.v.${fp.clientRects}`));
     row(t('fp.timezone'), auto(fp.timezone.mode, fp.timezone.value, c?.timezone));

@@ -827,9 +827,12 @@ export function resolveFingerprint(fp: FingerprintConfig, geoInput: GeoInfo | un
     webrtcIp: webrtcMode === 'manual' ? fp.webrtc.publicIp : webrtcMode === 'altered' ? geo?.ip ?? '' : '',
     canvas: on ? fp.canvas : 'real',
     webgl: on ? fp.webgl : 'real',
-    webglVendor: on && (fp.webglInfo.mode === 'manual' || fp.webglInfo.mode === 'custom') && fp.webglInfo.vendor ? fp.webglInfo.vendor : null,
-    webglRenderer: on && (fp.webglInfo.mode === 'manual' || fp.webglInfo.mode === 'custom') && fp.webglInfo.renderer ? fp.webglInfo.renderer : null,
-    webgpu: on ? fp.webgpu : 'real',
+    webglVendor: on && fp.webgl !== 'off' && (fp.webglInfo.mode === 'manual' || fp.webglInfo.mode === 'custom') && fp.webglInfo.vendor ? fp.webglInfo.vendor : null,
+    webglRenderer: on && fp.webgl !== 'off' && (fp.webglInfo.mode === 'manual' || fp.webglInfo.mode === 'custom') && fp.webglInfo.renderer ? fp.webglInfo.renderer : null,
+    // WebGPU can reveal the same adapter even when WebGL is disabled. Treat
+    // WebGL=off as a graphics-exposure off switch so the page shim cannot
+    // re-expose the host adapter through navigator.gpu.
+    webgpu: on ? (fp.webgl === 'off' ? 'off' : fp.webgpu) : 'real',
     clientRects: on ? fp.clientRects : 'real',
     cores: on && (fp.cpu.mode === 'manual' || fp.cpu.mode === 'custom') ? fp.cpu.cores : null,
     memory: on && (fp.memory.mode === 'manual' || fp.memory.mode === 'custom') ? Math.min(8, fp.memory.gb) : null,

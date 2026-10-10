@@ -1947,6 +1947,7 @@ export const en: Record<string, string> = {
   'fp.canvas': 'Canvas',
   'fp.webgl': 'WebGL',
   'fp.webglInfo': 'WebGL info',
+  'fp.webglGpuHidden': 'WebGL is disabled. No GPU vendor or renderer is exposed by this profile.',
   'fp.gpuVendor': 'Vendor',
   'fp.gpuRenderer': 'Renderer',
   'fp.randomGpu': 'Random GPU',

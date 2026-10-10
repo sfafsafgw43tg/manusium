@@ -178,6 +178,15 @@ describe('sanitize + resolve', () => {
     expect(Object.keys(r)).toEqual(['kind', 'enabled']);
   });
 
+  it('does not expose stored GPU metadata or WebGPU when WebGL is off', () => {
+    const configured = { ...base, webgl: 'off' as const, webgpu: 'real' as const, webglInfo: { mode: 'manual' as const, vendor: 'Host vendor', renderer: 'Host GPU' } };
+    const r = resolveFingerprint(configured, undefined, 'en-US');
+    if (r.kind === 'disabled') throw new Error('unexpected disabled result');
+    expect(r.webglVendor).toBeNull();
+    expect(r.webglRenderer).toBeNull();
+    expect(r.webgpu).toBe('off');
+  });
+
   it('warns about inconsistent manual edits', () => {
     const fp = { ...base, os: 'macos' as const, userAgent: base.userAgent.replace(/\(.*?\)/, '(Windows NT 10.0; Win64; x64)'), webglInfo: { mode: 'manual' as const, vendor: 'Google Inc. (NVIDIA)', renderer: 'ANGLE (NVIDIA, X Direct3D11 vs_5_0 ps_5_0, D3D11)' }, cpu: { mode: 'manual' as const, cores: 2 } };
     expect(fingerprintWarnings(fp, 150).sort()).toEqual(['fp.warn.gpuOs', 'fp.warn.macCores', 'fp.warn.uaOs']);
