@@ -77,6 +77,7 @@ Name: "pl"; MessagesFile: "compiler:Languages\Polish.isl"
 [CustomMessages]
 en.DesktopIcons=Create desktop shortcuts
 en.Protocol=Open octobrowser:// links with Octo.su
+en.RegistryIntegration=Register optional Octo.su Windows integration (open .octoprofile files; no browser data is stored)
 en.LaunchBrowser=Start Octo.su
 en.LaunchDetect=Start OctoDetect.su
 en.DataKept=Your profiles and settings are stored in the data folder you chose at first run (default: Documents\OctoSuite). They were NOT removed. Use scripts\uninstall.bat before uninstalling if you also want to delete them.
@@ -86,6 +87,7 @@ en.RunQuiet=Start both apps (no console window)
 en.GithubUpdate=Update from GitHub
 pl.DesktopIcons=Utwórz skróty na pulpicie
 pl.Protocol=Otwieraj linki octobrowser:// w Octo.su
+pl.RegistryIntegration=Zarejestruj opcjonalną integrację Octo.su z Windows (otwieraj pliki .octoprofile; dane przeglądarki nie są zapisywane)
 pl.LaunchBrowser=Uruchom Octo.su
 pl.LaunchDetect=Uruchom OctoDetect.su
 pl.DataKept=Twoje profile i ustawienia znajdują się w folderze danych wybranym przy pierwszym uruchomieniu (domyślnie: Dokumenty\OctoSuite). NIE zostały usunięte. Jeśli chcesz je również usunąć, przed odinstalowaniem użyj scripts\uninstall.bat.
@@ -96,7 +98,8 @@ pl.GithubUpdate=Aktualizuj z GitHub
 
 [Tasks]
 Name: "desktopicons"; Description: "{cm:DesktopIcons}"; Flags: unchecked
-Name: "protocol"; Description: "{cm:Protocol}"
+Name: "protocol"; Description: "{cm:Protocol}"; Flags: unchecked
+Name: "registry"; Description: "{cm:RegistryIntegration}"; Flags: unchecked
 
 [Files]
 ; Application folders produced by electron-builder (`npm run dist`).
@@ -129,11 +132,17 @@ Name: "{autodesktop}\Octo.su"; Filename: "{app}\OctoBrowser\Octo.su.exe"; Workin
 Name: "{autodesktop}\OctoDetect.su"; Filename: "{app}\OctoDetect\OctoDetect.su.exe"; WorkingDir: "{app}\OctoDetect"; Tasks: desktopicons
 
 [Registry]
-; octobrowser:// deep links (open?profile=<id|name>). Per-user when installed per-user.
-Root: HKA; Subkey: "Software\Classes\octobrowser"; ValueType: string; ValueName: ""; ValueData: "URL:Octo.su"; Flags: uninsdeletekey; Tasks: protocol
-Root: HKA; Subkey: "Software\Classes\octobrowser"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""; Tasks: protocol
-Root: HKA; Subkey: "Software\Classes\octobrowser\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: """{app}\OctoBrowser\Octo.su.exe"",0"; Tasks: protocol
-Root: HKA; Subkey: "Software\Classes\octobrowser\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\OctoBrowser\Octo.su.exe"" ""%1"""; Tasks: protocol
+; All integration is per-user and opt-in. The [Code] rollback routines below
+; restore a previous value only when the current value is still ours.
+Root: HKCU; Subkey: "Software\Classes\octobrowser"; ValueType: string; ValueName: ""; ValueData: "URL:Octo.su"; Tasks: protocol
+Root: HKCU; Subkey: "Software\Classes\octobrowser"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""; Tasks: protocol
+Root: HKCU; Subkey: "Software\Classes\octobrowser\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: """{app}\OctoBrowser\Octo.su.exe"",0"; Tasks: protocol
+Root: HKCU; Subkey: "Software\Classes\octobrowser\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\OctoBrowser\Octo.su.exe"" ""%1"""; Tasks: protocol
+Root: HKCU; Subkey: "Software\Classes\.octoprofile"; ValueType: string; ValueName: ""; ValueData: "OctoSuite.Profile"; Tasks: registry
+Root: HKCU; Subkey: "Software\Classes\.octoprofile"; ValueType: string; ValueName: "Content Type"; ValueData: "application/vnd.octosuite.profile"; Tasks: registry
+Root: HKCU; Subkey: "Software\Classes\OctoSuite.Profile"; ValueType: string; ValueName: ""; ValueData: "OctoSuite profile"; Tasks: registry
+Root: HKCU; Subkey: "Software\Classes\OctoSuite.Profile\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: """{app}\OctoBrowser\Octo.su.exe"",0"; Tasks: registry
+Root: HKCU; Subkey: "Software\Classes\OctoSuite.Profile\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\OctoBrowser\Octo.su.exe"" ""%1"""; Tasks: registry
 
 [Run]
 ; Start the primary browser by default after a normal installation. OctoDetect
@@ -149,6 +158,7 @@ Filename: "{app}\OctoDetect\OctoDetect.su.exe"; Flags: nowait runasoriginaluser;
 Type: filesandordirs; Name: "{app}\OctoBrowser"
 Type: filesandordirs; Name: "{app}\OctoDetect"
 Type: filesandordirs; Name: "{app}\scripts"
+Type: files; Name: "{app}\registry-state.ini"
 
 [Code]
 procedure InitializeWizard;
@@ -162,6 +172,106 @@ begin
   WizardForm.WizardSmallBitmapImage.Visible := True;
 end;
 
+function RegistryStateFile(): String;
+begin
+  Result := ExpandConstant('{app}\registry-state.ini');
+end;
+
+procedure BackupRegistryValue(const Id, KeyName, ValueName, Expected: String);
+var
+  Previous: String;
+  State: String;
+begin
+  State := RegistryStateFile();
+  if GetIniString('backup', Id + '.recorded', '', State) = '1' then Exit;
+  if RegQueryStringValue(HKCU, KeyName, ValueName, Previous) then begin
+    SetIniString('backup', Id + '.present', '1', State);
+    SetIniString('backup', Id + '.value', Previous, State);
+  end else begin
+    SetIniString('backup', Id + '.present', '0', State);
+  end;
+  SetIniString('backup', Id + '.key', KeyName, State);
+  SetIniString('backup', Id + '.name', ValueName, State);
+  SetIniString('backup', Id + '.expected', Expected, State);
+  SetIniString('backup', Id + '.recorded', '1', State);
+  SetIniString('meta', 'version', '1', State);
+end;
+
+procedure RestoreRegistryValue(const Id, KeyName, ValueName: String);
+var
+  State, Current, Expected, Previous, Present: String;
+begin
+  State := RegistryStateFile();
+  if GetIniString('meta', 'version', '', State) <> '1' then Exit;
+  Expected := GetIniString('backup', Id + '.expected', #1, State);
+  Present := GetIniString('backup', Id + '.present', '0', State);
+  if Expected = #1 then Exit;
+  { Do not overwrite a value changed by the user or another application. }
+  if not RegQueryStringValue(HKCU, KeyName, ValueName, Current) then Exit;
+  if Current <> Expected then Exit;
+  if Present = '1' then begin
+    Previous := GetIniString('backup', Id + '.value', '', State);
+    RegWriteStringValue(HKCU, KeyName, ValueName, Previous);
+  end else begin
+    RegDeleteValue(HKCU, KeyName, ValueName);
+  end;
+end;
+
+procedure BackupSelectedRegistryState;
+begin
+  if WizardIsTaskSelected('protocol') then begin
+    BackupRegistryValue('protocol.description', 'Software\Classes\octobrowser', '', 'URL:Octo.su');
+    BackupRegistryValue('protocol.flag', 'Software\Classes\octobrowser', 'URL Protocol', '');
+    BackupRegistryValue('protocol.icon', 'Software\Classes\octobrowser\DefaultIcon', '', ExpandConstant('"{app}\OctoBrowser\Octo.su.exe",0'));
+    BackupRegistryValue('protocol.command', 'Software\Classes\octobrowser\shell\open\command', '', ExpandConstant('"{app}\OctoBrowser\Octo.su.exe" "%1"'));
+  end;
+  if WizardIsTaskSelected('registry') then begin
+    BackupRegistryValue('profile.extension', 'Software\Classes\.octoprofile', '', 'OctoSuite.Profile');
+    BackupRegistryValue('profile.content', 'Software\Classes\.octoprofile', 'Content Type', 'application/vnd.octosuite.profile');
+    BackupRegistryValue('profile.description', 'Software\Classes\OctoSuite.Profile', '', 'OctoSuite profile');
+    BackupRegistryValue('profile.icon', 'Software\Classes\OctoSuite.Profile\DefaultIcon', '', ExpandConstant('"{app}\OctoBrowser\Octo.su.exe",0'));
+    BackupRegistryValue('profile.command', 'Software\Classes\OctoSuite.Profile\shell\open\command', '', ExpandConstant('"{app}\OctoBrowser\Octo.su.exe" "%1"'));
+  end;
+end;
+
+procedure RestoreAllRegistryState;
+begin
+  if GetIniString('meta', 'version', '', RegistryStateFile()) <> '1' then Exit;
+  RestoreRegistryValue('protocol.command', 'Software\Classes\octobrowser\shell\open\command', '');
+  RestoreRegistryValue('protocol.icon', 'Software\Classes\octobrowser\DefaultIcon', '');
+  RestoreRegistryValue('protocol.flag', 'Software\Classes\octobrowser', 'URL Protocol');
+  RestoreRegistryValue('protocol.description', 'Software\Classes\octobrowser', '');
+  RestoreRegistryValue('profile.command', 'Software\Classes\OctoSuite.Profile\shell\open\command', '');
+  RestoreRegistryValue('profile.icon', 'Software\Classes\OctoSuite.Profile\DefaultIcon', '');
+  RestoreRegistryValue('profile.description', 'Software\Classes\OctoSuite.Profile', '');
+  RestoreRegistryValue('profile.content', 'Software\Classes\.octoprofile', 'Content Type');
+  RestoreRegistryValue('profile.extension', 'Software\Classes\.octoprofile', '');
+  { RegDeleteKey refuses non-empty keys, so unrelated values/subkeys are safe. }
+  RegDeleteKey(HKCU, 'Software\Classes\octobrowser\shell\open\command');
+  RegDeleteKey(HKCU, 'Software\Classes\octobrowser\shell\open');
+  RegDeleteKey(HKCU, 'Software\Classes\octobrowser\shell');
+  RegDeleteKey(HKCU, 'Software\Classes\octobrowser\DefaultIcon');
+  RegDeleteKey(HKCU, 'Software\Classes\octobrowser');
+  RegDeleteKey(HKCU, 'Software\Classes\OctoSuite.Profile\shell\open\command');
+  RegDeleteKey(HKCU, 'Software\Classes\OctoSuite.Profile\shell\open');
+  RegDeleteKey(HKCU, 'Software\Classes\OctoSuite.Profile\shell');
+  RegDeleteKey(HKCU, 'Software\Classes\OctoSuite.Profile\DefaultIcon');
+  RegDeleteKey(HKCU, 'Software\Classes\OctoSuite.Profile');
+  RegDeleteKey(HKCU, 'Software\Classes\.octoprofile');
+end;
+
+procedure PrepareRegistryStateForInstall;
+var
+  State: String;
+begin
+  State := RegistryStateFile();
+  { An upgrade may change the task selection. Restore the old owned values
+    first, then back up the user's current values for the new selection. }
+  RestoreAllRegistryState;
+  if FileExists(State) then DeleteFile(State);
+  BackupSelectedRegistryState;
+end;
+
 { True when Setup was started with /RELAUNCH=<AppId> (by the in-app updater). }
 function RelaunchRequested(AppId: String): Boolean;
 begin
@@ -171,6 +281,14 @@ end;
 { Tell the user that their data is kept after uninstalling. }
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
+  if CurUninstallStep = usUninstall then
+    RestoreAllRegistryState;
   if (CurUninstallStep = usPostUninstall) and (not UninstallSilent) then
     MsgBox(CustomMessage('DataKept'), mbInformation, MB_OK);
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssInstall then
+    PrepareRegistryStateForInstall;
 end;
