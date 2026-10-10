@@ -9,6 +9,7 @@ import {
   electronRequired,
   electronWinstallerArtifactsPresent,
   esbuildBinaryPath,
+  esbuildPlatformPackage,
   ensureDependencies,
   fingerprintInputPaths,
   fingerprintOf,
@@ -158,9 +159,13 @@ describe('native package setup', () => {
   });
 
   it('repairs only missing native package artifacts and verifies esbuild execution', () => {
+    put('node_modules/esbuild/package.json', JSON.stringify({
+      optionalDependencies: { [`@esbuild/${process.platform}-${process.arch}`]: '0.28.2' },
+    }));
     put('node_modules/esbuild/install.js', '');
     put('node_modules/electron-winstaller/script/select-7z-arch.js', '');
     const runner = recordingRunner((call) => {
+      if (call.command === 'npm' && call.args[0] === 'install') put(`node_modules/@esbuild/${process.platform}-${process.arch}/package.json`, '{}');
       if (call.args[0].endsWith(path.join('esbuild', 'install.js'))) put('node_modules/esbuild/bin/esbuild', '');
       if (call.args[0].endsWith(path.join('select-7z-arch.js'))) {
         put('node_modules/electron-winstaller/vendor/7z.exe', '');
@@ -169,9 +174,20 @@ describe('native package setup', () => {
       return 0;
     });
     expect(verifyNativePackageArtifacts(root, { run: runner.run, log: () => {} })).toBe(true);
-    expect(runner.calls[0].args[0]).toBe(path.join(root, 'node_modules', 'esbuild', 'install.js'));
-    expect(runner.calls[1].args).toEqual(['--version']);
-    expect(runner.calls[2].args[0]).toBe(path.join(root, 'node_modules', 'electron-winstaller', 'script', 'select-7z-arch.js'));
+    expect(runner.calls[0].args).toContain(`@esbuild/${process.platform}-${process.arch}@0.28.2`);
+    expect(runner.calls[1].args[0]).toBe(path.join(root, 'node_modules', 'esbuild', 'install.js'));
+    expect(runner.calls[2].args).toEqual(['--version']);
+    expect(runner.calls[3].args[0]).toBe(path.join(root, 'node_modules', 'electron-winstaller', 'script', 'select-7z-arch.js'));
+  });
+
+  it('reads the pinned platform package version from esbuild rather than guessing it', () => {
+    put('node_modules/esbuild/package.json', JSON.stringify({
+      optionalDependencies: { [`@esbuild/${process.platform}-${process.arch}`]: '0.28.2' },
+    }));
+    expect(esbuildPlatformPackage(root)).toEqual({
+      name: `@esbuild/${process.platform}-${process.arch}`,
+      version: '0.28.2',
+    });
   });
 });
 
@@ -231,7 +247,8 @@ describe('ensureDependencies', () => {
     });
     expect(ensureDependencies(root, { run: first.run, log: () => {} }).status).toBe(0);
     expect(first.calls.filter(isNpmCi).map((c) => c.command + ' ' + c.args[0])).toEqual(['npm ci']);
-    expect(first.calls.find(isNpmCi)?.args).toContain('--ignore-scripts=false');
+    expect(first.calls.find(isNpmCi)?.args).toContain('--ignore-scripts');
+    expect(first.calls.find(isNpmCi)?.args).toContain('--include=optional');
     expect(existsSync(path.join(root, STAMP_PATH))).toBe(true);
 
     const second = recordingRunner(() => 0);

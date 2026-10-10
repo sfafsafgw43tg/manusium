@@ -1685,7 +1685,10 @@ function Ensure-ChromiumBuildToolchain {
       Say 'Adding the missing Chromium C++ workload to the existing Visual Studio installation...' 'Cyan'
       $vsCommand = $vsSetup
       $vsDescription = "Visual Studio modify at $vsAnyPath"
-      $vsArgs = @('modify', '--installPath', $vsAnyPath, '--add', 'Microsoft.VisualStudio.Workload.NativeDesktop', '--add', 'Microsoft.VisualStudio.Component.VC.ATLMFC', '--includeRecommended', '--passive', '--wait', '--log', $vsLog)
+      # setup.exe modify has its own process lifetime and does not accept winget's
+      # --wait or --log switches. Keep output in the installer log and rely on the
+      # returned setup.exe exit code plus vswhere verification below.
+      $vsArgs = @('modify', '--installPath', $vsAnyPath, '--add', 'Microsoft.VisualStudio.Workload.NativeDesktop', '--add', 'Microsoft.VisualStudio.Component.VC.ATLMFC', '--includeRecommended', '--passive')
     } else {
       $winget = Get-Command 'winget' -ErrorAction SilentlyContinue
       if (-not $winget) {
@@ -1970,8 +1973,36 @@ $CmdlineToolsUrls = @(
 
 # Installs cmdline-tools (sdkmanager + the new 'android' CLI) into a writable
 # SDK folder when the detected SDK has none. Returns the folder or $null.
+function Normalize-CmdlineToolsLayout([string]$root) {
+  if (-not $root) { return $null }
+  $parent = Join-Path $root 'cmdline-tools'
+  $canonical = Join-Path $parent 'latest'
+  $canonicalManager = Join-Path $canonical 'bin\sdkmanager.bat'
+  if (Test-Path -LiteralPath $canonicalManager) { return $canonical }
+  if (-not (Test-Path -LiteralPath $parent)) { return $null }
+  $candidates = @(Get-ChildItem -LiteralPath $parent -Directory -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -match '^latest-\d+$' -and (Test-Path -LiteralPath (Join-Path $_.FullName 'bin\sdkmanager.bat')) } |
+    Sort-Object { [int]($_.Name -replace '^latest-', '') } -Descending)
+  if ($candidates.Count -eq 0) { return $null }
+  try {
+    if (Test-Path -LiteralPath $canonical) {
+      $backup = "$canonical.incomplete-$([guid]::NewGuid().ToString('N'))"
+      Move-Item -LiteralPath $canonical -Destination $backup -ErrorAction Stop
+      Write-Log 'warn' "preserved incomplete Android cmdline-tools folder at $backup"
+    }
+    Move-Item -LiteralPath $candidates[0].FullName -Destination $canonical -ErrorAction Stop
+    Write-Log 'info' "normalized Android cmdline-tools folder $($candidates[0].Name) to latest"
+    return $canonical
+  } catch {
+    Write-Log 'warn' "could not normalize Android cmdline-tools folder: $($_.Exception.Message)"
+    return $null
+  }
+}
+
 function Install-CommandLineTools([string]$root) {
   if (-not $root) { return $null }
+  $existing = Normalize-CmdlineToolsLayout $root
+  if ($existing) { return $existing }
   $zip = Join-Path $env:TEMP ('cmdline-tools-{0}.zip' -f [guid]::NewGuid().ToString('N'))
   $ok = $false
   foreach ($url in $CmdlineToolsUrls) {
@@ -1984,7 +2015,11 @@ function Install-CommandLineTools([string]$root) {
   if (-not (Test-Path -LiteralPath $inner)) { Warn (T 'cmdlineToolsFailed'); return $null }
   $target = Join-Path $root 'cmdline-tools\latest'
   try {
-    if (Test-Path -LiteralPath $target) { Remove-Item -LiteralPath $target -Recurse -Force }
+    if (Test-Path -LiteralPath $target) {
+      $backup = "$target.incomplete-$([guid]::NewGuid().ToString('N'))"
+      Move-Item -LiteralPath $target -Destination $backup -ErrorAction Stop
+      Write-Log 'warn' "preserved incomplete Android cmdline-tools folder at $backup"
+    }
     New-Item -ItemType Directory -Path (Split-Path $target -Parent) -Force | Out-Null
     Move-Item -LiteralPath $inner -Destination $target -Force
   } catch { Warn (T 'cmdlineToolsFailed'); return $null }
@@ -2144,6 +2179,8 @@ function Install-AndroidSdkComponents {
   # carries sdkmanager.bat sits in Program Files.
   $root = Get-AndroidInstallRoot
   if (-not $root) { Warn (T 'sdkToolsNotWritable' $toolsRoot); return $false }
+  [void](Normalize-CmdlineToolsLayout $root)
+  if ($toolsRoot -and $toolsRoot -ne $root) { [void](Normalize-CmdlineToolsLayout $toolsRoot) }
   $sdkmanager = Get-SdkManagerPath $root
   if (-not $sdkmanager) { $sdkmanager = Get-SdkManagerPath $toolsRoot }
   if (-not $sdkmanager) {
@@ -2172,18 +2209,25 @@ function Install-AndroidSdkComponents {
       [Environment]::SetEnvironmentVariable('JAVA_HOME', $java, 'User')
     }
   } catch { Write-Log 'warn' "JAVA_HOME not persisted: $($_.Exception.Message)" }
-  Say (T 'sdkToolsInstall' ($AndroidSdkPackages -join ', ')) 'Cyan'
+  $packagesToInstall = @($AndroidSdkPackages)
+  if ($sdkmanager) {
+    # A working sdkmanager already owns cmdline-tools;latest. Asking it to install
+    # the same package again is what creates latest-2 on some SDK Manager versions.
+    $packagesToInstall = @($packagesToInstall | Where-Object { $_ -ne 'cmdline-tools;latest' })
+  }
+  Say (T 'sdkToolsInstall' ($packagesToInstall -join ', ')) 'Cyan'
   # The command line is built from plain strings: nesting escaped quotes inside
   # an expanding string is what made this script fail to parse before.
   $q = [char]34
   $tool = $q + $sdkmanager + $q
   $rootArg = $q + '--sdk_root=' + $root + $q
-  $packages = (($AndroidSdkPackages | ForEach-Object { $q + $_ + $q }) -join ' ')
+  $packages = (($packagesToInstall | ForEach-Object { $q + $_ + $q }) -join ' ')
   try {
     # "y" answers the licence prompts; only tool packages are listed here.
     $licence = Invoke-Native $env:ComSpec @('/d', '/s', '/c', ('echo y| ' + $tool + ' ' + $rootArg + ' --licenses')) $null -Quiet
     $install = Invoke-Native $env:ComSpec @('/d', '/s', '/c', ('echo y| ' + $tool + ' ' + $rootArg + ' ' + $packages)) $null
     if ($install.code -ne 0) { Warn (T 'sdkToolsFailed' $install.code); return $false }
+    [void](Normalize-CmdlineToolsLayout $root)
     if ($licence.code -ne 0) { Write-Log 'warn' "sdkmanager --licenses exit $($licence.code)" }
   } catch {
     Warn (T 'sdkToolsFailed' $_.Exception.Message)
@@ -2284,7 +2328,7 @@ function Get-SetupSteps {
         Set-AndroidUserEnvironment (Get-AndroidInstallRoot)
         return $ok
       } }
-    @{ Key = 'stepDeps'; Required = $true; Fatal = $false; Action = { [void](Invoke-EnsureDependencies); return $true } }
+    @{ Key = 'stepDeps'; Required = $true; Fatal = $true; Action = { return (Invoke-EnsureDependencies) } }
     @{ Key = 'stepRuntimes'; Required = $true; Fatal = $true; Action = {
         $target = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'win32-arm64' } else { 'win32-x64' }
         if ($env:OS -ne 'Windows_NT') { $target = 'linux-x64' }

@@ -96,6 +96,20 @@ export function esbuildBinaryPath(root) {
   return existsSync(path.join(dir, name)) ? path.join(dir, name) : null;
 }
 
+/** Returns the exact platform package esbuild expects for this process. */
+export function esbuildPlatformPackage(root) {
+  const packageFile = path.join(root, 'node_modules', 'esbuild', 'package.json');
+  if (!existsSync(packageFile)) return null;
+  try {
+    const pkg = JSON.parse(readFileSync(packageFile, 'utf8'));
+    const name = `@esbuild/${process.platform}-${process.arch}`;
+    const version = pkg.optionalDependencies?.[name];
+    return typeof version === 'string' ? { name, version } : null;
+  } catch {
+    return null;
+  }
+}
+
 /** The Squirrel helper is optional at runtime but needs its selected 7-Zip pair for packaging. */
 export function electronWinstallerArtifactsPresent(root) {
   const dir = path.join(root, 'node_modules', 'electron-winstaller');
@@ -113,8 +127,18 @@ export function verifyNativePackageArtifacts(root, { run = runCommand, log = wri
   if (existsSync(esbuildDir)) {
     let binary = esbuildBinaryPath(root);
     if (!binary) {
+      const platformPackage = esbuildPlatformPackage(root);
+      if (!platformPackage) {
+        log(`esbuild does not declare a platform package for ${process.platform}-${process.arch}.`);
+        return false;
+      }
+      const packageSpec = `${platformPackage.name}@${platformPackage.version}`;
+      log(`esbuild native binary is missing; installing its optional package ${packageSpec} without running unrelated scripts.`);
+      if (run('npm', [
+        'install', '--no-save', '--no-package-lock', '--ignore-scripts', '--include=optional', packageSpec,
+      ], root) !== 0) return false;
       const install = path.join(esbuildDir, 'install.js');
-      log('esbuild native binary is missing; running esbuild/install.js.');
+      log('running the verified esbuild install.js for the restored platform package.');
       if (!existsSync(install) || run(process.execPath, [install], root) !== 0) return false;
       binary = esbuildBinaryPath(root);
     }
@@ -236,9 +260,9 @@ export function ensureDependencies(root, { checkOnly = false, run = runCommand, 
     // The record goes first: an install that is interrupted (closed window, Ctrl+C, a
     // dropped network) must never look complete to the next start.
     rmSync(path.join(root, STAMP_PATH), { force: true });
-    if (run('npm', ['ci', '--no-audit', '--no-fund', '--ignore-scripts=false'], root) !== 0) {
+    if (run('npm', ['ci', '--no-audit', '--no-fund', '--ignore-scripts', '--include=optional'], root) !== 0) {
       log('npm ci did not finish. Retrying with npm install.');
-      if (run('npm', ['install', '--no-audit', '--no-fund', '--ignore-scripts=false'], root) !== 0) {
+      if (run('npm', ['install', '--no-audit', '--no-fund', '--ignore-scripts', '--include=optional'], root) !== 0) {
         log('Dependency installation failed. Read the messages above, then start again.');
         return { status: 2, plan };
       }

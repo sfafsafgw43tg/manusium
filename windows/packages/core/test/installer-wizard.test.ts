@@ -74,8 +74,8 @@ describe('success is reported only when every required step succeeded', () => {
   it('the fatal flag covers prerequisites and the native runtime build', () => {
     const block = octo.slice(octo.indexOf('function Get-SetupSteps'), octo.indexOf('function Show-InstallerWindow'));
     const fatal = [...block.matchAll(/Key = '(step[A-Za-z]+)'; Required = \$(?:true|false); Fatal = \$true/g)].map((m) => m[1]);
-    expect(fatal).toEqual(['stepPrereqs', 'stepRuntimes']);
-    expect([...block.matchAll(/Fatal = \$false/g)]).toHaveLength(6);
+    expect(fatal).toEqual(['stepPrereqs', 'stepDeps', 'stepRuntimes']);
+    expect([...block.matchAll(/Fatal = \$false/g)]).toHaveLength(5);
     expect(octo).toContain('stepRuntimes');
   });
 
@@ -231,6 +231,9 @@ describe('steps and the console installer', () => {
     expect(runtimeStep).toContain('Ensure-ChromiumBuildToolchain');
     expect(octo).toContain("Invoke-Native $gclient @('--version') $depot");
     expect(octo).not.toContain('Invoke-Native $gclient @() $depot');
+    expect(octo).toContain('function Normalize-CmdlineToolsLayout');
+    expect(octo).toContain('preserved incomplete Android cmdline-tools folder');
+    expect(octo).toContain("$_ -ne 'cmdline-tools;latest'");
     expect(octo).toContain('chromium/tools/depot_tools.git');
     expect(octo).toContain('Microsoft.VisualStudio.BuildTools');
     expect(octo).toContain('Microsoft.VisualStudio.Component.VC.Tools.x86.x64');
@@ -245,6 +248,9 @@ describe('steps and the console installer', () => {
     expect(octo).toContain("$vsOverride = '--wait --passive --add Microsoft.VisualStudio.Workload.NativeDesktop");
     expect(octo).toContain("('\"{0}\"' -f $vsOverride)");
     expect(octo).toContain("'--log', $vsLog");
+    const vsModify = octo.slice(octo.indexOf("$vsArgs = @('modify'"), octo.indexOf("$vsArgs = @('modify'") + 500);
+    expect(vsModify).not.toContain("'--wait'");
+    expect(vsModify).not.toContain("'--log'");
     expect(octo).toContain("-Verb RunAs");
     expect(octo).toContain('$vsDescription command:');
     expect(octo).toContain('Visual Studio modification failed with exit code');
@@ -285,6 +291,9 @@ describe('steps and the console installer', () => {
     expect(octo).toContain("if (-not $ok -and $step.Key -eq 'stepPrereqs') { return $false }");
     expect(octo).toContain("if (-not $ok -and $step.Fatal) { return $false }");
     expect(octo).toContain('if ($step.Fatal) { break }');
+    const depsStep = octo.slice(octo.indexOf("Key = 'stepDeps'"), octo.indexOf("Key = 'stepRuntimes'"));
+    expect(depsStep).toContain('Fatal = $true');
+    expect(depsStep).toContain('return (Invoke-EnsureDependencies)');
   });
 });
 
