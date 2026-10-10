@@ -57,14 +57,16 @@ prerequisites and Firefox staging remain separate feature flows and are not down
 |---|---|---|---|
 | Node.js and git | yes | **Stops the run**: the later steps are skipped | Installs Node.js 22.12+ and git (winget or the vendor installer) |
 | Project dependencies | yes | **Stops the run** | `npm ci` (or `npm install`), the required native package setup, and the Electron binary |
-| Native Chromium source build | yes | **Stops the run** | Prepares depot_tools/Visual Studio, checks out the pinned Chromium source, builds it, and verifies the source-built runtime manifest and executable hash |
+| Native Chromium source build | no | Completed with warnings | Attempts depot_tools/Visual Studio setup, checks out the pinned Chromium source, builds it, and verifies the source-built runtime manifest and executable hash; Electron remains available if this optional step fails |
 | Desktop shortcut | no | Completed with warnings | Octo.su on the desktop |
 | Build | yes | **Stops the run** | `npm run build` for both applications |
 
 ## When success is shown
 
-Node.js/git, project dependencies, the Chromium source build, and the application build stop the
-run when they fail. The steps after a fatal failure are shown as skipped. Firefox and Android are
+Node.js/git, project dependencies, and the application build stop the
+run when they fail. Native Chromium staging is optional: a missing toolchain, failed checkout, or
+failed runtime verification is shown as a warning and the installer continues with Electron.
+The steps after a fatal failure are shown as skipped. Firefox and Android are
 not part of this pass, so their unavailable runtimes do not make a Chromium installation fail. A
 failed required step (project dependencies or the build)
 makes the result **failed**, and the page names the step. A failed optional step gives

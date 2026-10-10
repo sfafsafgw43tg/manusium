@@ -2323,7 +2323,7 @@ function Get-SetupSteps {
         return (ConvertTo-StepResult (Install-Prerequisites))
       } }
     @{ Key = 'stepDeps'; Required = $true; Fatal = $true; Action = { return (Invoke-EnsureDependencies) } }
-    @{ Key = 'stepRuntimes'; Required = $true; Fatal = $true; Action = {
+    @{ Key = 'stepRuntimes'; Required = $false; Fatal = $false; Action = {
         $target = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'win32-arm64' } else { 'win32-x64' }
         if ($env:OS -ne 'Windows_NT') { $target = 'linux-x64' }
         if ($target -notin @('win32-x64', 'linux-x64')) { Warn "Native runtimes are not staged for $target"; return $false }
@@ -2670,11 +2670,10 @@ function Test-Ready {
   foreach ($a in @('octobrowser', 'octodetect')) {
     if (-not (Test-Path -LiteralPath (Join-Path $InstallRoot "apps\$a\dist\main.js"))) { return $false }
   }
-  $target = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'win32-arm64' } else { 'win32-x64' }
-  if ($env:OS -ne 'Windows_NT') { $target = 'linux-x64' }
-  if (-not (Test-NativeRuntimeReady 'chromium' $target)) { return $false }
-  # Firefox is intentionally not part of the current install pass. Do not let
-  # its deferred runtime block a verified Chromium installation.
+  # Native Chromium is an optional enhancement in the source installer. If its
+  # toolchain or checkout is unavailable, Electron still provides the usable
+  # desktop application; native staging can be run later as a separate setup action.
+  # Firefox is intentionally not part of the current install pass either.
   return $true
 }
 

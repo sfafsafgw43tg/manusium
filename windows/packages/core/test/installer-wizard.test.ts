@@ -71,12 +71,13 @@ describe('success is reported only when every required step succeeded', () => {
     expect(body).toContain("Write-WizardMarker @('step', 'skip', $step.Key, $index, $total)");
   });
 
-  it('the fatal flag covers prerequisites and the native runtime build', () => {
+  it('the fatal flag covers prerequisites but not optional native runtime staging', () => {
     const block = octo.slice(octo.indexOf('function Get-SetupSteps'), octo.indexOf('function Show-InstallerWindow'));
     const fatal = [...block.matchAll(/Key = '(step[A-Za-z]+)'; Required = \$(?:true|false); Fatal = \$true/g)].map((m) => m[1]);
-    expect(fatal).toEqual(['stepPrereqs', 'stepDeps', 'stepRuntimes']);
-    expect([...block.matchAll(/Fatal = \$false/g)]).toHaveLength(2);
+    expect(fatal).toEqual(['stepPrereqs', 'stepDeps']);
+    expect([...block.matchAll(/Fatal = \$false/g)]).toHaveLength(3);
     expect(octo).toContain('stepRuntimes');
+    expect(block).toContain("Key = 'stepRuntimes'; Required = $false; Fatal = $false");
   });
 
   it('the console installer never reports success after a failed required step', () => {
@@ -276,10 +277,11 @@ describe('steps and the console installer', () => {
     expect(keys).toEqual(['stepPrereqs', 'stepDeps', 'stepRuntimes', 'stepShortcut', 'stepBuild']);
   });
 
-  it('the required steps include both native runtimes and the build', () => {
+  it('the required steps include dependencies and the app build while native staging is optional', () => {
     const block = octo.slice(octo.indexOf('function Get-SetupSteps'), octo.indexOf('function Show-InstallerWindow'));
     const required = [...block.matchAll(/Key = '(step[A-Za-z]+)'; Required = \$true/g)].map((match) => match[1]);
-    expect(required).toEqual(['stepPrereqs', 'stepDeps', 'stepRuntimes', 'stepBuild']);
+    expect(required).toEqual(['stepPrereqs', 'stepDeps', 'stepBuild']);
+    expect(block).toContain("Key = 'stepRuntimes'; Required = $false; Fatal = $false");
   });
 
   it('the console installer stops after any fatal step', () => {

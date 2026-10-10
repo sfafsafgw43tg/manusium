@@ -222,12 +222,12 @@ describe('the graphical installer', () => {
 });
 
 describe('the steps are required or optional', () => {
-  it('stops for prerequisites, dependencies, native runtimes, and the build', () => {
+  it('stops for prerequisites, dependencies, and the app build, but not optional native staging', () => {
     const block = source.slice(source.indexOf('function Get-SetupSteps'), source.indexOf('function Show-InstallerWindow'));
     const required = [...block.matchAll(/Key = '(step[A-Za-z]+)'; Required = \$true/g)].map((m) => m[1]);
     const optional = [...block.matchAll(/Key = '(step[A-Za-z]+)'; Required = \$false/g)].map((m) => m[1]);
-    expect(required).toEqual(['stepPrereqs', 'stepDeps', 'stepRuntimes', 'stepBuild']);
-    expect(optional).toEqual(['stepShortcut']);
+    expect(required).toEqual(['stepPrereqs', 'stepDeps', 'stepBuild']);
+    expect(optional).toEqual(['stepRuntimes', 'stepShortcut']);
   });
 });
 
