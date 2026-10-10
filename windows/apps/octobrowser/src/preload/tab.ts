@@ -129,12 +129,12 @@ ipcRenderer.on('octo:smart-paste-to-focused', (_e, text: string) => {
     return active;
   }
 
-  /** Insert one chunk while preserving the field's current selection/caret. */
+  /** Insert one typed character while preserving the field's current caret. */
   const insertInto = (field: HTMLInputElement | HTMLTextAreaElement, value: string): boolean => {
     const start = field.selectionStart ?? field.value.length;
     const end = field.selectionEnd ?? field.value.length;
     const next = field.value.slice(0, start) + value + field.value.slice(end);
-    setNativeInputValue(field, next, 'insertFromPaste');
+    setNativeInputValue(field, next, 'insertText');
     const caret = start + value.length;
     try { field.setSelectionRange(caret, caret); } catch { /* destroyed target */ }
     // Verify: a page that rewrites its own field (formatting, masking, or a
@@ -147,8 +147,9 @@ ipcRenderer.on('octo:smart-paste-to-focused', (_e, text: string) => {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return false;
     try {
-      // execCommand writes into the selection with the events and undo entry a
-      // paste has; it is still the only API that does this in Chromium.
+      // execCommand writes into the selection with the same input/undo path a
+      // key press uses in Chromium. It is still the most compatible API for
+      // contenteditable editors and rich text controls.
       if (document.execCommand('insertText', false, value)) return true;
     } catch { /* not supported for this element */ }
     try {
@@ -160,7 +161,7 @@ ipcRenderer.on('octo:smart-paste-to-focused', (_e, text: string) => {
       range.setEndAfter(node);
       selection.removeAllRanges();
       selection.addRange(range);
-      host.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, data: value, inputType: 'insertFromPaste' }));
+      host.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, data: value, inputType: 'insertText' }));
       return true;
     } catch { return false; }
   };
@@ -168,26 +169,33 @@ ipcRenderer.on('octo:smart-paste-to-focused', (_e, text: string) => {
   const active = findDeepActiveElement();
   if (!active) return;
 
-  const chunks = text.match(/\S+\s*|\s+/g) ?? [text];
+  // Array.from keeps emoji and other surrogate pairs together while still
+  // producing one input event per character, as normal typing does.
+  const characters = Array.from(text);
+  const typingDelay = (character: string, index: number): number => {
+    if (/\s/.test(character)) return 34;
+    if (/[,.!?;:]/.test(character)) return 72;
+    // Deterministic small variation avoids a mechanical fixed-rate stream,
+    // without making Smart Paste unpredictably slow.
+    return 18 + ((character.codePointAt(0) ?? 0) + index * 11) % 25;
+  };
   void (async () => {
     if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) {
       if (active.disabled || active.readOnly) return;
-      for (const chunk of chunks) {
+      for (const [index, character] of characters.entries()) {
         if (findDeepActiveElement() !== active) return;
-        if (!insertInto(active, chunk)) {
+        if (!insertInto(active, character)) {
           try { active.focus(); } catch { /* ignore */ }
-          if (!document.execCommand('insertText', false, chunk)) return;
+          if (!document.execCommand('insertText', false, character)) return;
         }
-        // A small word-sized pause makes the operation behave like typing,
-        // while remaining fast for normal multi-word text.
-        await new Promise<void>((resolve) => window.setTimeout(resolve, chunk.trim() ? 28 : 8));
+        await new Promise<void>((resolve) => window.setTimeout(resolve, typingDelay(character, index)));
       }
       return;
     }
     if ((active as HTMLElement).isContentEditable) {
-      for (const chunk of chunks) {
-        if (findDeepActiveElement() !== active || !insertIntoEditable(active as HTMLElement, chunk)) return;
-        await new Promise<void>((resolve) => window.setTimeout(resolve, chunk.trim() ? 28 : 8));
+      for (const [index, character] of characters.entries()) {
+        if (findDeepActiveElement() !== active || !insertIntoEditable(active as HTMLElement, character)) return;
+        await new Promise<void>((resolve) => window.setTimeout(resolve, typingDelay(character, index)));
       }
     }
   })();

@@ -363,15 +363,16 @@ describe('browser entry UI', () => {
     expect(runtime).toContain("this.firstPasswordOffer(origin, username, password)");
   });
 
-  it('types Smart Paste in word-sized keyboard-like chunks', () => {
+  it('types Smart Paste character by character like keyboard input', () => {
     expect(windowController).toContain("wc.send('octo:smart-paste-to-focused', text)");
-    expect(tabPreload).toContain("setNativeInputValue(field, next, 'insertFromPaste')");
+    expect(tabPreload).toContain("setNativeInputValue(field, next, 'insertText')");
     expect(tabPreload).toContain('return field.value === next || field.value.includes(value)');
-    expect(tabPreload).toContain("const chunks = text.match(/\\S+\\s*|\\s+/g) ?? [text]");
-    expect(tabPreload).toContain('await new Promise<void>((resolve) => window.setTimeout(resolve, chunk.trim() ? 28 : 8))');
-    expect(tabPreload).toContain("document.execCommand('insertText', false, chunk)");
+    expect(tabPreload).toContain('const characters = Array.from(text)');
+    expect(tabPreload).toContain('for (const [index, character] of characters.entries())');
+    expect(tabPreload).toContain('const typingDelay = (character: string, index: number): number');
+    expect(tabPreload).toContain('await new Promise<void>((resolve) => window.setTimeout(resolve, typingDelay(character, index)))');
+    expect(tabPreload).toContain("document.execCommand('insertText', false, character)");
     expect(tabPreload).not.toContain('const delayFor = (character: string)');
-    expect(tabPreload).not.toContain('for (const character of text)');
   });
 
   it('only offers credential saves after trusted submission signals', () => {
