@@ -14,18 +14,9 @@ rem Extra arguments are passed through:
 rem   install.bat -NoGui        run in this console instead of the window
 rem   install.bat -Interactive  ask the old y/N questions again
 rem   install.bat -Background   run the complete setup hidden; inspect %LOCALAPPDATA%\InkBrowser\logs\ for progress
-rem The first invocation requests UAC once. The elevated child carries -Elevated through
-rem the rest of setup so Visual Studio and driver installation do not prompt again.
+rem The classic entry point starts immediately without a startup elevation handoff.
+rem Individual privileged operations request UAC at the point where Windows requires it.
 setlocal EnableExtensions DisableDelayedExpansion
-set "OCTO_ELEVATED="
-echo %* | find /i "-elevated" >nul 2>&1 && set "OCTO_ELEVATED=1"
-if not defined OCTO_ELEVATED (
-  set "OCTO_PS=%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe"
-  if not exist "%OCTO_PS%" set "OCTO_PS=powershell.exe"
-  "%OCTO_PS%" -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0lib\elevate-installer.ps1" -BatchPath "%~f0" -WorkingDirectory "%~dp0.." -Arguments "__OCTO_NO_ARGS__" %*
-  set "OCTO_RC=%ERRORLEVEL%"
-  endlocal & exit /b %OCTO_RC%
-)
 rem Classic installer behavior: a normal double-click keeps this console visible so
 rem the user can see UAC, progress, errors and the final result. Only an explicit
 rem -Background request uses the hidden launcher; -NoGui and -Interactive remain visible.

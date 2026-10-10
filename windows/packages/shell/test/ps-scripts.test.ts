@@ -61,12 +61,10 @@ describe('install.bat covers every dependency', () => {
     expect(installBat).toContain('OCTO_WANTS_BACKGROUND');
     expect(installBat).toContain('hidden.vbs');
     expect(installBat).toContain('-Background');
-    expect(installBat).toContain('elevate-installer.ps1');
-    expect(installBat).toContain('-Elevated');
-    const elevate = fs.readFileSync(path.resolve(__dirname, '..', '..', '..', 'scripts', 'lib', 'elevate-installer.ps1'), 'utf8');
-    expect(elevate).toContain('Start-Process -FilePath $env:ComSpec');
-    expect(elevate).toContain('-Verb RunAs');
-    expect(elevate).toContain('exit $child.ExitCode');
+    expect(installBat).toContain('starts immediately without a startup elevation handoff');
+    expect(installBat).not.toContain('elevate-installer.ps1');
+    expect(source).toContain('Visual Studio modification requires administrator rights');
+    expect(source).toContain('-Verb RunAs');
   });
 
   it('keeps media and Android prerequisite tables feature-scoped', () => {
