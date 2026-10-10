@@ -152,7 +152,8 @@ describe('the graphical installer', () => {
   it('shows progress, the current step and an ETA', () => {
     expect(uiSource).toContain('System.Windows.Forms.ProgressBar');
     expect(uiSource).toContain('function Format-Eta');
-    expect(uiSource).toContain("$script:Ui.StepNow.Text = (T 'stepOf'");
+    expect(uiSource).toContain("$script:Wiz.CurrentStep = (T 'stepOf'");
+    expect(uiSource).toContain("$script:Ui.StepNow.Text = (T 'uiStillWorking'");
     expect(uiSource).toContain('$ui.Eta.Text');
     // The bar counts the steps that really finished in the work process; nothing is animated.
     expect(uiSource).toContain('$ui.Bar.Value = [Math]::Max(0, [Math]::Min(100, $percent))');

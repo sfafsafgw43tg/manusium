@@ -271,5 +271,8 @@ describe('window structure', () => {
     expect(ui).toContain('$ui.Timer.Interval = 150');
     expect(ui).toContain('Invoke-WizTick');
     expect(ui).toContain('$runner.TryReadLine([ref]$line)');
+    expect(ui).toContain('uiStillWorking');
+    expect(ui).toContain('Chromium\'s source checkout can legitimately take a long time');
+    expect(ui).toContain('$script:Wiz.LastOutput = ([string]$line).Trim()');
   });
 });

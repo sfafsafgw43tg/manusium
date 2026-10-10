@@ -726,6 +726,8 @@ function Start-WizRun([string[]]$keys) {
   $script:Wiz.ReportedOk = $false
   $script:Wiz.ReportedKey = ''
   $script:Wiz.Cancelling = $false
+  $script:Wiz.CurrentStep = ''
+  $script:Wiz.LastOutput = ''
   $script:Wiz.Outcome = $null
   $script:Wiz.Watch = [System.Diagnostics.Stopwatch]::StartNew()
   Add-WizLogLine ''
@@ -775,12 +777,22 @@ function Invoke-WizTick {
   }
   $line = $null
   while ($runner.TryReadLine([ref]$line)) { Read-WizLine ([string]$line) }
+  # Chromium's source checkout can legitimately take a long time between step
+  # markers. Keep the window visibly alive and show the latest Git/depot_tools
+  # activity instead of making the user think the download has frozen.
+  if ($script:Wiz.CurrentStep -and $script:Wiz.LastOutput -and $script:Wiz.Watch) {
+    $age = [int][Math]::Floor($script:Wiz.Watch.Elapsed.TotalSeconds)
+    $activity = [string]$script:Wiz.LastOutput
+    if ($activity.Length -gt 120) { $activity = $activity.Substring(0, 120) + '...' }
+    $script:Ui.StepNow.Text = (T 'uiStillWorking' $script:Wiz.CurrentStep ("{0}s · {1}" -f $age, $activity))
+  }
   if ($runner.Finished) { Complete-WizRun }
 }
 
 function Read-WizLine([string]$line) {
   $fields = ConvertFrom-WizardMarker $line
   if ($null -eq $fields) {
+    $script:Wiz.LastOutput = ([string]$line).Trim()
     Add-WizLogLine $line
     return
   }
@@ -809,7 +821,9 @@ function Update-WizStepFromMarker([string[]]$fields) {
   switch ($kind) {
     'start' {
       $step.Status = 'running'
-      $script:Ui.StepNow.Text = (T 'stepOf' $index $total (T $key))
+      $script:Wiz.CurrentStep = (T 'stepOf' $index $total (T $key))
+      $script:Wiz.LastOutput = ''
+      $script:Ui.StepNow.Text = $script:Wiz.CurrentStep
     }
     'done' { $step.Status = 'done'; $script:Wiz.RunDone++ }
     'warn' { $step.Status = 'warn'; $script:Wiz.RunDone++ }
@@ -897,6 +911,7 @@ function Show-SetupUi {
   $script:Wiz = @{
     Page = 1; Runner = $null; Watch = $null; Cancelling = $false; Outcome = $null
     ReportedOk = $false; ReportedKey = ''; LogPath = ''; StartApp = $false
+    CurrentStep = ''; LastOutput = ''
     Sdk = ''; Proxy = ''; EnvVars = $true; AddPath = $true; Vm = $false
     RunTotal = 0; RunDone = 0; Steps = @()
   }
