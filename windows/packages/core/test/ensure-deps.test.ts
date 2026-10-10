@@ -7,11 +7,14 @@ import {
   computeFingerprint,
   electronBinaryPresent,
   electronRequired,
+  electronWinstallerArtifactsPresent,
+  esbuildBinaryPath,
   ensureDependencies,
   fingerprintInputPaths,
   fingerprintOf,
   planDependencyWork,
   STAMP_PATH,
+  verifyNativePackageArtifacts,
   // @ts-expect-error - plain ESM tool without type declarations
 } from '../../../tools/ensure-deps.mjs';
 
@@ -142,6 +145,36 @@ describe('Electron detection', () => {
   });
 });
 
+describe('native package setup', () => {
+  it('recognises the required esbuild binary and optional Squirrel artifacts', () => {
+    expect(esbuildBinaryPath(root)).toBe(null);
+    expect(electronWinstallerArtifactsPresent(root)).toBe(true);
+    put('node_modules/esbuild/bin/esbuild', '');
+    expect(esbuildBinaryPath(root)).toContain(path.join('node_modules', 'esbuild', 'bin', 'esbuild'));
+    put('node_modules/electron-winstaller/vendor/7z.exe', '');
+    expect(electronWinstallerArtifactsPresent(root)).toBe(false);
+    put('node_modules/electron-winstaller/vendor/7z.dll', '');
+    expect(electronWinstallerArtifactsPresent(root)).toBe(true);
+  });
+
+  it('repairs only missing native package artifacts and verifies esbuild execution', () => {
+    put('node_modules/esbuild/install.js', '');
+    put('node_modules/electron-winstaller/script/select-7z-arch.js', '');
+    const runner = recordingRunner((call) => {
+      if (call.args[0].endsWith(path.join('esbuild', 'install.js'))) put('node_modules/esbuild/bin/esbuild', '');
+      if (call.args[0].endsWith(path.join('select-7z-arch.js'))) {
+        put('node_modules/electron-winstaller/vendor/7z.exe', '');
+        put('node_modules/electron-winstaller/vendor/7z.dll', '');
+      }
+      return 0;
+    });
+    expect(verifyNativePackageArtifacts(root, { run: runner.run, log: () => {} })).toBe(true);
+    expect(runner.calls[0].args[0]).toBe(path.join(root, 'node_modules', 'esbuild', 'install.js'));
+    expect(runner.calls[1].args).toEqual(['--version']);
+    expect(runner.calls[2].args[0]).toBe(path.join(root, 'node_modules', 'electron-winstaller', 'script', 'select-7z-arch.js'));
+  });
+});
+
 describe('planDependencyWork', () => {
   const current = {
     modulesPresent: true,
@@ -190,11 +223,15 @@ describe('ensureDependencies', () => {
   it('installs a fresh checkout once, then leaves it alone', () => {
     makeProject();
     const first = recordingRunner((call) => {
-      if (isNpmCi(call)) fakeInstall();
+      if (isNpmCi(call)) {
+        fakeInstall();
+        put('node_modules/esbuild/bin/esbuild', '');
+      }
       return 0;
     });
     expect(ensureDependencies(root, { run: first.run, log: () => {} }).status).toBe(0);
-    expect(first.calls.map((c) => c.command + ' ' + c.args[0])).toEqual(['npm ci']);
+    expect(first.calls.filter(isNpmCi).map((c) => c.command + ' ' + c.args[0])).toEqual(['npm ci']);
+    expect(first.calls.find(isNpmCi)?.args).toContain('--ignore-scripts=false');
     expect(existsSync(path.join(root, STAMP_PATH))).toBe(true);
 
     const second = recordingRunner(() => 0);

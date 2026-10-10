@@ -89,6 +89,53 @@ export function electronBinaryPresent(root) {
   return relative !== '' && existsSync(path.join(electronDir, 'dist', relative));
 }
 
+/** Returns the platform-specific esbuild binary path, or null when it is absent. */
+export function esbuildBinaryPath(root) {
+  const dir = path.join(root, 'node_modules', 'esbuild', 'bin');
+  const name = process.platform === 'win32' ? 'esbuild.exe' : 'esbuild';
+  return existsSync(path.join(dir, name)) ? path.join(dir, name) : null;
+}
+
+/** The Squirrel helper is optional at runtime but needs its selected 7-Zip pair for packaging. */
+export function electronWinstallerArtifactsPresent(root) {
+  const dir = path.join(root, 'node_modules', 'electron-winstaller');
+  if (!existsSync(dir)) return true;
+  return existsSync(path.join(dir, 'vendor', '7z.exe')) && existsSync(path.join(dir, 'vendor', '7z.dll'));
+}
+
+/**
+ * Repairs only the native package scripts this project uses. It does not approve
+ * arbitrary package scripts: esbuild is required by the build, while the
+ * electron-winstaller selector is needed only when that packaging dependency exists.
+ */
+export function verifyNativePackageArtifacts(root, { run = runCommand, log = writeLine } = {}) {
+  const esbuildDir = path.join(root, 'node_modules', 'esbuild');
+  if (existsSync(esbuildDir)) {
+    let binary = esbuildBinaryPath(root);
+    if (!binary) {
+      const install = path.join(esbuildDir, 'install.js');
+      log('esbuild native binary is missing; running esbuild/install.js.');
+      if (!existsSync(install) || run(process.execPath, [install], root) !== 0) return false;
+      binary = esbuildBinaryPath(root);
+    }
+    if (!binary || run(binary, ['--version'], root) !== 0) {
+      log('The esbuild native binary could not be executed.');
+      return false;
+    }
+  }
+
+  const winstallerDir = path.join(root, 'node_modules', 'electron-winstaller');
+  if (existsSync(winstallerDir) && !electronWinstallerArtifactsPresent(root)) {
+    const selector = path.join(winstallerDir, 'script', 'select-7z-arch.js');
+    log('electron-winstaller 7-Zip artifacts are missing; running its architecture selector.');
+    if (!existsSync(selector) || run(process.execPath, [selector], winstallerDir) !== 0 || !electronWinstallerArtifactsPresent(root)) {
+      log('electron-winstaller could not prepare its 7-Zip artifacts.');
+      return false;
+    }
+  }
+  return true;
+}
+
 /** The stamp written after a successful install, or null when there is none. */
 export function readStamp(root) {
   try {
@@ -189,19 +236,27 @@ export function ensureDependencies(root, { checkOnly = false, run = runCommand, 
     // The record goes first: an install that is interrupted (closed window, Ctrl+C, a
     // dropped network) must never look complete to the next start.
     rmSync(path.join(root, STAMP_PATH), { force: true });
-    if (run('npm', ['ci', '--no-audit', '--no-fund'], root) !== 0) {
+    if (run('npm', ['ci', '--no-audit', '--no-fund', '--ignore-scripts=false'], root) !== 0) {
       log('npm ci did not finish. Retrying with npm install.');
-      if (run('npm', ['install', '--no-audit', '--no-fund'], root) !== 0) {
+      if (run('npm', ['install', '--no-audit', '--no-fund', '--ignore-scripts=false'], root) !== 0) {
         log('Dependency installation failed. Read the messages above, then start again.');
         return { status: 2, plan };
       }
     }
-    // Recorded as soon as the packages are in place, so a failed Electron download
-    // below is retried on its own and does not reinstall every package on each start.
-    // Fingerprinted after the install: the npm install fallback may rewrite the lockfile.
-    writeStamp(root, computeFingerprint(root));
   } else {
     log(`Repairing dependencies: ${plan.reason}.`);
+  }
+
+  if (!verifyNativePackageArtifacts(root, { run, log })) {
+    log('Required native package setup did not complete. Check the npm output and run the installer again.');
+    return { status: 2, plan };
+  }
+
+  if (plan.action === 'install') {
+    // Record only after native package setup succeeds. A failed Electron download
+    // below is retried on its own; it does not reinstall every package on each start.
+    // Fingerprint after install because npm install may rewrite the lockfile.
+    writeStamp(root, computeFingerprint(root));
   }
 
   if (electronNeeded && !electronBinaryPresent(root)) {

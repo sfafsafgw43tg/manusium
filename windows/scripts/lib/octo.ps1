@@ -1653,35 +1653,61 @@ function Ensure-ChromiumBuildToolchain {
     $vsReady = $vsResult.code -eq 0 -and [bool](@($vsResult.text -split "`r?`n" | Where-Object { $_.Trim() -and (Test-Path -LiteralPath $_.Trim()) }).Count)
   }
   if (-not $vsReady) {
-    $winget = Get-Command 'winget' -ErrorAction SilentlyContinue
-    if (-not $winget) {
-      Warn 'Visual Studio Build Tools are missing the required MSVC/Windows SDK workload and winget is unavailable. Install Desktop development with C++, MSVC x64/x86 tools, a Windows 10/11 SDK, and MFC/ATL support, then run install.bat again.'
-      return $false
-    }
-    Say 'Installing Visual Studio Build Tools with C++ and MFC/ATL support...' 'Cyan'
     $vsLogDir = Join-Path $env:LOCALAPPDATA 'InkBrowser\logs'
     New-Item -ItemType Directory -Path $vsLogDir -Force | Out-Null
     $vsLog = Join-Path $vsLogDir 'visual-studio-winget.log'
-    # winget's --override value must be one quoted argument. Without the quotes,
-    # Start-Process joins the array and winget parses --passive itself, producing
-    # the observed "argument name was not recognized" failure.
-    $vsOverride = '--wait --passive --add Microsoft.VisualStudio.Workload.NativeDesktop --add Microsoft.VisualStudio.Component.VC.ATLMFC --includeRecommended'
-    $vsArgs = @('install', '--exact', '--id', 'Microsoft.VisualStudio.BuildTools', '--source', 'winget', '--silent', '--accept-package-agreements', '--accept-source-agreements', '--disable-interactivity', '--log', $vsLog, '--override', ('"{0}"' -f $vsOverride))
-    Write-Log 'info' "Visual Studio winget command: winget $($vsArgs -join ' ')"
+    $vsCommand = $null
+    $vsArgs = $null
+    $vsDescription = 'Visual Studio Build Tools installation'
+    # If Visual Studio exists but lacks the workload, use the supported setup.exe
+    # modify flow. A winget install is not sufficient here: winget may report the
+    # package as already installed and never add the missing components.
+    $vsAnyPath = $null
+    if ($vswhere) {
+      $vsAnyArgs = @('-latest', '-products', '*', '-property', 'installationPath')
+      $vsAnyResult = Invoke-Native $vswhere $vsAnyArgs $null -Quiet
+      $vsAnyPath = ($vsAnyResult.text -split "`r?`n" | Where-Object { $_.Trim() -and (Test-Path -LiteralPath $_.Trim()) } | Select-Object -First 1)
+      if ($vsAnyPath) { $vsAnyPath = $vsAnyPath.Trim() }
+    }
+    $vsSetupCandidates = @(
+      (Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\setup.exe'),
+      (Join-Path $env:ProgramFiles 'Microsoft Visual Studio\Installer\setup.exe')
+    )
+    $vsSetup = $vsSetupCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+    if ($vsAnyPath -and $vsSetup) {
+      Say 'Adding the missing Chromium C++ workload to the existing Visual Studio installation...' 'Cyan'
+      $vsCommand = $vsSetup
+      $vsDescription = "Visual Studio modify at $vsAnyPath"
+      $vsArgs = @('modify', '--installPath', $vsAnyPath, '--add', 'Microsoft.VisualStudio.Workload.NativeDesktop', '--add', 'Microsoft.VisualStudio.Component.VC.ATLMFC', '--includeRecommended', '--passive', '--wait', '--log', $vsLog)
+    } else {
+      $winget = Get-Command 'winget' -ErrorAction SilentlyContinue
+      if (-not $winget) {
+        Warn 'Visual Studio Build Tools are missing the required MSVC/Windows SDK workload and neither the Visual Studio setup.exe nor winget is available. Install Desktop development with C++, MSVC x64/x86 tools, a Windows 10/11 SDK, and MFC/ATL support, then run install.bat again.'
+        return $false
+      }
+      Say 'Installing Visual Studio Build Tools with C++ and MFC/ATL support...' 'Cyan'
+      # winget's --override value must be one quoted argument. Without the quotes,
+      # Start-Process joins the array and winget parses --passive itself.
+      $vsOverride = '--wait --passive --add Microsoft.VisualStudio.Workload.NativeDesktop --add Microsoft.VisualStudio.Component.VC.ATLMFC --includeRecommended'
+      $vsCommand = $winget.Source
+      $vsDescription = 'Visual Studio Build Tools installation through winget'
+      $vsArgs = @('install', '--exact', '--id', 'Microsoft.VisualStudio.BuildTools', '--source', 'winget', '--silent', '--accept-package-agreements', '--accept-source-agreements', '--disable-interactivity', '--log', $vsLog, '--override', ('"{0}"' -f $vsOverride))
+    }
+    Write-Log 'info' "$vsDescription command: $vsCommand $($vsArgs -join ' ')"
     $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-    if (-not $isAdmin) { Say 'Visual Studio requires administrator rights. Windows will show UAC for this step only; the rest of the installer remains unelevated.' 'Yellow' }
+    if (-not $isAdmin) { Say 'Visual Studio modification requires administrator rights. Windows will show UAC for this step only; the rest of the installer remains unelevated.' 'Yellow' }
     try {
       if ($isAdmin) {
-        $vsInstall = Start-Process -FilePath $winget.Source -ArgumentList $vsArgs -Wait -PassThru -NoNewWindow
+        $vsInstall = Start-Process -FilePath $vsCommand -ArgumentList $vsArgs -Wait -PassThru -NoNewWindow
       } else {
-        $vsInstall = Start-Process -FilePath $winget.Source -ArgumentList $vsArgs -Wait -PassThru -Verb RunAs
+        $vsInstall = Start-Process -FilePath $vsCommand -ArgumentList $vsArgs -Wait -PassThru -Verb RunAs
       }
     } catch {
       Warn "Visual Studio Build Tools could not be started (UAC may have been cancelled). Log: $vsLog. Details: $($_.Exception.Message)"
       return $false
     }
-    if ($WingetBenign -notcontains $vsInstall.ExitCode) {
-      Warn "Visual Studio Build Tools installation failed with exit code $($vsInstall.ExitCode). Command: winget $($vsArgs -join ' '). Log: $vsLog"
+    if ($vsInstall.ExitCode -notin $WingetBenign -and $vsInstall.ExitCode -ne 3010) {
+      Warn "Visual Studio modification failed with exit code $($vsInstall.ExitCode). Command: $vsCommand $($vsArgs -join ' '). Log: $vsLog"
       return $false
     }
     $vswhere = $vswhereCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
@@ -1734,12 +1760,27 @@ function Ensure-FirefoxStagingToolchain {
 # optional for the rest of OctoSuite, so they are installed only after a
 # confirmation and a failure never blocks the build.
 # Everything the two vStudio media plugins need. vStudio Web (browser
-# profiles) needs these even when no Android device is ever created, so they
-# are installed independently of the Android tooling.
+# profiles) needs these even when no Android device is ever created, so they are
+# installed independently of the Android tooling.
+function Test-VbCableInstalled {
+  if ($env:OS -ne 'Windows_NT') { return $false }
+  if (Test-PathAny @(
+      "$env:SystemRoot\System32\drivers\vbaudio_cable64_win7.sys",
+      "$env:SystemRoot\System32\drivers\vbaudio_cable_win7.sys",
+      "$env:SystemRoot\System32\drivers\vbaudio_cable64_win10.sys",
+      "$env:SystemRoot\System32\drivers\vbaudio_cable64.sys")) { return $true }
+  $reg = Resolve-Tool 'reg.exe'
+  if (-not $reg) { return $false }
+  $service = Invoke-Native $reg @('query', 'HKLM\SYSTEM\CurrentControlSet\Services', '/s', '/f', 'VBAudio', '/k') $null -Quiet
+  if ($service.code -eq 0 -and $service.text -match '(?i)cable') { return $true }
+  $endpoint = Invoke-Native $reg @('query', 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\MMDevices\Audio', '/s', '/f', 'CABLE Output') $null -Quiet
+  return ($endpoint.code -eq 0)
+}
+
 $MediaPrereqs = @(
   @{ Id = 'Python.Python.3.12';     Name = 'Python 3';       Site = 'https://www.python.org/downloads/';    DirectUrl = 'https://www.python.org/ftp/python/3.12.7/python-3.12.7-amd64.exe'; InstallerType = 'inno'; DirectArgs = @('/quiet', 'InstallAllUsers=0', 'PrependPath=1'); Test = { [bool](Get-Command 'python' -ErrorAction SilentlyContinue) -or [bool](Get-Command 'python3' -ErrorAction SilentlyContinue) } }
   @{ Id = 'OBSProject.OBSStudio';   Name = 'OBS Studio (virtual camera)'; Site = 'https://obsproject.com/'; DirectUrl = 'https://github.com/obsproject/obs-studio/releases/download/30.2.3/OBS-Studio-30.2.3-Windows-Installer.exe'; InstallerType = 'inno'; DirectArgs = @('/S'); Test = { Test-PathAny @("$env:ProgramFiles\obs-studio", "${env:ProgramFiles(x86)}\obs-studio") } }
-  @{ Id = 'VB-Audio.Cable';         Name = 'VB-CABLE (virtual microphone)'; Site = 'https://vb-audio.com/Cable/'; Fallback = { Install-VbCable }; Test = { Test-PathAny @("$env:SystemRoot\System32\drivers\vbaudio_cable64_win7.sys", "$env:SystemRoot\System32\drivers\vbaudio_cable_win7.sys", "$env:SystemRoot\System32\drivers\vbaudio_cable64_win10.sys") } }
+  @{ Id = 'VB-Audio.Cable';         Name = 'VB-CABLE (virtual microphone)'; Site = 'https://vb-audio.com/Cable/'; Fallback = { Install-VbCable }; Test = { Test-VbCableInstalled } }
 )
 
 $AndroidPrereqs = @(
@@ -1891,6 +1932,10 @@ function Install-VbCable {
     $p = Start-Process -FilePath $setup.FullName -ArgumentList @('-i', '-h') -Verb RunAs -Wait -PassThru
     if ($p.ExitCode -ne 0) { Warn (T 'vbCableManual' $setup.FullName); return $false }
   } catch { Warn (T 'vbCableManual' $setup.FullName); return $false }
+  if (-not (Test-VbCableInstalled)) {
+    Warn "VB-CABLE installer exited successfully, but Windows did not report the driver, service, or CABLE Output endpoint. Install it manually from https://vb-audio.com/Cable/ with administrator approval, then rerun install.bat."
+    return $false
+  }
   Say (T 'vbCableDone') 'Green'
   return $true
 }
@@ -1970,9 +2015,13 @@ function Install-PrereqTable($table) {
       Update-SessionPath
       if ($WingetBenign -contains $p.ExitCode) {
         $installed = $true
+        Write-Log 'info' "winget completed for $($tool.Id) with code $($p.ExitCode); verifying the installed component before reporting success."
       }
     }
-    if (-not $installed) {
+    $verified = $false
+    try { $verified = [bool](& $tool.Test) } catch { $verified = $false }
+    if (-not $verified) {
+      $installed = $false
       if ($tool.DirectUrl) {
         $installed = Install-PrerequisiteDirect $tool
       }
@@ -1980,10 +2029,8 @@ function Install-PrereqTable($table) {
         try { $installed = [bool](& $tool.Fallback) } catch { $installed = $false }
       }
     }
-    if (-not $installed) {
-      try { $present = [bool](& $tool.Test) } catch { $present = $false }
-      if ($present) { $installed = $true }
-    }
+    try { $verified = [bool](& $tool.Test) } catch { $verified = $false }
+    if ($verified) { $installed = $true }
     if (-not $installed) {
       Warn (T 'androidFailed' $tool.Name '1' $tool.Site)
       $ok = $false
