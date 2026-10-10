@@ -183,6 +183,10 @@ describe('steps and the console installer', () => {
     const firefox = fs.readFileSync(path.join(root, 'tools', 'stage-firefox.mjs'), 'utf8');
     expect(chromium).toContain('fetching Chromium source');
     expect(chromium).toContain('autoninja');
+    expect(chromium).toContain("const parentIsGclientCheckout = fs.existsSync(parentGclient);");
+    expect(chromium).toContain("'resuming Chromium source checkout'");
+    expect(chromium).toContain("source checkout is incomplete at ${source}");
+    expect(chromium).toContain('`fetch chromium` is only valid in an empty parent directory');
     expect(chromium).toContain("distribution: 'source-built'");
     expect(chromium).not.toContain('chrome-for-testing-public');
     expect(firefox).toContain("'/norestart'");

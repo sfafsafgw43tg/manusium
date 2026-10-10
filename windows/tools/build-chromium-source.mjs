@@ -67,10 +67,26 @@ function ensureTool(tool) {
 function sourceCheckout(source, version, skipSync) {
   const parent = path.dirname(source);
   fs.mkdirSync(parent, { recursive: true });
-  if (!fs.existsSync(path.join(source, 'chrome', 'VERSION'))) {
-    if (fs.existsSync(source) && fs.readdirSync(source).length > 0) fail(`source path exists but is not a Chromium checkout: ${source}`);
-    run('fetch', ['--nohooks', 'chromium'], parent, 'fetching Chromium source');
+  const versionFile = path.join(source, 'chrome', 'VERSION');
+  const sourceGit = path.join(source, '.git');
+  const parentGclient = path.join(parent, '.gclient');
+  const hasChromiumCheckout = fs.existsSync(versionFile) && fs.existsSync(sourceGit);
+  const parentIsGclientCheckout = fs.existsSync(parentGclient);
+  if (!hasChromiumCheckout) {
+    if (parentIsGclientCheckout) {
+      // `fetch chromium` is only valid in an empty parent directory. A
+      // previous interrupted fetch leaves a .gclient file behind, and the
+      // official tool requires gclient sync to resume that checkout.
+      run('gclient', ['sync', '--with_branch_heads', '--with_tags'], parent, 'resuming Chromium source checkout');
+    } else {
+      const parentEntries = fs.existsSync(parent)
+        ? fs.readdirSync(parent).filter((entry) => entry !== '.DS_Store')
+        : [];
+      if (parentEntries.length > 0) fail(`source checkout is incomplete at ${source}; remove or repair the existing directory, then retry`);
+      run('fetch', ['--nohooks', 'chromium'], parent, 'fetching Chromium source');
+    }
   }
+  if (!fs.existsSync(versionFile)) fail(`Chromium source checkout is incomplete: ${source} is missing chrome/VERSION; run gclient sync and retry`);
   const actual = chromiumVersion(source);
   if (actual !== version) {
     run('git', ['checkout', '--detach', `refs/tags/${version}`], source, `checking out Chromium ${version}`);
