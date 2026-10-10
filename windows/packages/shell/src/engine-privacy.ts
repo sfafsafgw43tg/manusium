@@ -24,6 +24,20 @@ export function prepareChromiumPrivacy(profileDir: string, settings: EnginePriva
   prefs.webrtc = { ip_handling_policy: settings.webRtc === 'disable-non-proxied-udp' ? 'disable_non_proxied_udp' : 'default' };
   if (Object.keys(prefs).length) writeJsonMerge(path.join(profileDir, 'Preferences'), prefs);
 }
+
+/**
+ * Return only launch switches that are supported by the standalone Chromium
+ * runtime. Keeping these here prevents the manager and tests from drifting
+ * apart: the profile editor cannot imply that an Electron page shim is active.
+ */
+export function chromiumPrivacyArgs(settings: EnginePrivacySettings['chromium']): string[] {
+  const args: string[] = [];
+  if (settings.webRtc === 'disable-non-proxied-udp') {
+    args.push('--force-webrtc-ip-handling-policy=disable_non_proxied_udp');
+  }
+  if (settings.webgl === 'disable') args.push('--disable-webgl');
+  return args;
+}
 /** Apply Firefox-native preferences, never page-script shims. */
 export function prepareFirefoxPrivacy(profileDir: string, settings: EnginePrivacySettings['firefox']): void {
   const lines = [

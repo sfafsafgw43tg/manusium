@@ -66,7 +66,7 @@ import { FirefoxBidi, NativeChromiumTabs, NativeEngineProcess, spawnNativeEngine
 import { discoverEngineRuntime, EngineRunnerError } from '@octo/shell/engine-runtime';
 import { catalogEntry, listInstalled, installChromium, removeChromium, DEFAULT_CHROMIUM_VERSION } from '@octo/shell/runtime-catalog';
 import { discoverFirefoxRuntime, geckoCatalogEntry, installFirefoxRuntime, inspectFirefoxRuntime } from '@octo/shell/gecko-runtime';
-import { prepareChromiumPrivacy, prepareFirefoxPrivacy } from '@octo/shell/engine-privacy';
+import { chromiumPrivacyArgs, prepareChromiumPrivacy, prepareFirefoxPrivacy } from '@octo/shell/engine-privacy';
 
 let importedHandsetsLoaded = false;
 
@@ -827,7 +827,7 @@ export class Manager {
         debugPort,
         headless: false,
         appMode: p.appMode,
-        extraArgs: p.enginePrivacy.chromium.webgl === 'disable' ? ['--disable-webgl'] : undefined,
+        extraArgs: chromiumPrivacyArgs(p.enginePrivacy.chromium),
       });
       const tabs = await NativeChromiumTabs.connect(debugPort);
       const restoredTabs = [await tabs.activeTab()];

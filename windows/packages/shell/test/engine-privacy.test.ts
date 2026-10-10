@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { DEFAULT_ENGINE_PRIVACY, sanitizeEnginePrivacy } from '@octo/core';
-import { prepareChromiumPrivacy, prepareFirefoxPrivacy } from '../src/engine-privacy';
+import { chromiumPrivacyArgs, prepareChromiumPrivacy, prepareFirefoxPrivacy } from '../src/engine-privacy';
 
 describe('engine-specific privacy settings', () => {
   it('sanitizes unsupported values to safe defaults without cross-engine leakage', () => {
@@ -20,6 +20,13 @@ describe('engine-specific privacy settings', () => {
     expect(prefs.profile.default_content_setting_values.geolocation).toBe(2);
     expect(prefs.webrtc.ip_handling_policy).toBe('disable_non_proxied_udp');
     fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('maps only supported Chromium controls to native launch switches', () => {
+    expect(chromiumPrivacyArgs({ webRtc: 'disable-non-proxied-udp', location: 'block', webgl: 'disable' })).toEqual([
+      '--force-webrtc-ip-handling-policy=disable_non_proxied_udp', '--disable-webgl',
+    ]);
+    expect(chromiumPrivacyArgs({ webRtc: 'default', location: 'ask', webgl: 'allow' })).toEqual([]);
   });
 
   it('writes Firefox-native user.js and reset values are explicit', () => {

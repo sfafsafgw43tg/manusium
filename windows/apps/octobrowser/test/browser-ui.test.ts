@@ -84,12 +84,15 @@ describe('browser entry UI', () => {
   });
 
   it('labels native fingerprint values as stored drafts and keeps Chromium runtime controls Chromium-only', () => {
-    expect(launcherEditor).toContain("t('enginePrivacy.nativeDraft')");
+    expect(launcherEditor).toContain("'enginePrivacy.nativeDraftFirefox'");
+    expect(launcherEditor).toContain("'enginePrivacy.nativeDraft'");
     expect(launcherEditor).toContain('native-fingerprint-draft');
     expect(launcherEditor).toContain("d.engine === 'inkbrowser' ? [field('browserEngine.chromiumVersion'");
     expect(launcherEditor).toContain("d.engine === 'firefox'\n    ? [['firefox', t('identity.firefox')]");
     expect(i18nEn).toContain("'enginePrivacy.nativeApplied':");
     expect(i18nPl).toContain("'enginePrivacy.nativeDraft':");
+    expect(i18nEn).toContain('Not available in native Chromium');
+    expect(i18nPl).toContain('Niedostępne w natywnym Chromium');
   });
 
   it('routes running Chromium profiles to the native tab controller from the launcher menu', () => {

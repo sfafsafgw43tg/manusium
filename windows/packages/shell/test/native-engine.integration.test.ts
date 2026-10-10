@@ -5,7 +5,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { CdpPage, NativeChromiumTabs, NativeEngineProcess, spawnNativeEngine } from '../src/native-engine';
 import { discoverEngineRuntime } from '../src/engine-runtime';
-import { prepareChromiumPrivacy } from '../src/engine-privacy';
+import { chromiumPrivacyArgs, prepareChromiumPrivacy } from '../src/engine-privacy';
 
 const packagedRoot = process.env.OCTO_PACKAGED_CHROMIUM_ROOT;
 const packaged = packagedRoot ? discoverEngineRuntime('chromium', { resourcesPath: '/does-not-exist', env: { OCTO_CHROMIUM_RUNTIME: packagedRoot }, platform: process.platform, arch: process.arch }) : undefined;
@@ -46,13 +46,14 @@ suite('real Chromium CDP vertical slice', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'octo-cdp-test-'));
     roots.push(root);
     const port = await freePort();
-    prepareChromiumPrivacy(path.join(root, 'profile'), { webRtc: 'disable-non-proxied-udp', location: 'block', webgl: 'disable' });
+    const privacy = { webRtc: 'disable-non-proxied-udp' as const, location: 'block' as const, webgl: 'disable' as const };
+    prepareChromiumPrivacy(path.join(root, 'profile'), privacy);
     processUnderTest = await spawnNativeEngine('chromium', executable, {
       profileDir: path.join(root, 'profile'),
       debugPort: port,
       headless: true,
       url: 'about:blank',
-      extraArgs: ['--no-sandbox', '--disable-gpu'],
+      extraArgs: ['--no-sandbox', '--disable-gpu', ...chromiumPrivacyArgs(privacy)],
     });
     page = await CdpPage.connect(port);
     await page.navigate('data:text/html,<title>Native%20Chromium</title><h1>native</h1>');
@@ -63,8 +64,17 @@ suite('real Chromium CDP vertical slice', () => {
     }
     expect(state.title).toBe('Native Chromium');
     expect(state.url).toContain('data:text/html');
-    const probe = await page.command('Runtime.evaluate', { expression: 'JSON.stringify({webrtc: typeof RTCPeerConnection})', returnByValue: true });
-    expect((probe.result?.result as { value?: string } | undefined)?.value).toContain('webrtc');
+    const probe = await page.command('Runtime.evaluate', { expression: `(async () => JSON.stringify({
+      webrtc: typeof RTCPeerConnection,
+      webgl: !!document.createElement('canvas').getContext('webgl'),
+      webgl2: !!document.createElement('canvas').getContext('webgl2'),
+      location: (await navigator.permissions.query({ name: 'geolocation' })).state,
+    }))()`, awaitPromise: true, returnByValue: true });
+    const observed = JSON.parse((probe.result?.result as { value?: string } | undefined)?.value ?? '{}') as { webrtc?: string; webgl?: boolean; webgl2?: boolean; location?: string };
+    expect(observed.webrtc).toBe('function');
+    expect(observed.webgl).toBe(false);
+    expect(observed.webgl2).toBe(false);
+    expect(observed.location).toBe('denied');
   });
 
   it('launches the real Chromium process in App window mode', async () => {

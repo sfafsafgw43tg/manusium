@@ -1590,9 +1590,10 @@ function advanced(b: HTMLElement, d: Draft, draw: () => void, summary: () => voi
 
   b.append(section(t('fp.params'), hw), signalsHost, verifySection);
   if (d.engine !== 'electron') {
-    const draft = h('div', { class: 'native-fingerprint-draft', role: 'note', 'aria-label': t('enginePrivacy.nativeDraft') });
+    const nativeDraftKey = d.engine === 'firefox' ? 'enginePrivacy.nativeDraftFirefox' : 'enginePrivacy.nativeDraft';
+    const draft = h('div', { class: 'native-fingerprint-draft', role: 'note', 'aria-label': t(nativeDraftKey) });
     while (b.childElementCount > nativeFingerprintStart) draft.append(b.children[nativeFingerprintStart]);
-    draft.prepend(h('div', { class: 'native-draft-banner' }, icon('info', 14), h('span', { text: t('enginePrivacy.nativeDraft') })));
+    draft.prepend(h('div', { class: 'native-draft-banner' }, icon('info', 14), h('span', { text: t(nativeDraftKey) })));
     b.append(draft);
   }
 }
