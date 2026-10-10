@@ -72,6 +72,22 @@ function sourceCheckout(source, version, skipSync) {
   const parentGclient = path.join(parent, '.gclient');
   const syncArgs = ['sync', '--no-history', '--nohooks', '--verbose', '--jobs', String(Math.max(2, Math.min(12, os.cpus().length)))];
   const hasChromiumCheckout = fs.existsSync(versionFile) && fs.existsSync(sourceGit);
+  let parentEntries = fs.existsSync(parent)
+    ? fs.readdirSync(parent).filter((entry) => entry !== '.DS_Store')
+    : [];
+  // install.bat is allowed to repair the exact partial layout left by an
+  // interrupted depot_tools fetch. Never remove an arbitrary non-empty folder:
+  // require only gclient metadata and known temporary Chromium checkout names.
+  const isKnownPartial = !hasChromiumCheckout && parentEntries.length > 0 &&
+    parentEntries.includes('.gclient') && parentEntries.every((entry) =>
+      entry === '.gclient' || entry === '.gclient_entries' || entry === '.cipd' ||
+      entry === 'src' || entry.startsWith('gclient_src_'));
+  if (isKnownPartial && process.env.OCTO_NO_AUTO_REPAIR !== '1') {
+    console.warn('[build-chromium-source] removing the recognized incomplete Chromium checkout and restarting shallow');
+    fs.rmSync(parent, { recursive: true, force: true });
+    fs.mkdirSync(parent, { recursive: true });
+    parentEntries = [];
+  }
   const parentIsGclientCheckout = fs.existsSync(parentGclient);
   if (!hasChromiumCheckout) {
     if (parentIsGclientCheckout) {
@@ -80,9 +96,6 @@ function sourceCheckout(source, version, skipSync) {
       // official tool requires gclient sync to resume that checkout.
       run('gclient', syncArgs, parent, 'resuming Chromium source checkout (no history, parallel)');
     } else {
-      const parentEntries = fs.existsSync(parent)
-        ? fs.readdirSync(parent).filter((entry) => entry !== '.DS_Store')
-        : [];
       if (parentEntries.length > 0) fail(`source checkout is incomplete at ${source}; remove or repair the existing directory, then retry`);
       run('fetch', ['--nohooks', '--no-history', 'chromium'], parent, 'fetching Chromium source (no history)');
     }

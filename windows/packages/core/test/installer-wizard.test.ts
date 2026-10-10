@@ -191,6 +191,9 @@ describe('steps and the console installer', () => {
     expect(chromium).toContain("'--jobs'");
     expect(chromium).toContain('fetching Chromium source (no history)');
     expect(chromium).toContain('synchronizing Chromium dependencies (no history, parallel)');
+    expect(chromium).toContain('isKnownPartial');
+    expect(chromium).toContain('OCTO_NO_AUTO_REPAIR');
+    expect(chromium).toContain('removing the recognized incomplete Chromium checkout');
     expect(chromium).toContain("source checkout is incomplete at ${source}");
     expect(chromium).toContain('`fetch chromium` is only valid in an empty parent directory');
     expect(chromium).toContain("distribution: 'source-built'");
