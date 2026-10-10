@@ -1045,6 +1045,8 @@ export const pl: Record<string, string> = {
   'settings.resetUnavailable': 'Jednorazowa sesja piaskownicy nie może zresetować danych aplikacji hosta.',
   'appBackground.title': 'Zamknąć tę aplikację?',
   'appBackground.desc': 'Możesz całkowicie zamknąć aplikację albo zostawić ją działającą w tle. Aplikacja w tle pozostanie dostępna z zasobnika systemowego.',
+  'appBackground.openProfiles': 'Nadal otwarte profile przeglądarki: {count}.',
+  'appBackground.openProfilesHint': 'Inteligentny zapis bezpiecznie zamknie otwarte profile przed wyjściem. Czy na pewno zamknąć aplikację?',
   'appBackground.background': 'Pozostaw w tle',
   'appBackground.close': 'Zamknij aplikację',
   'appBackground.remember': 'Zapamiętaj mój wybór',

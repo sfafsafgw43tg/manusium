@@ -515,8 +515,16 @@ export class Manager {
     const action = this.ctx.settings.load().ui.closeAction;
     if (action === 'background') { this.hideLauncher(); return; }
     if (action === 'quit') { this.beginAppQuit(); return; }
+    const runningIds = new Set([...this.children.keys(), ...this.nativeFirefox.keys(), ...this.nativeChromium.keys()]);
+    // Nothing is running, so there is no session to save and no interruption
+    // risk. Close immediately instead of showing a redundant confirmation.
+    if (runningIds.size === 0) { this.beginAppQuit(); return; }
     this.closePromptOpen = true;
-    win.webContents.send('mgr:app-close-request');
+    const runningProfiles = this.profiles.list().filter((profile) => runningIds.has(profile.id));
+    win.webContents.send('mgr:app-close-request', {
+      count: runningIds.size,
+      names: runningProfiles.map((profile) => profile.name).slice(0, 8),
+    });
     // If the renderer is reloading or unavailable, release the intercepted
     // close after a short grace period rather than trapping the window.
     setTimeout(() => { this.closePromptOpen = false; }, 30_000).unref();

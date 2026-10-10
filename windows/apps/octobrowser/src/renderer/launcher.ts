@@ -175,7 +175,7 @@ function applyLauncherTheme(theme: Settings['ui']['theme']): void {
 
 /** The main process intercepts the native close event; this trusted view owns
  * the small, theme-consistent confirmation instead of opening a Windows dialog. */
-function showCloseAppDialog(): void {
+function showCloseAppDialog(state?: { count?: number; names?: string[] }): void {
   let answered = false;
   const answer = (choice: 'quit' | 'cancel') => {
     if (answered) return;
@@ -183,6 +183,13 @@ function showCloseAppDialog(): void {
     void api.invoke('mgr:app-close-choice', choice);
   };
   modal(t('appBackground.title'), (box) => {
+    const count = Math.max(0, Number(state?.count) || 0);
+    const names = (state?.names ?? []).filter(Boolean);
+    const suffix = names.length ? ` ${names.join(', ')}${count > names.length ? ` +${count - names.length}` : ''}` : '';
+    box.append(
+      h('p', { class: 'app-close-open-profiles', text: t('appBackground.openProfiles', { count }) }),
+      h('p', { class: 'hint app-close-hint', text: `${t('appBackground.openProfilesHint')}${suffix}` }),
+    );
     const cancel = h('button', { class: 'btn app-close-cancel', text: t('common.cancel') });
     cancel.onclick = () => { answer('cancel'); closeModal(); };
     const quit = h('button', { class: 'btn primary app-close-quit', text: t('appBackground.quit') });
@@ -924,7 +931,7 @@ async function boot(): Promise<void> {
       render();
     }
   });
-  api.on('mgr:app-close-request', () => showCloseAppDialog());
+  api.on<{ count?: number; names?: string[] }>('mgr:app-close-request', (state) => showCloseAppDialog(state));
   api.on<{ operation: 'move' | 'delete'; completed: number; total: number; percent: number; label?: string }>('mgr:file-progress', showFileProgress);
   document.addEventListener('keydown', (e) => {
     // Sidebar pages can all be hidden deliberately; retain a local escape hatch.

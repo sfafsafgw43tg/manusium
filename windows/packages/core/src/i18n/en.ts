@@ -1046,6 +1046,8 @@ export const en: Record<string, string> = {
   'settings.resetUnavailable': 'A disposable sandbox session cannot reset its host app data.',
   'appBackground.title': 'Close this app?',
   'appBackground.desc': 'You can close the app completely or keep it running in the background. A background app stays available from the system tray.',
+  'appBackground.openProfiles': '{count} browser profile(s) are still open.',
+  'appBackground.openProfilesHint': 'Smart save will close the open profiles cleanly before exiting. Are you sure you want to close the app?',
   'appBackground.background': 'Keep in background',
   'appBackground.close': 'Close app',
   'appBackground.remember': 'Remember my choice',

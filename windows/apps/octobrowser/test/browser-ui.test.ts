@@ -71,6 +71,23 @@ describe('browser entry UI', () => {
     expect(browser).toContain('dismissAllPopouts();');
   });
 
+  it('renders winter flakes as layered snowflake shapes with drifting paths', () => {
+    expect(launcherCss).toContain('seasonal-snow-drift');
+    expect(launcherCss).toContain('data:image/svg+xml');
+    expect(launcherCss).toContain('background-size:96px 96px, 151px 151px, 73px 73px');
+    expect(launcherCss).toContain('32%');
+    expect(launcherCss).toContain('67%');
+  });
+
+  it('skips close confirmation when idle and includes active profiles when prompting', () => {
+    expect(manager).toContain('if (runningIds.size === 0) { this.beginAppQuit(); return; }');
+    expect(manager).toContain("win.webContents.send('mgr:app-close-request', {");
+    expect(launcher).toContain('appBackground.openProfiles');
+    expect(launcher).toContain('appBackground.openProfilesHint');
+    expect(i18nEn).toContain("'appBackground.openProfiles':");
+    expect(i18nPl).toContain("'appBackground.openProfiles':");
+  });
+
   it('exposes Chrome-first, Firefox-second, and lightweight Electron Base choices in the creator', () => {
     expect(launcherEditor).toContain("for (const choice of ['chromium', 'firefox', 'electron'] as const)");
     expect(launcherEditor).toContain("d.engine = choice === 'chromium' ? 'inkbrowser' : choice");
