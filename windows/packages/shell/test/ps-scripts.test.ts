@@ -256,17 +256,19 @@ describe('install.bat is unattended', () => {
   });
 });
 
-describe('no console window behind the installer', () => {
+describe('classic visible installer launch', () => {
   const installBat = fs.readFileSync(path.resolve(__dirname, '..', '..', '..', 'scripts', 'install.bat'), 'utf8');
 
-  it('re-launches itself hidden unless the console was asked for', () => {
+  it('keeps a normal launch visible and hides only explicit background setup', () => {
     expect(installBat).toContain('lib\\hidden.vbs');
     expect(installBat).toContain('OCTO_HIDDEN');
+    expect(installBat).toContain('Only an explicit');
+    expect(installBat).toContain('if defined OCTO_WANTS_BACKGROUND if not defined OCTO_WANTS_CONSOLE');
+    // There is exactly one hidden relaunch, and it is guarded by the explicit
+    // background condition above; the default path reaches PowerShell directly.
+    expect((installBat.match(/start "" \/b/g) ?? []).length).toBe(1);
     expect(installBat).toMatch(/find \/i "-nogui"/);
     expect(installBat).toMatch(/find \/i "-interactive"/);
-    // The hidden pass must exit immediately instead of running twice.
-    expect(installBat).toContain('endlocal & exit /b 0');
-    // hidden.vbs sets OCTO_NOPAUSE, so the invisible process never waits.
     expect(installBat).toContain('if not defined OCTO_NOPAUSE pause');
   });
 

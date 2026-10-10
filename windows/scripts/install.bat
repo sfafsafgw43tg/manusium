@@ -26,11 +26,9 @@ if not defined OCTO_ELEVATED (
   set "OCTO_RC=%ERRORLEVEL%"
   endlocal & exit /b %OCTO_RC%
 )
-rem The graphical installer needs no console at all, so the first pass
-rem re-launches this file through lib\hidden.vbs (Windows Script Host, window
-rem style 0) and exits at once - exactly what run.bat does. The console stays
-rem visible for -NoGui and -Interactive, and if Windows Script Host is disabled
-rem by policy everything simply runs in this window instead of failing.
+rem Classic installer behavior: a normal double-click keeps this console visible so
+rem the user can see UAC, progress, errors and the final result. Only an explicit
+rem -Background request uses the hidden launcher; -NoGui and -Interactive remain visible.
 set "OCTO_WANTS_CONSOLE="
 echo %* | find /i "-nogui" >nul 2>&1 && set "OCTO_WANTS_CONSOLE=1"
 echo %* | find /i "-interactive" >nul 2>&1 && set "OCTO_WANTS_CONSOLE=1"
@@ -40,16 +38,6 @@ if defined OCTO_WANTS_BACKGROUND if not defined OCTO_WANTS_CONSOLE (
   if not defined OCTO_HIDDEN if exist "%SystemRoot%\System32\wscript.exe" if exist "%~dp0lib\hidden.vbs" (
     start "" /b "%SystemRoot%\System32\wscript.exe" //nologo //B "%~dp0lib\hidden.vbs" "%~f0" %*
     endlocal & exit /b 0
-  )
-)
-if not defined OCTO_WANTS_CONSOLE (
-  if not defined OCTO_HIDDEN (
-    if exist "%SystemRoot%\System32\wscript.exe" (
-      if exist "%~dp0lib\hidden.vbs" (
-        start "" /b "%SystemRoot%\System32\wscript.exe" //nologo //B "%~dp0lib\hidden.vbs" "%~f0" %*
-        endlocal & exit /b 0
-      )
-    )
   )
 )
 rem Remember the console code page, switch to UTF-8 for PowerShell output, restore at the end.
