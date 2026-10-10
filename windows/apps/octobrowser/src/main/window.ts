@@ -1021,16 +1021,9 @@ export class BrowserWindowController {
           void clipboard.readText().then((raw) => {
             const text = raw.replace(/\u00a0/g, ' ').replace(/\r\n?/g, '\n');
             if (!text || wc.isDestroyed()) return;
-            // Native insertion first. `insertText` writes through the same path
-            // a keystroke would, so password fields, canvas editors and
-            // frameworks that ignore synthetic events all accept it - and it
-            // lands in one piece instead of one character at a time, which is
-            // what made Smart Paste slow and half-applied. The preload handler
-            // stays as the fallback for when the page is not focused yet.
-            try {
-              wc.insertText(text);
-              return;
-            } catch { /* fall through to the DOM path below */ }
+            // Let the isolated preload type the normalized text in short
+            // word-sized chunks. This keeps framework input events, masking
+            // widgets, and password fields behaving like keyboard entry.
             try { wc.send('octo:smart-paste-to-focused', text); }
             catch { /* nothing left to try: the tab is going away */ }
           }).catch(() => undefined);

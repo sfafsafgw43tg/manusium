@@ -129,17 +129,7 @@ ipcRenderer.on('octo:smart-paste-to-focused', (_e, text: string) => {
     return active;
   }
 
-  /**
-   * Smart Paste inserts the clipboard in ONE piece.
-   *
-   * It used to type character by character with a random 8-30 ms pause. That
-   * made a normal paste take seconds, and the moment a page re-rendered (React
-   * swapping the input, a site clearing the field, the user tabbing away by
-   * accident) the loop lost its target and silently stopped half-way - which is
-   * exactly what "Smart Paste does nothing in password fields" looked like.
-   * A single native-value write is what a real paste does: instant, complete,
-   * and with the proper beforeinput/input/change events for frameworks.
-   */
+  /** Insert one chunk while preserving the field's current selection/caret. */
   const insertInto = (field: HTMLInputElement | HTMLTextAreaElement, value: string): boolean => {
     const start = field.selectionStart ?? field.value.length;
     const end = field.selectionEnd ?? field.value.length;
@@ -178,18 +168,27 @@ ipcRenderer.on('octo:smart-paste-to-focused', (_e, text: string) => {
   const active = findDeepActiveElement();
   if (!active) return;
 
+  const chunks = text.match(/\S+\s*|\s+/g) ?? [text];
   void (async () => {
     if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) {
       if (active.disabled || active.readOnly) return;
-      if (insertInto(active, text)) return;
-      // The field rejected the direct write (a masked or read-only-on-input
-      // widget). Retry once through the native editing command, then give up.
-      try { active.focus(); } catch { /* ignore */ }
-      if (document.execCommand('insertText', false, text)) return;
+      for (const chunk of chunks) {
+        if (findDeepActiveElement() !== active) return;
+        if (!insertInto(active, chunk)) {
+          try { active.focus(); } catch { /* ignore */ }
+          if (!document.execCommand('insertText', false, chunk)) return;
+        }
+        // A small word-sized pause makes the operation behave like typing,
+        // while remaining fast for normal multi-word text.
+        await new Promise<void>((resolve) => window.setTimeout(resolve, chunk.trim() ? 28 : 8));
+      }
       return;
     }
     if ((active as HTMLElement).isContentEditable) {
-      if (insertIntoEditable(active as HTMLElement, text)) return;
+      for (const chunk of chunks) {
+        if (findDeepActiveElement() !== active || !insertIntoEditable(active as HTMLElement, chunk)) return;
+        await new Promise<void>((resolve) => window.setTimeout(resolve, chunk.trim() ? 28 : 8));
+      }
     }
   })();
 });

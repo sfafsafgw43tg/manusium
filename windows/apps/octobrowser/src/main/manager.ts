@@ -3361,6 +3361,9 @@ export class Manager {
           this.fileProgress('move', 0, 0, '');
           await copyDirectoryWithProgress(ctx.layout.root, dataDir, (completed, total, label) => this.fileProgress('move', completed, total, label));
           this.fileProgress('move', 1, 1, '');
+          // The new directory is now complete. Remove the old data only after
+          // the copy succeeded so a failed move never destroys the source.
+          await deleteDirectoryWithProgress(ctx.layout.root, (completed, total, label) => this.fileProgress('delete', completed, total, label));
         } catch {
           return { ok: false as const, errorKey: 'settings.dataDirCopyFailed' };
         }

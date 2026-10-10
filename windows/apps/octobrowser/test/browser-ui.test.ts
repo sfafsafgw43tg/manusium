@@ -363,13 +363,13 @@ describe('browser entry UI', () => {
     expect(runtime).toContain("this.firstPasswordOffer(origin, username, password)");
   });
 
-  it('pastes the clipboard in one piece so Smart Paste works in password fields', () => {
-    // The old handler typed character by character with a random pause: slow,
-    // and it stopped half-way whenever a page re-rendered the field.
-    expect(windowController).toContain('wc.insertText(text)');
+  it('types Smart Paste in word-sized keyboard-like chunks', () => {
+    expect(windowController).toContain("wc.send('octo:smart-paste-to-focused', text)");
     expect(tabPreload).toContain("setNativeInputValue(field, next, 'insertFromPaste')");
     expect(tabPreload).toContain('return field.value === next || field.value.includes(value)');
-    expect(tabPreload).toContain("document.execCommand('insertText', false, text)");
+    expect(tabPreload).toContain("const chunks = text.match(/\\S+\\s*|\\s+/g) ?? [text]");
+    expect(tabPreload).toContain('await new Promise<void>((resolve) => window.setTimeout(resolve, chunk.trim() ? 28 : 8))');
+    expect(tabPreload).toContain("document.execCommand('insertText', false, chunk)");
     expect(tabPreload).not.toContain('const delayFor = (character: string)');
     expect(tabPreload).not.toContain('for (const character of text)');
   });
