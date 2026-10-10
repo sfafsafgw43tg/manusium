@@ -78,13 +78,11 @@ function sourceCheckout(source, version, skipSync) {
   const sourceGit = path.join(source, '.git');
   const parentGclient = path.join(parent, '.gclient');
   run('git', ['config', '--global', 'depot-tools.allowGlobalGitConfig', 'false'], parent, 'suppressing depot_tools global Git recommendation');
-  const syncHelp = runCapture('gclient', ['sync', '--help'], parent, 'checking gclient sync options');
   const jobs = String(Math.max(2, Math.min(12, os.cpus().length)));
   // Keep the base command compatible with older depot_tools shipped on clean
   // Windows machines. Long-form options vary between depot_tools revisions.
   const syncArgs = ['sync', '-n', '-v', `-j${jobs}`];
-  if (syncHelp.includes('--no-history')) syncArgs.splice(1, 0, '--no-history');
-  else console.warn('[build-chromium-source] depot_tools lacks --no-history for gclient sync; using compatible sync mode');
+  console.log('[build-chromium-source] using compatible gclient sync flags: -n -v -j' + jobs);
   const hasChromiumCheckout = fs.existsSync(versionFile) && fs.existsSync(sourceGit);
   let parentEntries = fs.existsSync(parent)
     ? fs.readdirSync(parent).filter((entry) => entry !== '.DS_Store')

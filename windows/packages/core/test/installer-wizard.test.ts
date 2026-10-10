@@ -189,9 +189,8 @@ describe('steps and the console installer', () => {
     expect(chromium).toContain("'sync', '-n', '-v'");
     expect(chromium).toContain('`-j${jobs}`');
     expect(chromium).toContain("'depot-tools.allowGlobalGitConfig', 'false'");
-    expect(chromium).toContain("['sync', '--help']");
-    expect(chromium).toContain("syncHelp.includes('--no-history')");
-    expect(chromium).toContain('lacks --no-history for gclient sync');
+    expect(chromium).toContain("['sync', '-n', '-v'");
+    expect(chromium).toContain('using compatible gclient sync flags');
     expect(chromium).toContain("process.env.DEPOT_TOOLS_UPDATE = '0'");
     expect(chromium).toContain('automatic self-update disabled');
     expect(chromium).toContain('phase: synchronizing Chromium dependencies');
