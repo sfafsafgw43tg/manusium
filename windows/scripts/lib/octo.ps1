@@ -2477,7 +2477,8 @@ function Test-Ready {
   $target = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'win32-arm64' } else { 'win32-x64' }
   if ($env:OS -ne 'Windows_NT') { $target = 'linux-x64' }
   if (-not (Test-NativeRuntimeReady 'chromium' $target)) { return $false }
-  if (-not (Test-NativeRuntimeReady 'gecko' $target)) { return $false }
+  # Firefox is intentionally not part of the current install pass. Do not let
+  # its deferred runtime block a verified Chromium installation.
   return $true
 }
 
