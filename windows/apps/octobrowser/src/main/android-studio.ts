@@ -1798,6 +1798,11 @@ export interface CameraChoices {
   webcams: EmulatorWebcam[];
   /** The Android Emulator is installed, so its camera list could be asked. */
   emulatorAvailable: boolean;
+  /** Number of host cameras reported by the OS-level probe, when available. */
+  hostCameraCount?: number;
+  /** Exact emulator binary and SDK root used for the last probe. */
+  emulatorPath?: string;
+  sdkRoot?: string;
   /** Why `webcams` is empty: the list timed out, the emulator reported a failure, or it found no camera. */
   problem: CameraListProblem;
   /** The emulator's own words for the failure, when it gave some. */
@@ -1824,7 +1829,8 @@ export function androidCameraChoicesCached(): Promise<CameraChoices> {
 
 export async function androidCameraChoices(): Promise<CameraChoices> {
   const tools = optionalSdk();
-  if (!tools?.emulator) return { webcams: [], emulatorAvailable: false, problem: '', detail: '' };
+  const hostCameraCount = (await windowsCameraNames()).length || undefined;
+  if (!tools?.emulator) return { webcams: [], emulatorAvailable: false, hostCameraCount, problem: '', detail: '' };
   const candidates = [...new Set([
     tools.emulator,
     ...knownRoots().map((root) => locate(root, 'emulator')).filter(Boolean),
@@ -1833,10 +1839,10 @@ export async function androidCameraChoices(): Promise<CameraChoices> {
   for (const emulator of candidates) {
     const root = path.dirname(path.dirname(emulator));
     const report = await emulatorCameraReport({ emulator, root }, CAMERA_PICKER_LIMIT_MS, true);
-    if (report.webcams.length) return { webcams: report.webcams, emulatorAvailable: true, problem: '', detail: '' };
+    if (report.webcams.length) return { webcams: report.webcams, emulatorAvailable: true, hostCameraCount, emulatorPath: emulator, sdkRoot: root, problem: '', detail: '' };
     last = report;
   }
-  return { webcams: [], emulatorAvailable: true, problem: last.problem, detail: last.detail };
+  return { webcams: [], emulatorAvailable: true, hostCameraCount, emulatorPath: candidates[0], sdkRoot: path.dirname(path.dirname(candidates[0] ?? '')), problem: last.problem, detail: last.detail };
 }
 
 export interface ActiveCameraAssignments {
