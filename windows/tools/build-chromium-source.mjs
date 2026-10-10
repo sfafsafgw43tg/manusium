@@ -16,7 +16,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -36,14 +36,38 @@ function sha256(file) { return crypto.createHash('sha256').update(fs.readFileSyn
 function sha256Text(value) { return crypto.createHash('sha256').update(value).digest('hex'); }
 function run(command, args, cwd, label = command) {
   console.log(`[build-chromium-source] ${label}`);
-  const result = spawnSync(command, args, {
-    cwd,
-    stdio: 'inherit',
-    shell: process.platform === 'win32',
-    windowsHide: false,
+  const started = Date.now();
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      cwd,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      shell: process.platform === 'win32',
+      windowsHide: false,
+    });
+    let lastOutput = Date.now();
+    const forward = (chunk) => {
+      lastOutput = Date.now();
+      process.stdout.write(chunk);
+    };
+    child.stdout.on('data', forward);
+    child.stderr.on('data', forward);
+    const heartbeat = setInterval(() => {
+      if (Date.now() - lastOutput >= 10000) {
+        const elapsed = Math.floor((Date.now() - started) / 1000);
+        console.log(`[build-chromium-source] still active: ${label} (${elapsed}s; waiting for Git/network output)`);
+        lastOutput = Date.now();
+      }
+    }, 10000);
+    child.once('error', (error) => {
+      clearInterval(heartbeat);
+      reject(new Error(`${label} failed: ${error.message}`));
+    });
+    child.once('close', (code) => {
+      clearInterval(heartbeat);
+      if (code !== 0) reject(new Error(`${label} failed with exit code ${code ?? 'unknown'}`));
+      else resolve();
+    });
   });
-  if (result.error) fail(`${label} failed: ${result.error.message}`);
-  if (result.status !== 0) fail(`${label} failed with exit code ${result.status ?? 'unknown'}`);
 }
 function runCapture(command, args, cwd, label = command) {
   const result = spawnSync(command, args, { cwd, encoding: 'utf8', shell: process.platform === 'win32', windowsHide: true });
@@ -64,7 +88,7 @@ function ensureTool(tool) {
   const locator = process.platform === 'win32' ? 'where.exe' : 'which';
   try { runCapture(locator, [tool], process.cwd(), `checking ${tool}`); } catch { fail(`${tool} was not found on PATH; install depot_tools/Visual Studio prerequisites first`); }
 }
-function sourceCheckout(source, version, skipSync) {
+async function sourceCheckout(source, version, skipSync) {
   const parent = path.dirname(source);
   fs.mkdirSync(parent, { recursive: true });
   // install.bat bootstraps depot_tools before this script runs. Prevent the
@@ -77,7 +101,7 @@ function sourceCheckout(source, version, skipSync) {
   const versionFile = path.join(source, 'chrome', 'VERSION');
   const sourceGit = path.join(source, '.git');
   const parentGclient = path.join(parent, '.gclient');
-  run('git', ['config', '--global', 'depot-tools.allowGlobalGitConfig', 'false'], parent, 'suppressing depot_tools global Git recommendation');
+  await run('git', ['config', '--global', 'depot-tools.allowGlobalGitConfig', 'false'], parent, 'suppressing depot_tools global Git recommendation');
   const jobs = String(Math.max(2, Math.min(12, os.cpus().length)));
   // Keep the base command compatible with older depot_tools shipped on clean
   // Windows machines. Long-form options vary between depot_tools revisions.
@@ -106,26 +130,26 @@ function sourceCheckout(source, version, skipSync) {
       // `fetch chromium` is only valid in an empty parent directory. A
       // previous interrupted fetch leaves a .gclient file behind, and the
       // official tool requires gclient sync to resume that checkout.
-       run('gclient', syncArgs, parent, 'resuming Chromium source checkout (no history, parallel)');
+       await run('gclient', syncArgs, parent, 'resuming Chromium source checkout (no history, parallel)');
     } else {
       if (parentEntries.length > 0) fail(`source checkout is incomplete at ${source}; remove or repair the existing directory, then retry`);
-      run('fetch', ['--nohooks', '--no-history', 'chromium'], parent, 'fetching Chromium source (no history)');
+      await run('fetch', ['--nohooks', '--no-history', 'chromium'], parent, 'fetching Chromium source (no history)');
     }
   }
   if (!fs.existsSync(versionFile)) fail(`Chromium source checkout is incomplete: ${source} is missing chrome/VERSION; run gclient sync and retry`);
   const actual = chromiumVersion(source);
   if (actual !== version) {
-    run('git', ['checkout', '--detach', `refs/tags/${version}`], source, `checking out Chromium ${version}`);
+    await run('git', ['checkout', '--detach', `refs/tags/${version}`], source, `checking out Chromium ${version}`);
   } else {
-    run('git', ['status', '--short'], source, 'checking source tree status');
+    await run('git', ['status', '--short'], source, 'checking source tree status');
   }
   const checkedOut = chromiumVersion(source);
   if (checkedOut !== version) fail(`source VERSION is ${checkedOut}, expected ${version}`);
   if (!skipSync) {
     console.log('[build-chromium-source] phase: synchronizing Chromium dependencies');
-    run('gclient', syncArgs, parent, 'synchronizing Chromium dependencies (no history, parallel)');
+    await run('gclient', syncArgs, parent, 'synchronizing Chromium dependencies (no history, parallel)');
     console.log('[build-chromium-source] phase: installing Chromium build hooks and tools');
-    run('gclient', ['runhooks'], parent, 'running Chromium hooks');
+    await run('gclient', ['runhooks'], parent, 'running Chromium hooks');
   }
   return runCapture('git', ['rev-parse', 'HEAD'], source, 'recording Chromium source revision');
 }
@@ -143,14 +167,14 @@ function applyOverlay(source, version) {
   fs.writeFileSync(path.join(source, 'inkbrowser-source-build.json'), `${JSON.stringify(marker, null, 2)}\n`);
   return marker;
 }
-function build(source, outBuild, skipBuild) {
+async function build(source, outBuild, skipBuild) {
   fs.mkdirSync(outBuild, { recursive: true });
   fs.copyFileSync(gnArgs, path.join(outBuild, 'args.gn'));
   if (skipBuild) return;
-  run('gn', ['gen', outBuild, '--fail-on-unused-args'], source, 'generating GN files');
-  run('autoninja', ['-C', outBuild, 'chrome'], source, 'building Chromium chrome target');
+  await run('gn', ['gen', outBuild, '--fail-on-unused-args'], source, 'generating GN files');
+  await run('autoninja', ['-C', outBuild, 'chrome'], source, 'building Chromium chrome target');
 }
-function stage(source, buildDir, outDir, version, revision, marker, outBuild) {
+async function stage(source, buildDir, outDir, version, revision, marker, outBuild) {
   const builtExe = path.join(buildDir, 'chrome.exe');
   if (!fs.existsSync(builtExe)) fail(`source build output is missing ${builtExe}; do not stage an archive or vendor binary`);
   const staged = `${outDir}.partial-${process.pid}`;
@@ -162,7 +186,7 @@ function stage(source, buildDir, outDir, version, revision, marker, outBuild) {
   fs.copyFileSync(iconFile, path.join(staged, 'inkbrowser-chrome.ico'));
   const rcedit = arg('--rcedit');
   if (rcedit) {
-    run(rcedit, [launcher, '--set-icon', iconFile, '--set-version-string', 'ProductName', 'InkBrowser', '--set-version-string', 'FileDescription', 'InkBrowser Chromium'], root, 'embedding InkBrowser icon and name');
+    await run(rcedit, [launcher, '--set-icon', iconFile, '--set-version-string', 'ProductName', 'InkBrowser', '--set-version-string', 'FileDescription', 'InkBrowser Chromium'], root, 'embedding InkBrowser icon and name');
   } else {
     console.warn('[build-chromium-source] --rcedit not supplied; icon is staged beside the executable and Chromium branding comes from the source overlay');
   }
@@ -197,7 +221,7 @@ function stage(source, buildDir, outDir, version, revision, marker, outBuild) {
   fs.renameSync(staged, outDir);
   console.log(`[build-chromium-source] staged source-built InkBrowser Chromium at ${outDir}`);
 }
-function main() {
+async function main() {
   if (process.platform !== 'win32') fail('this workflow targets Windows x64; run it on the Windows build machine, not the Linux sandbox');
   const target = arg('--target', targetDefault);
   if (target !== targetDefault) fail(`unsupported target ${target}; only ${targetDefault} is implemented by this source-build workflow`);
@@ -211,9 +235,9 @@ function main() {
   const source = path.resolve(arg('--source', path.join('C:\\src', 'chromium', 'src')));
   const outBuild = path.resolve(arg('--out-build', path.join(source, 'out', 'InkBrowser')));
   const outDir = path.resolve(arg('--out', path.join(root, 'resources', 'engines', 'chromium', version)));
-  const revision = sourceCheckout(source, version, flag('--skip-sync'));
+  const revision = await sourceCheckout(source, version, flag('--skip-sync'));
   const marker = applyOverlay(source, version);
-  build(source, outBuild, flag('--skip-build'));
-  stage(source, outBuild, outDir, version, revision, marker, outBuild);
+  await build(source, outBuild, flag('--skip-build'));
+  await stage(source, outBuild, outDir, version, revision, marker, outBuild);
 }
-try { main(); } catch (error) { console.error(String(error?.stack ?? error?.message ?? error)); process.exitCode = 1; }
+main().catch((error) => { console.error(String(error?.stack ?? error?.message ?? error)); process.exitCode = 1; });
