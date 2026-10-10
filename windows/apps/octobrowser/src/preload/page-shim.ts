@@ -719,8 +719,10 @@ export function pageShim(c: PageConfig, eventName: string): void {
         const destination = args[0] as Float32Array;
         if (destination && !done.has(destination)) {
           done.add(destination);
+          const channel = Number(args[1]) | 0;
+          const start = Number(args[2]) | 0;
           for (let i = 0; i < destination.length; i += 97) {
-            const h = hash(i, Number(args[1]) | 0);
+            const h = hash(start + i, channel);
             destination[i] += ((h & 0xffff) / 0xffff - 0.5) * 1e-7;
           }
         }
@@ -850,9 +852,11 @@ export function pageShim(c: PageConfig, eventName: string): void {
           .replace(/^(default|communications|domyślne|komunikacja)\s*[-–:]\s*/i, '');
         const ordered = (kind: MediaDeviceKind, selectedLabel = '') => {
           const devices = real.filter((device) => device.kind === kind);
-          if (!selectedLabel) return devices;
+          const limit = kind === 'audioinput' ? want.audioInputs : kind === 'videoinput' ? want.videoInputs : want.audioOutputs;
+          if (limit <= 0) return [];
           const selected = devices.find((device) => normalize(device.label) === normalize(selectedLabel));
-          return selected ? [selected, ...devices.filter((device) => device !== selected)] : devices;
+          const prioritized = selected ? [selected, ...devices.filter((device) => device !== selected)] : devices;
+          return prioritized.slice(0, limit);
         };
         const orderedByKind = new Map<MediaDeviceKind, MediaDeviceInfo[]>([
           ['audioinput', ordered('audioinput', c.microphoneLabel)],
