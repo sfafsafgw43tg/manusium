@@ -750,15 +750,27 @@ export class Manager {
       const profileFolder = path.join(this.ctx.layout.profileEngineDir(p.id), 'inkbrowser-profile');
       prepareChromiumPrivacy(profileFolder, p.enginePrivacy.chromium);
       const debugPort = await this.freePort();
+      let restoreUrls: string[] = [];
+      let restoreActiveIndex = 0;
+      if (p.restoreSession && !p.deleteOnClose) {
+        try {
+          const saved = new ProfileData(this.ctx.layout, p.id, () => this.ctx.keyring.getKey()).session.load();
+          restoreUrls = (saved?.tabs ?? []).map((tab) => tab.url).filter((url) => /^https?:\/\//i.test(url)).slice(0, 50);
+          restoreActiveIndex = Math.max(0, Math.min(saved?.activeIndex ?? 0, Math.max(0, restoreUrls.length - 1)));
+        } catch (error) { this.ctx.logger.warn('native-chromium.session-restore-failed', { profile: p.id, error }); }
+      }
       const engine = await spawnNativeEngine('chromium', exe, {
         profileDir: profileFolder,
-        url: /^https?:\/\//i.test(p.homePage) ? p.homePage : 'about:blank',
+        url: restoreUrls[0] ?? (/^https?:\/\//i.test(p.homePage) ? p.homePage : 'about:blank'),
         debugPort,
         headless: false,
         appMode: p.appMode,
         extraArgs: p.enginePrivacy.chromium.webgl === 'disable' ? ['--disable-webgl'] : undefined,
       });
       const tabs = await NativeChromiumTabs.connect(debugPort);
+      const restoredTabs = [await tabs.activeTab()];
+      for (const url of restoreUrls.slice(1)) restoredTabs.push(await tabs.newTab(url, false));
+      if (restoredTabs[restoreActiveIndex]) await tabs.activateTab(restoredTabs[restoreActiveIndex].id);
       const native = { engine, tabs, startedAt: Date.now(), runtimeVersion: p.chromiumRuntime ?? DEFAULT_CHROMIUM_VERSION };
       this.nativeChromium.set(p.id, native);
       this.debugPorts.set(p.id, debugPort);
@@ -1822,6 +1834,21 @@ export class Manager {
    * Stop a running profile: ask it to quit (session is saved, no confirmation
    * overlay); if it has not exited after 10 s - or `force` is set - kill it.
    */
+  private async saveNativeChromiumSession(id: string, native: { tabs: NativeChromiumTabs }): Promise<void> {
+    const profile = this.profiles.get(id);
+    if (!profile.restoreSession || profile.deleteOnClose) return;
+    const states = await native.tabs.tabs();
+    const active = await native.tabs.activeTab().catch(() => undefined);
+    const tabs = states
+      .filter((tab) => /^https?:\/\//i.test(tab.url))
+      .slice(0, 50)
+      .map((tab) => ({ url: tab.url, title: tab.title, pinned: false }));
+    const activeIndex = active ? Math.max(0, tabs.findIndex((tab) => tab.url === active.url)) : 0;
+    new ProfileData(this.ctx.layout, id, () => this.ctx.keyring.getKey()).session.save({
+      savedAt: new Date().toISOString(), tabs, activeIndex: activeIndex < 0 ? 0 : activeIndex,
+    });
+  }
+
   stop(id: string, force = false): boolean {
     const c = this.children.get(id);
     if (!c) {
@@ -1836,7 +1863,9 @@ export class Manager {
       }
       if (!native) return false;
       this.ctx.logger.info('profile.native-chromium-stopping', { profile: id, force });
-      void native.tabs.close().finally(() => native.engine.stop(force ? 100 : 5000));
+      void (force ? Promise.resolve() : this.saveNativeChromiumSession(id, native).catch((error) => {
+        this.ctx.logger.warn('native-chromium.session-save-failed', { profile: id, error });
+      })).finally(() => native.tabs.close().finally(() => native.engine.stop(force ? 100 : 5000)));
       return true;
     }
     if (force) {
