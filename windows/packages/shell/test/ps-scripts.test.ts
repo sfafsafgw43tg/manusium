@@ -164,7 +164,7 @@ describe('the graphical installer', () => {
     expect(uiSource).toContain('$isGitProgress = $text -match');
     expect(uiSource).toContain('$script:Wiz.LastProgressLogAt');
     expect(source).toContain('$lastGitProgressAt = [datetime]::MinValue');
-    expect(source).toContain('$isGitProgress = $line.Trim() -match');
+    expect(source).toContain('$isGitProgress = $displayLine -match');
     expect(source).toContain('TotalSeconds -ge 15');
   });
 

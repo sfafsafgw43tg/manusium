@@ -198,7 +198,10 @@ describe('steps and the console installer', () => {
     expect(firefox).not.toContain('fs.renameSync(sourceStagedExecutable, executablePath)');
     const runtimeStep = functionBody(octo, 'Get-SetupSteps');
     expect(runtimeStep).toContain(String.raw`tools\verify-native-engines.mjs`);
-    expect(runtimeStep).toContain('Native Chromium/Firefox verification failed');
+    expect(runtimeStep).toContain('Native Chromium verification failed');
+    expect(runtimeStep).toContain("'--allow-missing-firefox'");
+    expect(runtimeStep).toContain('Firefox runtime skipped for now');
+    expect(runtimeStep).not.toContain('stage:firefox');
     expect(octo).toContain('function Test-NativeRuntimeReady');
     expect(octo).toContain("[string]$manifest.distribution -ne 'source-built'");
     expect(octo).toContain('Get-FileHash -LiteralPath $exe -Algorithm SHA256');

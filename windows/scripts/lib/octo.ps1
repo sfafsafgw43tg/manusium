@@ -196,7 +196,7 @@ $Messages = @{
     stepAndroid       = 'Android Studio and Java 17'
     stepSdk           = 'Android SDK command-line tools, adb and the emulator'
     stepDeps          = 'Project dependencies (npm ci)'
-    stepRuntimes      = 'Native Chromium and Firefox runtimes'
+    stepRuntimes      = 'Native Chromium runtime (Firefox skipped for now)'
     stepBuild         = 'Building OctoBrowser and OctoDetect'
     uiTitle              = 'OctoSuite installer'
     uiVersion            = 'Version {0}'
@@ -430,7 +430,7 @@ $Messages = @{
     stepAndroid       = 'Android Studio i Java 17'
     stepSdk           = 'Narzędzia wiersza poleceń Android SDK, adb i emulator'
     stepDeps          = 'Zależności projektu (npm ci)'
-    stepRuntimes      = 'Natywne silniki Chromium i Firefox'
+    stepRuntimes      = 'Natywny silnik Chromium (Firefox tymczasowo pominięty)'
     stepBuild         = 'Budowanie OctoBrowser i OctoDetect'
     uiTitle              = 'Instalator OctoSuite'
     uiVersion            = 'Wersja {0}'
@@ -1391,9 +1391,11 @@ function Invoke-Native([string]$exe, [string[]]$argList, [string]$workDir, [swit
         # A terminal renders Git's carriage-return progress in place. Through
         # PowerShell's pipe each update becomes a new line, so show occasional
         # checkpoints while retaining every line in the returned diagnostics.
-        $isGitProgress = $line.Trim() -match '^(remote:\s*)?(Counting objects|Compressing objects|Receiving objects|Resolving deltas|Updating files)'
+        $displayLine = $line.Trim()
+        if ($displayLine -match '^Still working on:\s*(.+)$') { $displayLine = "Chromium checkout active: $($matches[1])" }
+        $isGitProgress = $displayLine -match '^(remote:\s*)?(Counting objects|Compressing objects|Receiving objects|Resolving deltas|Updating files)|^Chromium checkout active:'
         if (-not $isGitProgress -or ([datetime]::UtcNow - $lastGitProgressAt).TotalSeconds -ge 15) {
-          Write-Host $line
+          Write-Host $displayLine
           if ($isGitProgress) { $lastGitProgressAt = [datetime]::UtcNow }
         }
       }
@@ -2134,7 +2136,6 @@ function Get-SetupSteps {
         if ($env:OS -ne 'Windows_NT') { $target = 'linux-x64' }
         if ($target -notin @('win32-x64', 'linux-x64')) { Warn "Native runtimes are not staged for $target"; return $false }
         $stageChromium = if ($target -eq 'win32-x64') { 'stage:chromium:windows' } else { 'stage:chromium' }
-        $stageFirefox = if ($target -eq 'win32-x64') { 'stage:firefox:windows' } else { 'stage:firefox:linux' }
         try {
           # Do not rebuild or overwrite an already verified runtime on every install.
           # Windows Chromium is source-built only; the stage script deliberately rejects
@@ -2145,15 +2146,15 @@ function Get-SetupSteps {
           } else {
             Say 'Verified source-built Chromium runtime already present; reusing it.' 'Green'
           }
-          if (-not (Test-NativeRuntimeReady 'gecko' $target)) {
-            Invoke-Npm @('run', $stageFirefox)
-          } else {
-            Say 'Verified Firefox runtime already present; reusing it.' 'Green'
-          }
+          # Firefox staging is intentionally disabled for this installer pass.
+          # It must never block a usable Chromium installation or be silently
+          # substituted with another engine; Firefox remains unavailable until
+          # its verified runtime download path is repaired separately.
+          Say 'Firefox runtime skipped for now; Chromium is the active native engine.' 'Yellow'
           $nodeExe = Resolve-Tool 'node'
           if (-not $nodeExe) { throw 'Node.js is unavailable for native runtime verification.' }
-          $check = Invoke-Native $nodeExe @('tools\verify-native-engines.mjs') $InstallRoot
-          if ($check.code -ne 0) { throw "Native Chromium/Firefox verification failed with exit code $($check.code)." }
+          $check = Invoke-Native $nodeExe @('tools\verify-native-engines.mjs', '--allow-missing-firefox') $InstallRoot
+          if ($check.code -ne 0) { throw "Native Chromium verification failed with exit code $($check.code)." }
           return $true
         } catch { Warn $_.Exception.Message; return $false }
       } }

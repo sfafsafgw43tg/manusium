@@ -794,12 +794,13 @@ function Read-WizLine([string]$line) {
   $fields = ConvertFrom-WizardMarker $line
   if ($null -eq $fields) {
     $text = ([string]$line).Trim()
+    if ($text -match '^Still working on:\s*(.+)$') { $text = "Chromium checkout active: $($matches[1])" }
     $script:Wiz.LastOutput = $text
     # Git progress is written with carriage returns. When captured through a
     # pipe those updates become separate lines, which used to flood the UI
     # during the Chromium checkout. Keep the newest value in the live header,
     # but write only an occasional checkpoint to the visible log.
-    $isGitProgress = $text -match '^(remote:\s*)?(Counting objects|Compressing objects|Receiving objects|Resolving deltas|Updating files)'
+    $isGitProgress = $text -match '^(remote:\s*)?(Counting objects|Compressing objects|Receiving objects|Resolving deltas|Updating files)|^Chromium checkout active:'
     if ($isGitProgress) {
       $seconds = if ($script:Wiz.Watch) { [int][Math]::Floor($script:Wiz.Watch.Elapsed.TotalSeconds) } else { 0 }
       if (($seconds - [int]$script:Wiz.LastProgressLogAt) -ge 15) {
