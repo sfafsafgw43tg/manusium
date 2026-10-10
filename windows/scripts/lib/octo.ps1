@@ -2322,7 +2322,10 @@ function Get-SetupSteps {
         if (Test-GitCheckout) { return (ConvertTo-StepResult (Install-Prerequisites -GitRequired)) }
         return (ConvertTo-StepResult (Install-Prerequisites))
       } }
-    @{ Key = 'stepDeps'; Required = $true; Fatal = $true; Action = { return (Invoke-EnsureDependencies) } }
+    # Dependency repair is warning-only so an already-built checkout can still
+    # open when npm/registry access is temporarily unavailable. Test-Ready below
+    # still prevents a fresh or incomplete checkout from being reported ready.
+    @{ Key = 'stepDeps'; Required = $false; Fatal = $false; Action = { return (Invoke-EnsureDependencies) } }
     @{ Key = 'stepRuntimes'; Required = $false; Fatal = $false; Action = {
         $target = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'win32-arm64' } else { 'win32-x64' }
         if ($env:OS -ne 'Windows_NT') { $target = 'linux-x64' }

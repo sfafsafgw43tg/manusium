@@ -74,9 +74,10 @@ describe('success is reported only when every required step succeeded', () => {
   it('the fatal flag covers prerequisites but not optional native runtime staging', () => {
     const block = octo.slice(octo.indexOf('function Get-SetupSteps'), octo.indexOf('function Show-InstallerWindow'));
     const fatal = [...block.matchAll(/Key = '(step[A-Za-z]+)'; Required = \$(?:true|false); Fatal = \$true/g)].map((m) => m[1]);
-    expect(fatal).toEqual(['stepPrereqs', 'stepDeps']);
-    expect([...block.matchAll(/Fatal = \$false/g)]).toHaveLength(3);
+    expect(fatal).toEqual(['stepPrereqs']);
+    expect([...block.matchAll(/Fatal = \$false/g)]).toHaveLength(4);
     expect(octo).toContain('stepRuntimes');
+    expect(block).toContain("Key = 'stepDeps'; Required = $false; Fatal = $false");
     expect(block).toContain("Key = 'stepRuntimes'; Required = $false; Fatal = $false");
   });
 
@@ -280,7 +281,8 @@ describe('steps and the console installer', () => {
   it('the required steps include dependencies and the app build while native staging is optional', () => {
     const block = octo.slice(octo.indexOf('function Get-SetupSteps'), octo.indexOf('function Show-InstallerWindow'));
     const required = [...block.matchAll(/Key = '(step[A-Za-z]+)'; Required = \$true/g)].map((match) => match[1]);
-    expect(required).toEqual(['stepPrereqs', 'stepDeps', 'stepBuild']);
+    expect(required).toEqual(['stepPrereqs', 'stepBuild']);
+    expect(block).toContain("Key = 'stepDeps'; Required = $false; Fatal = $false");
     expect(block).toContain("Key = 'stepRuntimes'; Required = $false; Fatal = $false");
   });
 
@@ -289,7 +291,7 @@ describe('steps and the console installer', () => {
     expect(octo).toContain("if (-not $ok -and $step.Fatal) { return $false }");
     expect(octo).toContain('if ($step.Fatal) { break }');
     const depsStep = octo.slice(octo.indexOf("Key = 'stepDeps'"), octo.indexOf("Key = 'stepRuntimes'"));
-    expect(depsStep).toContain('Fatal = $true');
+    expect(depsStep).toContain('Fatal = $false');
     expect(depsStep).toContain('return (Invoke-EnsureDependencies)');
   });
 });

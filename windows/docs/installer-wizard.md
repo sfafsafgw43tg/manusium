@@ -56,15 +56,17 @@ prerequisites and Firefox staging remain separate feature flows and are not down
 | Step | Required | If it fails | What it does |
 |---|---|---|---|
 | Node.js and git | yes | **Stops the run**: the later steps are skipped | Installs Node.js 22.12+ and git (winget or the vendor installer) |
-| Project dependencies | yes | **Stops the run** | `npm ci` (or `npm install`), the required native package setup, and the Electron binary |
+| Project dependencies | no | Completed with warnings | Attempts `npm install` and clean `npm ci` fallback; skips the step when npm fails, but the final readiness check still refuses to claim a fresh/incomplete checkout is runnable |
 | Native Chromium source build | no | Completed with warnings | Attempts depot_tools/Visual Studio setup, checks out the pinned Chromium source, builds it, and verifies the source-built runtime manifest and executable hash; Electron remains available if this optional step fails |
 | Desktop shortcut | no | Completed with warnings | Octo.su on the desktop |
 | Build | yes | **Stops the run** | `npm run build` for both applications |
 
 ## When success is shown
 
-Node.js/git, project dependencies, and the application build stop the
-run when they fail. Native Chromium staging is optional: a missing toolchain, failed checkout, or
+Node.js/git and the application build stop the
+run when they fail. Project dependency installation is warning-only: npm failures are shown and
+the installer continues, but the final readiness check still refuses to claim a fresh/incomplete
+checkout is runnable. Native Chromium staging is optional: a missing toolchain, failed checkout, or
 failed runtime verification is shown as a warning and the installer continues with Electron.
 The steps after a fatal failure are shown as skipped. Firefox and Android are
 not part of this pass, so their unavailable runtimes do not make a Chromium installation fail. A
