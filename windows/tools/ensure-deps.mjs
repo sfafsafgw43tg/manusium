@@ -196,7 +196,7 @@ export function writeStamp(root, fingerprint) {
 
 /**
  * Pure: decides the work to do.
- *   'install'  run npm ci (npm install as the fallback), then repair Electron
+ *   'install'  run the compatible npm install path (npm ci as the fallback), then repair Electron
  *   'electron' the dependencies match, only the Electron binary is missing
  *   'none'     nothing to do
  */
@@ -273,16 +273,22 @@ export function ensureDependencies(root, { checkOnly = false, run = runCommand, 
     // The record goes first: an install that is interrupted (closed window, Ctrl+C, a
     // dropped network) must never look complete to the next start.
     rmSync(path.join(root, STAMP_PATH), { force: true });
-    const ciStatus = run('npm', ['ci', '--no-audit', '--no-fund', '--ignore-scripts', '--include=optional'], root);
-    if (ciStatus !== 0) {
-      log(`npm ci failed with exit code ${ciStatus}. Retrying with npm install.`);
-      const installStatus = run('npm', ['install', '--no-audit', '--no-fund', '--ignore-scripts', '--include=optional'], root);
-      if (installStatus !== 0) {
+    // npm ci is strict about every lockfile/platform edge case. On Windows a
+    // copied checkout can contain optional native package metadata that npm ci
+    // rejects even though npm install can repair it safely. Both commands keep
+    // scripts disabled; native scripts are approved and run individually below.
+    const installArgs = ['install', '--no-audit', '--no-fund', '--ignore-scripts', '--include=optional'];
+    const ciArgs = ['ci', '--no-audit', '--no-fund', '--ignore-scripts', '--include=optional'];
+    const installStatus = run('npm', installArgs, root);
+    if (installStatus !== 0) {
+      log(`npm install failed with exit code ${installStatus}. Retrying with clean npm ci.`);
+      const ciStatus = run('npm', ciArgs, root);
+      if (ciStatus !== 0) {
         if (existingDependencyArtifactsPresent(root, pkg)) {
-          log(`npm install also failed with exit code ${installStatus}; using the existing verified dependency tree and continuing.`);
+          log(`npm install and npm ci failed (${installStatus}/${ciStatus}); using the existing verified dependency tree and continuing.`);
           return { status: 0, plan };
         }
-        log(`Dependency installation failed: npm ci=${ciStatus}, npm install=${installStatus}. A complete usable dependency tree was not found.`);
+        log(`Dependency installation failed: npm install=${installStatus}, npm ci=${ciStatus}. A complete usable dependency tree was not found.`);
         return { status: 2, plan };
       }
     }

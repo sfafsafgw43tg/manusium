@@ -75,6 +75,7 @@ function recordingRunner(handle: (call: Call) => number) {
 
 const isNpmCi = (call: Call) => call.command === 'npm' && call.args[0] === 'ci';
 const isNpmInstall = (call: Call) => call.command === 'npm' && call.args[0] === 'install';
+const isNpmDependencyInstall = (call: Call) => isNpmCi(call) || isNpmInstall(call);
 const isElectronInstall = (call: Call) => call.command === process.execPath
   && call.args[0].endsWith(path.join('electron', 'install.js'));
 
@@ -240,16 +241,16 @@ describe('ensureDependencies', () => {
   it('installs a fresh checkout once, then leaves it alone', () => {
     makeProject();
     const first = recordingRunner((call) => {
-      if (isNpmCi(call)) {
+      if (isNpmDependencyInstall(call)) {
         fakeInstall();
         put('node_modules/esbuild/bin/esbuild', '');
       }
       return 0;
     });
     expect(ensureDependencies(root, { run: first.run, log: () => {} }).status).toBe(0);
-    expect(first.calls.filter(isNpmCi).map((c) => c.command + ' ' + c.args[0])).toEqual(['npm ci']);
-    expect(first.calls.find(isNpmCi)?.args).toContain('--ignore-scripts');
-    expect(first.calls.find(isNpmCi)?.args).toContain('--include=optional');
+    expect(first.calls.filter(isNpmDependencyInstall).map((c) => c.command + ' ' + c.args[0])).toEqual(['npm install']);
+    expect(first.calls.find(isNpmDependencyInstall)?.args).toContain('--ignore-scripts');
+    expect(first.calls.find(isNpmDependencyInstall)?.args).toContain('--include=optional');
     expect(existsSync(path.join(root, STAMP_PATH))).toBe(true);
 
     const second = recordingRunner(() => 0);
@@ -260,24 +261,24 @@ describe('ensureDependencies', () => {
   it('reinstalls after a new lockfile arrives with a new version', () => {
     makeProject();
     const install = recordingRunner((call) => {
-      if (isNpmCi(call)) fakeInstall();
+      if (isNpmDependencyInstall(call)) fakeInstall();
       return 0;
     });
     ensureDependencies(root, { run: install.run, log: () => {} });
 
     put('package-lock.json', '{"lockfileVersion":3,"packages":{"new-dependency":{}}}\n');
     const update = recordingRunner((call) => {
-      if (isNpmCi(call)) fakeInstall();
+      if (isNpmDependencyInstall(call)) fakeInstall();
       return 0;
     });
     expect(ensureDependencies(root, { run: update.run, log: () => {} }).status).toBe(0);
-    expect(update.calls.some(isNpmCi)).toBe(true);
+    expect(update.calls.some(isNpmDependencyInstall)).toBe(true);
   });
 
   it('removes the record before an install, so an interrupted install never looks complete', () => {
     makeProject();
     const first = recordingRunner((call) => {
-      if (isNpmCi(call)) fakeInstall();
+      if (isNpmDependencyInstall(call)) fakeInstall();
       return 0;
     });
     ensureDependencies(root, { run: first.run, log: () => {} });
@@ -291,22 +292,22 @@ describe('ensureDependencies', () => {
     expect(existsSync(path.join(root, STAMP_PATH))).toBe(false);
   });
 
-  it('falls back to npm install when npm ci fails', () => {
+  it('falls back to clean npm ci when npm install fails', () => {
     makeProject();
     const runner = recordingRunner((call) => {
-      if (isNpmCi(call)) return 1;
-      if (isNpmInstall(call)) fakeInstall();
+      if (isNpmInstall(call)) return 1;
+      if (isNpmCi(call)) { fakeInstall(); return 0; }
       return 0;
     });
     expect(ensureDependencies(root, { run: runner.run, log: () => {} }).status).toBe(0);
-    expect(runner.calls.map((c) => c.args[0])).toEqual(['ci', 'install']);
+    expect(runner.calls.map((c) => c.args[0])).toEqual(['install', 'ci']);
   });
 
   it('fails without recording an install when both npm commands fail', () => {
     makeProject();
     const runner = recordingRunner(() => 1);
     expect(ensureDependencies(root, { run: runner.run, log: () => {} }).status).toBe(2);
-    expect(runner.calls.map((c) => c.args[0])).toEqual(['ci', 'install']);
+    expect(runner.calls.map((c) => c.args[0])).toEqual(['install', 'ci']);
     expect(existsSync(path.join(root, STAMP_PATH))).toBe(false);
   });
 
@@ -324,7 +325,7 @@ describe('ensureDependencies', () => {
   it('repairs only the Electron binary when the packages are current', () => {
     makeProject();
     const install = recordingRunner((call) => {
-      if (isNpmCi(call)) fakeInstall();
+      if (isNpmDependencyInstall(call)) fakeInstall();
       return 0;
     });
     ensureDependencies(root, { run: install.run, log: () => {} });
@@ -342,7 +343,7 @@ describe('ensureDependencies', () => {
   it('keeps the recorded install when the Electron download fails, so only that step is retried', () => {
     makeProject();
     const install = recordingRunner((call) => {
-      if (isNpmCi(call)) fakeInstall();
+      if (isNpmDependencyInstall(call)) fakeInstall();
       return 0;
     });
     ensureDependencies(root, { run: install.run, log: () => {} });
@@ -358,7 +359,7 @@ describe('ensureDependencies', () => {
   it('skips the Electron step for a project that does not use Electron', () => {
     makeProject({ electron: false });
     const runner = recordingRunner((call) => {
-      if (isNpmCi(call)) fakeInstall({ electron: false });
+      if (isNpmDependencyInstall(call)) fakeInstall({ electron: false });
       return 0;
     });
     expect(ensureDependencies(root, { run: runner.run, log: () => {} }).status).toBe(0);
