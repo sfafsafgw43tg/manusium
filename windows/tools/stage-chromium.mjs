@@ -1,6 +1,5 @@
-// Stage a pinned Chrome for Testing runtime under resources/engines/chromium/<version>.
-// No browser binary is committed to source control; the archive is downloaded,
-// checksum-verified, extracted, and validated before it can be packaged.
+// Stage a pinned compatibility Chromium runtime for non-Windows development only.
+// Windows releases must use build-chromium-source.mjs and a source-built binary.
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -50,6 +49,7 @@ function extractZip(zip, destination) {
   execFileSync('unzip', ['-q', '-o', zip, '-d', destination], { stdio: 'inherit' });
 }
 function stage(target, outDir) {
+  if (target === 'win32-x64') fail('Windows Chromium must be built from the pinned source checkout; Chrome for Testing archives are not accepted. Run npm run build:chromium:windows on Windows.');
   const artifact = ARTIFACTS[target];
   if (!artifact) fail(`unsupported target ${target}; supported targets: ${Object.keys(ARTIFACTS).join(', ')}`);
   const url = `https://storage.googleapis.com/chrome-for-testing-public/${CHROMIUM_VERSION}/${artifact.platform}/${artifact.archive}`;

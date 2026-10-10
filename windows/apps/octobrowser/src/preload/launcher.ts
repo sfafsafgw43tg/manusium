@@ -11,7 +11,7 @@ type Result<T> = { ok: true; value: T } | { ok: false; error: string };
 // Keep this fixed allow-list in sync with launcher.ts. The proxy event is sent
 // whenever a saved proxy is changed; omitting it prevents the launcher from
 // completing its initial event subscriptions.
-const EVENTS = new Set(['mgr:profiles', 'mgr:proxies', 'mgr:update-status', 'mgr:toast', 'mgr:show-tab', 'mgr:app-close-request', 'mgr:android-progress', 'mgr:android-screen']);
+const EVENTS = new Set(['mgr:profiles', 'mgr:proxies', 'mgr:update-status', 'mgr:toast', 'mgr:show-tab', 'mgr:app-close-request', 'mgr:file-progress', 'mgr:android-progress', 'mgr:android-screen']);
 
 contextBridge.exposeInMainWorld('octo', {
   invoke: async (channel: string, ...args: unknown[]) => {

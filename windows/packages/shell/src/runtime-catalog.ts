@@ -66,10 +66,11 @@ function safeExtract(zip: string, temp: string): void {
 }
 export interface InstalledRuntime { entry: ChromiumCatalogEntry; rootDir: string; executablePath: string; installed: boolean; }
 export function listInstalled(root: string, platform = process.platform, arch = process.arch): InstalledRuntime[] {
-  return catalogForPlatform(platform, arch).map((entry) => { const rootDir = path.join(root, entry.version); const manifestPath = path.join(rootDir, 'runtime.json'); let installed = false; try { const m = JSON.parse(fs.readFileSync(manifestPath, 'utf8')); installed = m.version === entry.version && m.sha256 === digest(path.join(rootDir, entry.executable)) && fs.existsSync(path.join(rootDir, entry.executable)); } catch { /* not installed or incomplete */ } return { entry, rootDir, executablePath: path.join(rootDir, entry.executable), installed }; });
+  return catalogForPlatform(platform, arch).map((entry) => { const rootDir = path.join(root, entry.version); const manifestPath = path.join(rootDir, 'runtime.json'); let installed = false; try { const m = JSON.parse(fs.readFileSync(manifestPath, 'utf8')); const sourceBuilt = platform !== 'win32' || m.distribution === 'source-built'; installed = sourceBuilt && m.version === entry.version && m.sha256 === digest(path.join(rootDir, entry.executable)) && fs.existsSync(path.join(rootDir, entry.executable)); } catch { /* not installed or incomplete */ } return { entry, rootDir, executablePath: path.join(rootDir, entry.executable), installed }; });
 }
 export function installChromium(entry: ChromiumCatalogEntry, root: string, fetch = true): InstalledRuntime {
   if (entry.support === 'retired') throw new Error(`Cannot install retired Chromium ${entry.version}`);
+  if (entry.platform === 'win32-x64') throw new Error('Windows Chromium must be built from the pinned source checkout; Chrome for Testing archives are not accepted. Run npm run build:chromium:windows on Windows.');
   fs.mkdirSync(root, { recursive: true });
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'octo-runtime-')); const archive = path.join(temp, 'runtime.zip'); const unpacked = path.join(temp, 'unpacked');
   try {

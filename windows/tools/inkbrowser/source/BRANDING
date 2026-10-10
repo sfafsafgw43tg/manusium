@@ -1,0 +1,10 @@
+COMPANY_FULLNAME=InkBrowser Project
+COMPANY_SHORTNAME=InkBrowser
+PRODUCT_FULLNAME=InkBrowser
+PRODUCT_SHORTNAME=InkBrowser
+PRODUCT_INSTALLER_FULLNAME=InkBrowser Installer
+PRODUCT_INSTALLER_SHORTNAME=InkBrowser Installer
+COPYRIGHT=Copyright @LASTCHANGE_YEAR@ InkBrowser contributors. All rights reserved.
+MAC_BUNDLE_ID=org.inkbrowser.InkBrowser
+MAC_CREATOR_CODE=Ink1
+MAC_TEAM_ID=

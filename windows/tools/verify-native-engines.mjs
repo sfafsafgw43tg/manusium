@@ -55,6 +55,12 @@ function stopChild(child, timeoutMs = 5000) {
 }
 async function verify(kind, executable) {
   if (!executable || !fs.existsSync(executable)) return { kind, status: 'missing', executable: executable || null };
+  if (kind === 'chromium' && process.platform === 'win32') {
+    const manifestPath = path.join(path.dirname(executable), 'runtime.json');
+    let manifest;
+    try { manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')); } catch { throw new Error(`chromium: source-built runtime manifest missing or invalid: ${manifestPath}`); }
+    if (manifest.distribution !== 'source-built' || manifest.modified !== true) throw new Error('chromium: refusing to verify a repackaged Chrome for Testing runtime; build Chromium from source');
+  }
   const port = await freePort();
   const profile = path.join(root, kind);
   fs.mkdirSync(profile, { recursive: true, mode: 0o700 });

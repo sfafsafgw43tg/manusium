@@ -71,12 +71,12 @@ describe('success is reported only when every required step succeeded', () => {
     expect(body).toContain("Write-WizardMarker @('step', 'skip', $step.Key, $index, $total)");
   });
 
-  it('the fatal flag is set on Node.js and git only, as the console installer comment says', () => {
+  it('the fatal flag covers prerequisites and the native runtime build', () => {
     const block = octo.slice(octo.indexOf('function Get-SetupSteps'), octo.indexOf('function Show-InstallerWindow'));
     const fatal = [...block.matchAll(/Key = '(step[A-Za-z]+)'; Required = \$(?:true|false); Fatal = \$true/g)].map((m) => m[1]);
-    expect(fatal).toEqual(['stepPrereqs']);
-    expect([...block.matchAll(/Fatal = \$false/g)]).toHaveLength(7);
-    expect(octo).toContain('# Only the first step (Node.js/git) is fatal: without it nothing can run.');
+    expect(fatal).toEqual(['stepPrereqs', 'stepRuntimes']);
+    expect([...block.matchAll(/Fatal = \$false/g)]).toHaveLength(6);
+    expect(octo).toContain('stepRuntimes');
   });
 
   it('the console installer never reports success after a failed required step', () => {
@@ -178,12 +178,13 @@ describe('the options reach the real installation', () => {
 });
 
 describe('steps and the console installer', () => {
-  it('stages native runtimes with Windows-native extraction and verifies both executables', () => {
-    const chromium = fs.readFileSync(path.join(root, 'tools', 'stage-chromium.mjs'), 'utf8');
+  it('builds Windows Chromium from source and verifies both native executables', () => {
+    const chromium = fs.readFileSync(path.join(root, 'tools', 'build-chromium-source.mjs'), 'utf8');
     const firefox = fs.readFileSync(path.join(root, 'tools', 'stage-firefox.mjs'), 'utf8');
-    expect(chromium).toContain("process.platform === 'win32'");
-    expect(chromium).toContain('Expand-Archive');
-    expect(chromium).not.toContain("execFileSync('unzip', ['-q', '-o', cache");
+    expect(chromium).toContain('fetching Chromium source');
+    expect(chromium).toContain('autoninja');
+    expect(chromium).toContain("distribution: 'source-built'");
+    expect(chromium).not.toContain('chrome-for-testing-public');
     expect(firefox).toContain("'/norestart'");
     expect(firefox).toContain('3010');
     expect(firefox).toContain('fs.copyFileSync(sourceStagedExecutable, executablePath)');
