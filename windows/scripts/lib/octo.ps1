@@ -1546,6 +1546,78 @@ function Install-Prerequisites([switch]$GitRequired) {
   return $true
 }
 
+# Chromium's Windows source build needs depot_tools before npm can run
+# build-chromium-source.mjs. Keep this separate from the small application
+# prerequisites above: depot_tools is a developer toolchain and is installed
+# only when a source-built Chromium runtime is actually missing.
+function Ensure-ChromiumBuildToolchain {
+  if ($env:OS -ne 'Windows_NT') { return $true }
+  $git = Resolve-Tool 'git'
+  if (-not $git) { Warn 'Chromium source build needs Git for Windows, but git was not found.'; return $false }
+
+  $depot = Join-Path $env:LOCALAPPDATA 'InkBrowser\depot_tools'
+  $fetch = Join-Path $depot 'fetch.bat'
+  if (-not (Test-Path -LiteralPath $fetch)) {
+    $parent = Split-Path -Parent $depot
+    New-Item -ItemType Directory -Path $parent -Force | Out-Null
+    if (Test-Path -LiteralPath $depot) {
+      $entries = @(Get-ChildItem -LiteralPath $depot -Force -ErrorAction SilentlyContinue)
+      if ($entries.Count -gt 0) { Warn "The depot_tools folder is incomplete: $depot"; return $false }
+      Remove-Item -LiteralPath $depot -Force -ErrorAction SilentlyContinue
+    }
+    Say 'Downloading official Chromium depot_tools...' 'Cyan'
+    $clone = Invoke-Native $git @('clone', '--depth', '1', 'https://chromium.googlesource.com/chromium/tools/depot_tools.git', $depot) $parent
+    if ($clone.code -ne 0 -or -not (Test-Path -LiteralPath $fetch)) {
+      Warn "depot_tools could not be downloaded into $depot (exit code $($clone.code))."
+      return $false
+    }
+  }
+
+  # Chromium requires depot_tools to be first, and DEPOT_TOOLS_WIN_TOOLCHAIN=0
+  # tells it to use the user's local Visual Studio installation.
+  $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+  $pathParts = @($userPath -split ';' | Where-Object { $_ -and $_.Trim() })
+  if (-not (@($pathParts | Where-Object { $_.TrimEnd('\').Equals($depot.TrimEnd('\'), [System.StringComparison]::OrdinalIgnoreCase) }).Count)) {
+    [Environment]::SetEnvironmentVariable('Path', (($depot + ';' + ($pathParts -join ';')).Trim(';')), 'User')
+  }
+  [Environment]::SetEnvironmentVariable('DEPOT_TOOLS_WIN_TOOLCHAIN', '0', 'User')
+  $env:DEPOT_TOOLS_WIN_TOOLCHAIN = '0'
+  $env:Path = $depot + ';' + $env:Path
+  Update-SessionPath
+
+  $vswhereCandidates = @(
+    (Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'),
+    (Join-Path $env:ProgramFiles 'Microsoft Visual Studio\Installer\vswhere.exe')
+  )
+  $vswhere = $vswhereCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+  if (-not $vswhere) {
+    $winget = Get-Command 'winget' -ErrorAction SilentlyContinue
+    if (-not $winget) {
+      Warn 'Visual Studio Build Tools are missing and winget is unavailable. Install Desktop development with C++ and MFC/ATL support, then run install.bat again.'
+      return $false
+    }
+    Say 'Installing Visual Studio Build Tools with C++ and MFC/ATL support...' 'Cyan'
+    $vsArgs = @('install', '--exact', '--id', 'Microsoft.VisualStudio.BuildTools', '--source', 'winget', '--silent', '--accept-package-agreements', '--accept-source-agreements', '--disable-interactivity', '--override', '--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --add Microsoft.VisualStudio.Component.VC.ATLMFC --includeRecommended')
+    $vsInstall = Start-Process -FilePath $winget.Source -ArgumentList $vsArgs -Wait -PassThru -NoNewWindow
+    if ($WingetBenign -notcontains $vsInstall.ExitCode) {
+      Warn "Visual Studio Build Tools installation failed with exit code $($vsInstall.ExitCode)."
+      return $false
+    }
+    $vswhere = $vswhereCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+  }
+  if (-not $vswhere) {
+    Warn 'Visual Studio Build Tools were not found after installation. Open Visual Studio Installer, select Desktop development with C++ plus MFC/ATL support, and run install.bat again.'
+    return $false
+  }
+  # First gclient run installs depot_tools' managed Python and Windows helpers.
+  $gclient = Join-Path $depot 'gclient.bat'
+  if (Test-Path -LiteralPath $gclient) {
+    $bootstrap = Invoke-Native $gclient @() $depot
+    if ($bootstrap.code -ne 0) { Warn "depot_tools bootstrap failed with exit code $($bootstrap.code)."; return $false }
+  }
+  return $true
+}
+
 # ------------------------------------------------- Android prerequisites (virtual machines section)
 # The "virtual machines -> Android" section drives a locally installed Android
 # Studio (AVD), and the bundled vStudio virtual camera/microphone runs on Python with
@@ -2056,6 +2128,7 @@ function Get-SetupSteps {
           # Windows Chromium is source-built only; the stage script deliberately rejects
           # Chrome for Testing archives, so a missing runtime must remain a hard failure.
           if (-not (Test-NativeRuntimeReady 'chromium' $target)) {
+            if ($target -eq 'win32-x64' -and -not (Ensure-ChromiumBuildToolchain)) { return $false }
             Invoke-Npm @('run', $stageChromium)
           } else {
             Say 'Verified source-built Chromium runtime already present; reusing it.' 'Green'
@@ -2122,9 +2195,11 @@ function Invoke-Setup([switch]$Quiet) {
     Say (T 'stepOf' $index $steps.Count (T $step.Key)) 'Cyan'
     $ok = $false
     try { $ok = [bool](& $step.Action) } catch { Warn $_.Exception.Message; $ok = $false }
-    # Only the first step (Node.js/git) is fatal: without it nothing can run.
+    # A fatal step cannot produce a usable installation. Do not continue into
+    # shortcuts or an app build when the native runtime is missing.
     if (-not $ok -and $step.Key -eq 'stepPrereqs') { return $false }
-    # The other steps still run, but the setup is complete only when every required step succeeded.
+    if (-not $ok -and $step.Fatal) { return $false }
+    # Non-fatal steps still run, but setup is complete only when every required step succeeded.
     if (-not $ok -and $step.Required) { $requiredFailed = $true }
   }
   if ($requiredFailed) { return $false }
@@ -2160,9 +2235,10 @@ function Invoke-FirstInstall {
     try { $ok = [bool](& $step.Action) } catch { Warn $_.Exception.Message; $ok = $false }
     if (-not $ok) {
       if ($step.Key -eq 'stepPrereqs') { Fail (T 'prereqManual' 'Node.js / git') }
-      # Only Node.js/git stops the run. A failed required step fails the setup; a failed optional
+      # A fatal step stops the run. A failed required step fails the setup; a failed optional
       # step only leaves warnings. Success is shown only when neither happened.
       if ($step.Required) { $requiredFailed = $true } else { $optionalFailed = $true }
+      if ($step.Fatal) { break }
     }
   }
   [void](New-DesktopShortcut)

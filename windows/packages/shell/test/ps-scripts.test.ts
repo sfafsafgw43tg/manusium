@@ -119,7 +119,7 @@ describe('installer recovers from missing vendor packages', () => {
     expect(source).toContain('if ($VendorHosts -notcontains $host_)');
     for (const url of source.match(/https:\/\/[^'"\s)]+/g) ?? []) {
       const host = new URL(url).host;
-      const allowed = ['dl.google.com', 'download.vb-audio.com', 'vb-audio.com', 'developer.android.com',
+      const allowed = ['dl.google.com', 'download.vb-audio.com', 'vb-audio.com', 'developer.android.com', 'chromium.googlesource.com',
         'nodejs.org', 'git-scm.com', 'www.python.org', 'obsproject.com', 'github.com',
         'learn.microsoft.com', 'www.npmjs.com'];
       expect(allowed.some((item) => host === item || host.endsWith(`.${item}`))).toBe(true);

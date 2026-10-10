@@ -196,6 +196,10 @@ describe('steps and the console installer', () => {
     expect(octo).toContain("[string]$manifest.distribution -ne 'source-built'");
     expect(octo).toContain('Get-FileHash -LiteralPath $exe -Algorithm SHA256');
     expect(runtimeStep).toContain("Test-NativeRuntimeReady 'chromium' $target");
+    expect(octo).toContain('function Ensure-ChromiumBuildToolchain');
+    expect(runtimeStep).toContain('Ensure-ChromiumBuildToolchain');
+    expect(octo).toContain('chromium/tools/depot_tools.git');
+    expect(octo).toContain('Microsoft.VisualStudio.BuildTools');
   });
 
   it('the eight steps keep their order', () => {
@@ -209,8 +213,10 @@ describe('steps and the console installer', () => {
     expect(required).toEqual(['stepPrereqs', 'stepDeps', 'stepRuntimes', 'stepBuild']);
   });
 
-  it('the console installer still stops only for the prerequisites', () => {
+  it('the console installer stops after any fatal step', () => {
     expect(octo).toContain("if (-not $ok -and $step.Key -eq 'stepPrereqs') { return $false }");
+    expect(octo).toContain("if (-not $ok -and $step.Fatal) { return $false }");
+    expect(octo).toContain('if ($step.Fatal) { break }');
   });
 });
 
