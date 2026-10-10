@@ -188,8 +188,11 @@ describe('steps and the console installer', () => {
     expect(chromium).toContain("'--no-history'");
     expect(chromium).toContain("'--nohooks'");
     expect(chromium).toContain("'--verbose'");
-    expect(chromium).toContain("'--jobs'");
+    expect(chromium).toContain('`--jobs=${jobs}`');
     expect(chromium).toContain("'depot-tools.allowGlobalGitConfig', 'false'");
+    expect(chromium).toContain("['sync', '--help']");
+    expect(chromium).toContain("syncHelp.includes('--no-history')");
+    expect(chromium).toContain('lacks --no-history for gclient sync');
     expect(chromium).toContain('fetching Chromium source (no history)');
     expect(chromium).toContain('synchronizing Chromium dependencies (no history, parallel)');
     expect(chromium).toContain('isKnownPartial');
