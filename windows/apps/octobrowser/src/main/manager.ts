@@ -13,6 +13,7 @@
 import { app, BrowserWindow, dialog, Menu, Notification, powerMonitor, shell, session, Session, Tray, net as electronNet } from 'electron';
 import { spawn, ChildProcess } from 'node:child_process';
 import * as fs from 'node:fs';
+import * as fsp from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import {
@@ -229,6 +230,60 @@ function moveDirectoryAcrossDevices(source: string, destination: string): void {
   }
   copyDirectoryAtomically(source, destination);
   fs.rmSync(source, { recursive: true, force: true });
+}
+
+type FileProgress = (completed: number, total: number, label: string) => void;
+
+async function fileList(root: string): Promise<string[]> {
+  const result: string[] = [];
+  const walk = async (dir: string): Promise<void> => {
+    for (const entry of await fsp.readdir(dir, { withFileTypes: true })) {
+      const abs = path.join(dir, entry.name);
+      if (entry.isSymbolicLink()) continue;
+      if (entry.isDirectory()) await walk(abs);
+      else if (entry.isFile()) result.push(abs);
+    }
+  };
+  await walk(root);
+  return result;
+}
+
+async function copyDirectoryWithProgress(source: string, destination: string, progress: FileProgress): Promise<void> {
+  const files = await fileList(source);
+  await fsp.mkdir(destination, { recursive: true });
+  let completed = 0;
+  for (const file of files) {
+    const target = path.join(destination, path.relative(source, file));
+    await fsp.mkdir(path.dirname(target), { recursive: true });
+    await fsp.copyFile(file, target);
+    completed += 1;
+    progress(completed, files.length, path.basename(file));
+    await new Promise<void>((resolve) => setImmediate(resolve));
+  }
+}
+
+async function deleteDirectoryWithProgress(root: string, progress: FileProgress): Promise<void> {
+  if (!fs.existsSync(root)) return;
+  const files = await fileList(root);
+  let completed = 0;
+  for (const file of files) {
+    try {
+      const handle = await fsp.open(file, 'r+');
+      try {
+        const size = (await handle.stat()).size;
+        for (let offset = 0; offset < size; offset += 64 * 1024) {
+          const length = Math.min(64 * 1024, size - offset);
+          await handle.write(randomBytes(length), 0, length, offset);
+        }
+        await handle.sync();
+      } finally { await handle.close(); }
+    } catch { /* locked/read-only files fall back to removal, matching secureDeleteFile */ }
+    await fsp.rm(file, { force: true });
+    completed += 1;
+    progress(completed, files.length, path.basename(file));
+    await new Promise<void>((resolve) => setImmediate(resolve));
+  }
+  await fsp.rm(root, { recursive: true, force: true });
 }
 
 /** Proxy chosen in the profile editor / sent to the API. */
@@ -599,6 +654,13 @@ export class Manager {
 
   private pushProfiles(): void {
     this.launcher?.webContents.send('mgr:profiles', this.profileList());
+  }
+
+  private fileProgress(operation: 'move' | 'delete', completed: number, total: number, label = ''): void {
+    this.launcher?.webContents.send('mgr:file-progress', {
+      operation, completed, total, label,
+      percent: total > 0 ? Math.min(99, Math.round((completed / total) * 100)) : -1,
+    });
   }
 
   private profileList(trashed = false, archived = false) {
@@ -1002,41 +1064,38 @@ export class Manager {
   }
 
   /** Move a closed profile's actual browser data to a user-selected directory. */
-  private moveProfileDirectory(id: string, requested: string): Profile {
+  private async moveProfileDirectory(id: string, requested: string, progress?: FileProgress): Promise<Profile> {
     if (this.isRunning(id)) throw new Error(this.t('err.closeProfileFirst'));
     const p = this.profiles.get(id);
     const target = this.validateProfileDirectory(requested);
     const current = this.ctx.layout.profileDir(id);
     if (path.resolve(current).toLowerCase() === target.toLowerCase()) return p;
-    const targetExisted = fs.existsSync(target);
-    fs.mkdirSync(path.dirname(target), { recursive: true });
+    await fsp.mkdir(path.dirname(target), { recursive: true });
     try {
       if (fs.existsSync(current)) {
-        if (targetExisted) { copyDirectoryAtomically(current, target); fs.rmSync(current, { recursive: true, force: true }); }
-        else moveDirectoryAcrossDevices(current, target);
-      }
-      else fs.mkdirSync(target, { recursive: true });
+        await copyDirectoryWithProgress(current, target, progress ?? (() => undefined));
+        await deleteDirectoryWithProgress(current, progress ?? (() => undefined));
+      } else await fsp.mkdir(target, { recursive: true });
       const updated = this.profiles.update(id, { profileDirectory: target });
       this.ctx.layout.setProfileDirectory(id, target);
       return updated;
     } catch (error) {
       if (fs.existsSync(target) && !fs.existsSync(current)) {
         try {
-          if (targetExisted) { copyDirectoryAtomically(target, current); fs.rmSync(target, { recursive: true, force: true }); }
-          else moveDirectoryAcrossDevices(target, current);
+          moveDirectoryAcrossDevices(target, current);
         } catch { /* preserve the original error */ }
       }
       throw error;
     }
   }
 
-  private moveFolderDirectory(folder: string, root: string): { moved: number; path: string } {
+  private async moveFolderDirectory(folder: string, root: string, progress?: FileProgress): Promise<{ moved: number; path: string }> {
     const base = path.resolve(String(root));
     if (!path.isAbsolute(root) || base === path.parse(base).root) throw new Error('Choose a non-root destination folder.');
     const profiles = this.profiles.list().filter((p) => p.folder === folder);
     if (profiles.some((p) => this.isRunning(p.id))) throw new Error(this.t('err.closeProfileFirst'));
     let moved = 0;
-    for (const p of profiles) { this.moveProfileDirectory(p.id, path.join(base, p.id)); moved++; }
+    for (const p of profiles) { await this.moveProfileDirectory(p.id, path.join(base, p.id), progress); moved++; }
     return { moved, path: base };
   }
 
@@ -1528,8 +1587,10 @@ export class Manager {
     return p;
   }
 
-  private permanentlyDeleteProfile(id: string): void {
+  private async permanentlyDeleteProfile(id: string, progress?: FileProgress): Promise<void> {
     if (this.isRunning(id)) throw new Error(this.t('err.closeProfileFirst'));
+    const profileDir = this.ctx.layout.profileDir(id);
+    await deleteDirectoryWithProgress(profileDir, progress ?? (() => undefined));
     this.profiles.remove(id);
     this.ctx.secrets.delete(`proxy:${id}`);
     this.ctx.secrets.delete(`cookies:${id}`);
@@ -3003,10 +3064,21 @@ export class Manager {
     handle('mgr:archive-restore', L, (_e, id: string) => this.restoreArchivedProfile(String(id)));
     handle('mgr:trash', L, () => this.profileList(true));
     handle('mgr:trash-restore', L, (_e, id: string) => this.restoreProfile(String(id)));
-    handle('mgr:trash-delete', L, (_e, id: string) => { this.permanentlyDeleteProfile(String(id)); return true; });
-    handle('mgr:trash-empty', L, () => {
+    handle('mgr:trash-delete', L, async (_e, id: string) => {
+      this.fileProgress('delete', 0, 0, '');
+      await this.permanentlyDeleteProfile(String(id), (completed, total, label) => this.fileProgress('delete', completed, total, label));
+      this.fileProgress('delete', 1, 1, '');
+      return true;
+    });
+    handle('mgr:trash-empty', L, async () => {
       const ids = this.profiles.listTrash().map((p) => p.id);
-      for (const id of ids) this.permanentlyDeleteProfile(id);
+      for (const [index, id] of ids.entries()) {
+        await this.permanentlyDeleteProfile(id, (completed, total, label) => {
+          const overallTotal = Math.max(ids.length, total * ids.length);
+          this.fileProgress('delete', index * total + completed, overallTotal, label);
+        });
+      }
+      this.fileProgress('delete', 1, 1, '');
       return ids.length;
     });
     handle('mgr:reset', L, (_e, id: string) => {
@@ -3252,8 +3324,10 @@ export class Manager {
       const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory', 'createDirectory'] });
       return r.canceled || !r.filePaths[0] ? null : r.filePaths[0];
     });
-    handle('mgr:move-folder-directory', L, (_e, folder: string, root: string) => {
-      const result = this.moveFolderDirectory(String(folder ?? ''), String(root ?? ''));
+    handle('mgr:move-folder-directory', L, async (_e, folder: string, root: string) => {
+      this.fileProgress('move', 0, 0, '');
+      const result = await this.moveFolderDirectory(String(folder ?? ''), String(root ?? ''), (completed, total, label) => this.fileProgress('move', completed, total, label));
+      this.fileProgress('move', 1, 1, '');
       this.pushProfiles();
       return result;
     });
@@ -3284,7 +3358,9 @@ export class Manager {
       if (copyData) {
         if (!fs.existsSync(ctx.layout.root)) return { ok: false as const, errorKey: 'settings.dataDirMissing' };
         try {
-          fs.cpSync(ctx.layout.root, dataDir, { recursive: true });
+          this.fileProgress('move', 0, 0, '');
+          await copyDirectoryWithProgress(ctx.layout.root, dataDir, (completed, total, label) => this.fileProgress('move', completed, total, label));
+          this.fileProgress('move', 1, 1, '');
         } catch {
           return { ok: false as const, errorKey: 'settings.dataDirCopyFailed' };
         }

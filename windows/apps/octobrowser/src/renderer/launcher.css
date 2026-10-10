@@ -75,6 +75,14 @@ body { display: flex; flex-direction: column; overflow: hidden; }
 .window-control svg { display: block; width: 14px; height: 14px; flex: none; stroke-width: 1.8; pointer-events: none; }
 .window-control:hover { background: var(--panel2); color: var(--text); }
 .window-control.window-close:hover { background: #505050; color: #fff; }
+.file-operation-progress { position: fixed; z-index: 1000; right: 22px; bottom: 22px; width: min(360px, calc(100vw - 44px)); padding: 12px 14px; border: 1px solid var(--line); border-radius: 11px; background: color-mix(in srgb, var(--panel) 94%, transparent); box-shadow: 0 12px 36px rgb(0 0 0 / .28); opacity: 0; transform: translateY(10px); pointer-events: none; transition: opacity .18s ease, transform .18s ease; }
+.file-operation-progress.visible { opacity: 1; transform: translateY(0); }
+.file-operation-title { font-weight: 700; font-size: 13px; }
+.file-operation-track { height: 7px; margin-top: 9px; overflow: hidden; border-radius: 999px; background: var(--panel3); }
+.file-operation-fill { height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, var(--accent), var(--accent-h)); transition: width .16s ease; }
+.file-operation-fill.indeterminate { animation: file-operation-pulse 1.1s ease-in-out infinite; }
+.file-operation-detail { margin-top: 6px; color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@keyframes file-operation-pulse { 0%, 100% { transform: translateX(-35%); opacity: .55; } 50% { transform: translateX(180%); opacity: 1; } }
 button { font: inherit; color: inherit; cursor: pointer; }
 button:disabled { cursor: default; }
 input, select, textarea { font: inherit; color: var(--text); background: var(--bg2); border: 1px solid var(--line); border-radius: var(--radius); padding: 9px 12px; min-width: 0; }

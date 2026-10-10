@@ -39,6 +39,25 @@ function initWindowControls(): void {
   action('windowMaximize', 'toggle-maximize');
   action('windowClose', 'close');
 }
+
+function showFileProgress(progress: { operation: 'move' | 'delete'; completed: number; total: number; percent: number; label?: string }): void {
+  let box = document.getElementById('file-operation-progress');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'file-operation-progress';
+    box.innerHTML = '<div class="file-operation-title"></div><div class="file-operation-track"><div class="file-operation-fill"></div></div><div class="file-operation-detail"></div>';
+    document.body.append(box);
+  }
+  const title = box.querySelector<HTMLElement>('.file-operation-title');
+  const fill = box.querySelector<HTMLElement>('.file-operation-fill');
+  const detail = box.querySelector<HTMLElement>('.file-operation-detail');
+  const percent = progress.percent >= 0 ? `${progress.percent}%` : '…';
+  if (title) title.textContent = t(progress.operation === 'move' ? 'fileOps.moving' : 'fileOps.deleting');
+  if (fill) { fill.style.width = progress.percent >= 0 ? `${Math.max(2, progress.percent)}%` : '35%'; fill.classList.toggle('indeterminate', progress.percent < 0); }
+  if (detail) detail.textContent = progress.total > 0 ? `${percent} · ${progress.completed}/${progress.total}${progress.label ? ` · ${progress.label}` : ''}` : percent;
+  box.classList.toggle('visible', progress.percent < 100);
+  if (progress.percent >= 100) window.setTimeout(() => box?.classList.remove('visible'), 500);
+}
 function orderedNav(): Array<[View, string]> {
   const byView = new Map(NAV.map((item) => [item[0], item]));
   const fallback = NAV.map(([id]) => ({ id, visible: true }));
@@ -906,6 +925,7 @@ async function boot(): Promise<void> {
     }
   });
   api.on('mgr:app-close-request', () => showCloseAppDialog());
+  api.on<{ operation: 'move' | 'delete'; completed: number; total: number; percent: number; label?: string }>('mgr:file-progress', showFileProgress);
   document.addEventListener('keydown', (e) => {
     // Sidebar pages can all be hidden deliberately; retain a local escape hatch.
     if ((e.ctrlKey || e.metaKey) && e.key === ',') {
