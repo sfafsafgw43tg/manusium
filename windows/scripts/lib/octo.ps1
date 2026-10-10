@@ -52,6 +52,9 @@ param(
   # failures are written to the normal installer log; UAC dialogs remain visible when Windows
   # requires approval for Visual Studio, drivers, or another privileged installer.
   [switch]$Background,
+  # Internal marker added by elevate-installer.ps1; the elevated batch carries it through
+  # hidden/background relaunches so elevation is never requested a second time.
+  [switch]$Elevated,
   [switch]$CheckOnly,
   [switch]$NoBackup,
   [switch]$DeleteData,
@@ -1933,7 +1936,12 @@ function Install-VbCable {
   Say (T 'vbCableInstall') 'Cyan'
   try {
     # The driver installer needs elevation and shows its own window.
-    $p = Start-Process -FilePath $setup.FullName -ArgumentList @('-i', '-h') -Verb RunAs -Wait -PassThru
+    $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    if ($isAdmin) {
+      $p = Start-Process -FilePath $setup.FullName -ArgumentList @('-i', '-h') -Wait -PassThru
+    } else {
+      $p = Start-Process -FilePath $setup.FullName -ArgumentList @('-i', '-h') -Verb RunAs -Wait -PassThru
+    }
     if ($p.ExitCode -ne 0) { Warn (T 'vbCableManual' $setup.FullName); return $false }
   } catch { Warn (T 'vbCableManual' $setup.FullName); return $false }
   if (-not (Test-VbCableInstalled)) {

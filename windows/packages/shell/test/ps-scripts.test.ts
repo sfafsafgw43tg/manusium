@@ -61,6 +61,12 @@ describe('install.bat covers every dependency', () => {
     expect(installBat).toContain('OCTO_WANTS_BACKGROUND');
     expect(installBat).toContain('hidden.vbs');
     expect(installBat).toContain('-Background');
+    expect(installBat).toContain('elevate-installer.ps1');
+    expect(installBat).toContain('-Elevated');
+    const elevate = fs.readFileSync(path.resolve(__dirname, '..', '..', '..', 'scripts', 'lib', 'elevate-installer.ps1'), 'utf8');
+    expect(elevate).toContain('Start-Process -FilePath $env:ComSpec');
+    expect(elevate).toContain('-Verb RunAs');
+    expect(elevate).toContain('exit $child.ExitCode');
   });
 
   it('installs the media plugin prerequisites independently of Android', () => {

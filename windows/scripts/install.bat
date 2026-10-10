@@ -15,7 +15,18 @@ rem Extra arguments are passed through:
 rem   install.bat -NoGui        run in this console instead of the window
 rem   install.bat -Interactive  ask the old y/N questions again
 rem   install.bat -Background   run the complete setup hidden; inspect %LOCALAPPDATA%\InkBrowser\logs\ for progress
+rem The first invocation requests UAC once. The elevated child carries -Elevated through
+rem the rest of setup so Visual Studio and driver installation do not prompt again.
 setlocal EnableExtensions DisableDelayedExpansion
+set "OCTO_ELEVATED="
+echo %* | find /i "-elevated" >nul 2>&1 && set "OCTO_ELEVATED=1"
+if not defined OCTO_ELEVATED (
+  set "OCTO_PS=%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe"
+  if not exist "%OCTO_PS%" set "OCTO_PS=powershell.exe"
+  "%OCTO_PS%" -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0lib\elevate-installer.ps1" -BatchPath "%~f0" -WorkingDirectory "%~dp0.." -Arguments "__OCTO_NO_ARGS__" %*
+  set "OCTO_RC=%ERRORLEVEL%"
+  endlocal & exit /b %OCTO_RC%
+)
 rem The graphical installer needs no console at all, so the first pass
 rem re-launches this file through lib\hidden.vbs (Windows Script Host, window
 rem style 0) and exits at once - exactly what run.bat does. The console stays

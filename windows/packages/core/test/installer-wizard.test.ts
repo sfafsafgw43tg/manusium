@@ -253,6 +253,8 @@ describe('steps and the console installer', () => {
     expect(octo).toContain('driver, service, or CABLE Output endpoint');
     expect(octo).toContain('Test = { Test-VbCableInstalled }');
     expect(octo).toContain('VB-CABLE installer exited successfully');
+    expect(octo).toContain('if ($isAdmin)');
+    expect(octo).toContain('Start-Process -FilePath $setup.FullName -ArgumentList @(');
     expect(octo).toContain('$verified = $false');
     expect(octo).toContain('verifying the installed component before reporting success');
     expect(octo).toContain("$vsReady = $vsResult.code -eq 0");
