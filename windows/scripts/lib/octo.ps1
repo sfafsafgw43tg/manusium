@@ -1568,7 +1568,25 @@ function Ensure-ChromiumBuildToolchain {
   if ($env:OS -ne 'Windows_NT') { return $true }
   $git = Resolve-Tool 'git'
   if (-not $git) { Warn 'Chromium source build needs Git for Windows, but git was not found.'; return $false }
-  $sourceRoot = if ($env:OCTO_CHROMIUM_SOURCE) { $env:OCTO_CHROMIUM_SOURCE } else { 'C:\src' }
+  $minimumChromiumFreeBytes = 100GB
+  $sourceRoot = [string]$env:OCTO_CHROMIUM_SOURCE
+  if (-not $sourceRoot) {
+    $driveChoices = New-Object System.Collections.Generic.List[object]
+    foreach ($drive in [System.IO.DriveInfo]::GetDrives()) {
+      if (-not $drive.IsReady -or $drive.DriveType -notin @([System.IO.DriveType]::Fixed, [System.IO.DriveType]::Ram)) { continue }
+      if ($drive.AvailableFreeSpace -lt $minimumChromiumFreeBytes) { continue }
+      $candidate = Join-Path $drive.RootDirectory.FullName 'InkBrowser\chromium-source'
+      $driveChoices.Add([pscustomobject]@{ Path = $candidate; Root = $drive.RootDirectory.FullName; Free = $drive.AvailableFreeSpace })
+    }
+    $preferred = $driveChoices | Sort-Object @{ Expression = { $_.Root -ne 'C:\' } }, @{ Expression = { $_.Free }; Descending = $true } | Select-Object -First 1
+    if ($preferred) {
+      $sourceRoot = $preferred.Path
+      if ($preferred.Root -ne 'C:\') { Say "C:\ has insufficient space; using $sourceRoot ($([math]::Round($preferred.Free / 1GB, 1)) GB free)." 'Yellow' }
+    } else {
+      $sourceRoot = 'C:\src'
+    }
+  }
+  $env:OCTO_CHROMIUM_SOURCE = $sourceRoot
   if (-not (Test-FolderWritable $sourceRoot)) {
     Warn "Chromium source directory is not writable: $sourceRoot. Choose a writable NTFS directory or grant access, then run install.bat again."
     return $false
@@ -1576,8 +1594,8 @@ function Ensure-ChromiumBuildToolchain {
   try {
     $driveRoot = [System.IO.Path]::GetPathRoot($sourceRoot)
     $freeBytes = ([System.IO.DriveInfo]::new($driveRoot)).AvailableFreeSpace
-    if ($freeBytes -lt 100GB) {
-      Warn "The Chromium build drive has less than 100 GB free ($([math]::Round($freeBytes / 1GB, 1)) GB available). Free space on $driveRoot and run install.bat again."
+    if ($freeBytes -lt $minimumChromiumFreeBytes) {
+      Warn "No suitable Chromium build drive has 100 GB free. $driveRoot has only $([math]::Round($freeBytes / 1GB, 1)) GB available. Set OCTO_CHROMIUM_SOURCE to a directory on another fixed drive with at least 100 GB free, then run install.bat again."
       return $false
     }
   } catch {

@@ -239,6 +239,9 @@ describe('steps and the console installer', () => {
     expect(octo).toContain("@('-latest', '-products', '*', '-requires')");
     expect(octo).toContain("$vsReady = $vsResult.code -eq 0");
     expect(octo).toContain('Ensure-FirefoxStagingToolchain');
+    expect(octo).toContain('[System.IO.DriveInfo]::GetDrives()');
+    expect(octo).toContain('$minimumChromiumFreeBytes = 100GB');
+    expect(octo).toContain("$env:OCTO_CHROMIUM_SOURCE = $sourceRoot");
     expect(octo).toContain('OCTO_CHROMIUM_SOURCE');
     expect(octo).toContain("'depot-tools.allowGlobalGitConfig', 'false'");
     expect(octo).toContain("$env:DEPOT_TOOLS_UPDATE = '0'");
