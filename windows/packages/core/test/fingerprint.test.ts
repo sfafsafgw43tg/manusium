@@ -187,6 +187,15 @@ describe('sanitize + resolve', () => {
     expect(r.webgpu).toBe('off');
   });
 
+  it('automatically supplies a stable OS-compatible GPU identity for legacy noise profiles', () => {
+    const configured = { ...base, webgl: 'noise' as const, webglInfo: { mode: 'real' as const, vendor: '', renderer: '' } };
+    const r = resolveFingerprint(configured, undefined, 'en-US');
+    if (r.kind === 'disabled') throw new Error('unexpected disabled result');
+    expect(gpuPresets(configured.os).some((gpu) => gpu.vendor === r.webglVendor && gpu.renderer === r.webglRenderer)).toBe(true);
+    expect(r.webglVendor).toBeTruthy();
+    expect(r.webglRenderer).toBeTruthy();
+  });
+
   it('warns about inconsistent manual edits', () => {
     const fp = { ...base, os: 'macos' as const, userAgent: base.userAgent.replace(/\(.*?\)/, '(Windows NT 10.0; Win64; x64)'), webglInfo: { mode: 'manual' as const, vendor: 'Google Inc. (NVIDIA)', renderer: 'ANGLE (NVIDIA, X Direct3D11 vs_5_0 ps_5_0, D3D11)' }, cpu: { mode: 'manual' as const, cores: 2 } };
     expect(fingerprintWarnings(fp, 150).sort()).toEqual(['fp.warn.gpuOs', 'fp.warn.macCores', 'fp.warn.uaOs']);
@@ -209,6 +218,10 @@ describe('profiles carry a fingerprint', () => {
     expect(defaultProfile('tor', 'Tor').browserShell).toBe('octo');
     expect(a.fingerprint.enabled).toBe(true);
     expect(a.vstudioWebOnLaunch).toBe(false);
+    expect(a.fingerprint.webgl).toBe('noise');
+    expect(a.fingerprint.webglInfo.mode).toBe('manual');
+    expect(a.fingerprint.webglInfo.vendor).toBeTruthy();
+    expect(a.fingerprint.webglInfo.renderer).toBeTruthy();
     expect(a.fingerprint.webgpu).toBe('off');
     expect(uaMajor(a.fingerprint.userAgent)).toBe(149);
     expect(a.protection.level).toBe('normal');

@@ -1262,9 +1262,17 @@ function advanced(b: HTMLElement, d: Draft, draw: () => void, summary: () => voi
       gpuBox.append(h('p', { class: 'hint', text: t('fp.webglGpuHidden') }));
       return;
     }
-    if (fp.webglInfo.mode === 'real') return;
     const m = await meta(fp.os);
     const gpus = m?.gpus ?? [];
+    // Generated fingerprints already use noise plus a stored GPU identity.
+    // Repair older profiles that selected WebGL noise but still had real GPU
+    // metadata, so the first editor open never leaves the host GPU exposed.
+    if (fp.webgl === 'noise' && fp.webglInfo.mode === 'real' && gpus.length) {
+      const g = gpus[Math.floor(Math.random() * gpus.length)];
+      fp.webglInfo = { mode: 'manual', vendor: g.vendor, renderer: g.renderer };
+      ch();
+    }
+    if (fp.webglInfo.mode === 'real') return;
     const vendors = [...new Set(gpus.map((g) => g.vendor))];
     if (fp.webglInfo.vendor && !vendors.includes(fp.webglInfo.vendor)) vendors.unshift(fp.webglInfo.vendor);
     const renderers = gpus.filter((g) => g.vendor === fp.webglInfo.vendor).map((g) => g.renderer);

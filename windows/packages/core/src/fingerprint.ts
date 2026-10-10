@@ -800,6 +800,16 @@ export function resolveFingerprint(fp: FingerprintConfig, geoInput: GeoInfo | un
   const viewport = on && (fp.windowSize?.mode === 'custom' || screen)
     ? (fp.windowSize?.mode === 'custom' ? { width: fp.windowSize.width, height: fp.windowSize.height } : { width: screen!.width, height: screen!.height })
     : null;
+  const configuredGpu = (fp.webglInfo.mode === 'manual' || fp.webglInfo.mode === 'custom') && fp.webglInfo.vendor && fp.webglInfo.renderer
+    ? { vendor: fp.webglInfo.vendor, renderer: fp.webglInfo.renderer }
+    : null;
+  // Older profiles may have noise enabled with WebGL info still set to Real.
+  // Select one coherent OS-compatible GPU from the profile seed rather than
+  // allowing the page to fall through to the host adapter.
+  const noiseGpu = fp.webgl === 'noise' && !configuredGpu
+    ? gpuPresets(fp.os)[Math.floor(prng(`${fp.seed}:webgl` )() * gpuPresets(fp.os).length)]
+    : null;
+  const exposedGpu = on && fp.webgl !== 'off' ? (configuredGpu ?? noiseGpu) : null;
   const isAppleSilicon = fp.os === 'macos' && /Apple M\d/.test(fp.webglInfo.renderer);
   const portsActive = on && (fp.ports.mode === 'protect' || fp.ports.mode === 'enable');
   const dntActive = on && (fp.doNotTrack === true || fp.doNotTrack === 'enable');
@@ -830,8 +840,8 @@ export function resolveFingerprint(fp: FingerprintConfig, geoInput: GeoInfo | un
     webrtcIp: webrtcMode === 'manual' ? fp.webrtc.publicIp : webrtcMode === 'altered' ? geo?.ip ?? '' : '',
     canvas: on ? fp.canvas : 'real',
     webgl: on ? fp.webgl : 'real',
-    webglVendor: on && fp.webgl !== 'off' && (fp.webglInfo.mode === 'manual' || fp.webglInfo.mode === 'custom') && fp.webglInfo.vendor ? fp.webglInfo.vendor : null,
-    webglRenderer: on && fp.webgl !== 'off' && (fp.webglInfo.mode === 'manual' || fp.webglInfo.mode === 'custom') && fp.webglInfo.renderer ? fp.webglInfo.renderer : null,
+    webglVendor: exposedGpu?.vendor ?? null,
+    webglRenderer: exposedGpu?.renderer ?? null,
     // WebGPU can reveal the same adapter even when WebGL is disabled. Treat
     // WebGL=off as a graphics-exposure off switch so the page shim cannot
     // re-expose the host adapter through navigator.gpu.
