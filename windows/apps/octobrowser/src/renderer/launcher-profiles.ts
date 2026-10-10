@@ -928,7 +928,7 @@ export function renderProfiles(v: HTMLElement): void {
   const search = input(S.search, { type: 'search', placeholder: t('ui.searchPh'), 'aria-label': t('ui.searchPh'), id: 'profileSearch' });
   search.oninput = () => { S.search = search.value; drawTable(); };
   const searchBox = h('div', { class: 'search' }, icon('search', 16), search);
-  v.append(managerOverview(() => openEditor(null)), h('div', { class: 'toolbar' },
+  v.append(h('div', { class: 'toolbar' },
     h('h1', { class: 'ell', text: title }),
     h('div', { class: 'grow' }),
     create, h('div', { class: 'split' }, quick, quickOs), more, organization, searchBox));
