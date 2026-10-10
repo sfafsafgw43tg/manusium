@@ -34,8 +34,16 @@ function flag(name) { return process.argv.includes(name); }
 function fail(message) { throw new Error(`[build-chromium-source] ${message}`); }
 function sha256(file) { return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex'); }
 function sha256Text(value) { return crypto.createHash('sha256').update(value).digest('hex'); }
+function displayArg(value) {
+  const text = String(value);
+  return /^[A-Za-z0-9_./:=+-]+$/.test(text) ? text : JSON.stringify(text);
+}
+function displayCommand(command, args, cwd) {
+  return `${displayArg(command)} ${args.map(displayArg).join(' ')} (cwd=${displayArg(cwd)})`;
+}
 function run(command, args, cwd, label = command) {
   console.log(`[build-chromium-source] ${label}`);
+  console.log(`[build-chromium-source] exec: ${displayCommand(command, args, cwd)}`);
   const started = Date.now();
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
@@ -64,12 +72,14 @@ function run(command, args, cwd, label = command) {
     });
     child.once('close', (code) => {
       clearInterval(heartbeat);
+      console.log(`[build-chromium-source] exit: ${displayCommand(command, args, cwd)} -> ${code ?? 'unknown'}`);
       if (code !== 0) reject(new Error(`${label} failed with exit code ${code ?? 'unknown'}`));
       else resolve();
     });
   });
 }
 function runCapture(command, args, cwd, label = command) {
+  console.log(`[build-chromium-source] probe: ${displayCommand(command, args, cwd)}`);
   const result = spawnSync(command, args, { cwd, encoding: 'utf8', shell: process.platform === 'win32', windowsHide: true });
   if (result.error || result.status !== 0) fail(`${label} failed: ${(result.stderr || result.stdout || result.error?.message || '').trim()}`);
   return result.stdout.trim();

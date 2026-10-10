@@ -200,6 +200,8 @@ describe('steps and the console installer', () => {
     expect(chromium).toContain('isKnownPartial');
     expect(chromium).toContain('OCTO_NO_AUTO_REPAIR');
     expect(chromium).toContain('removing the recognized incomplete Chromium checkout');
+    expect(chromium).toContain('displayCommand(command, args, cwd)');
+    expect(chromium).toContain('[build-chromium-source] exit:');
     expect(chromium).toContain("source checkout is incomplete at ${source}");
     expect(chromium).toContain('`fetch chromium` is only valid in an empty parent directory');
     expect(chromium).toContain("distribution: 'source-built'");
@@ -220,6 +222,8 @@ describe('steps and the console installer', () => {
     expect(runtimeStep).toContain("Test-NativeRuntimeReady 'chromium' $target");
     expect(octo).toContain('function Ensure-ChromiumBuildToolchain');
     expect(runtimeStep).toContain('Ensure-ChromiumBuildToolchain');
+    expect(octo).toContain("Invoke-Native $gclient @('--version') $depot");
+    expect(octo).not.toContain('Invoke-Native $gclient @() $depot');
     expect(octo).toContain('chromium/tools/depot_tools.git');
     expect(octo).toContain('Microsoft.VisualStudio.BuildTools');
     expect(octo).toContain("'depot-tools.allowGlobalGitConfig', 'false'");

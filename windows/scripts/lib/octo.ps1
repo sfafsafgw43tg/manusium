@@ -1623,7 +1623,8 @@ function Ensure-ChromiumBuildToolchain {
     Warn 'Visual Studio Build Tools were not found after installation. Open Visual Studio Installer, select Desktop development with C++ plus MFC/ATL support, and run install.bat again.'
     return $false
   }
-  # First gclient run installs depot_tools' managed Python and Windows helpers.
+  # Validate the wrapper with a real command. Calling gclient with no arguments
+  # only prints its usage/help and is not a bootstrap operation.
   $gclient = Join-Path $depot 'gclient.bat'
   if (Test-Path -LiteralPath $gclient) {
     # depot_tools prints a recommendation on every invocation unless this
@@ -1631,8 +1632,8 @@ function Ensure-ChromiumBuildToolchain {
     # from being rewritten by depot_tools and silence the harmless warning.
     $git = Resolve-Tool 'git'
     if ($git) { [void](Invoke-Native $git @('config', '--global', 'depot-tools.allowGlobalGitConfig', 'false') $depot -Quiet) }
-    $bootstrap = Invoke-Native $gclient @() $depot
-    if ($bootstrap.code -ne 0) { Warn "depot_tools bootstrap failed with exit code $($bootstrap.code)."; return $false }
+    $bootstrap = Invoke-Native $gclient @('--version') $depot
+    if ($bootstrap.code -ne 0) { Warn "depot_tools version check failed with exit code $($bootstrap.code)."; return $false }
   }
   return $true
 }
