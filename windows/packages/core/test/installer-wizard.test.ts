@@ -205,6 +205,10 @@ describe('steps and the console installer', () => {
     expect(chromium).toContain('removing the recognized incomplete Chromium checkout');
     expect(chromium).toContain('displayCommand(command, args, cwd)');
     expect(chromium).toContain('[build-chromium-source] exit:');
+    expect(chromium).toContain("spawnSync('where.exe', [command]");
+    expect(chromium).toContain("const launchArgs = ['/d', '/s', '/c'");
+    expect(chromium).toContain('shell: false');
+    expect(chromium).not.toContain('shell: process.platform === \'win32\'');
     expect(chromium).toContain("source checkout is incomplete at ${source}");
     expect(chromium).toContain('`fetch chromium` is only valid in an empty parent directory');
     expect(chromium).toContain("distribution: 'source-built'");

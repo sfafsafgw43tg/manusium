@@ -41,15 +41,35 @@ function displayArg(value) {
 function displayCommand(command, args, cwd) {
   return `${displayArg(command)} ${args.map(displayArg).join(' ')} (cwd=${displayArg(cwd)})`;
 }
+function quoteCmdArg(value) {
+  const text = String(value);
+  if (/^[A-Za-z0-9_./:=+-]+$/.test(text)) return text;
+  return `"${text.replaceAll('"', '\\"')}"`;
+}
+function resolveWindowsCommand(command) {
+  if (process.platform !== 'win32' || path.isAbsolute(command) || /[\\/]/.test(command)) return command;
+  const located = spawnSync('where.exe', [command], { encoding: 'utf8', windowsHide: true });
+  if (located.status === 0 && located.stdout.trim()) return located.stdout.trim().split(/\r?\n/)[0];
+  return command;
+}
+function prepareLaunch(command, args) {
+  if (process.platform !== 'win32') return { file: command, args, display: displayCommand(command, args, process.cwd()) };
+  const resolved = resolveWindowsCommand(command);
+  if (!/\.(?:bat|cmd)$/i.test(resolved)) return { file: resolved, args, display: displayCommand(resolved, args, process.cwd()) };
+  const commandLine = [quoteCmdArg(resolved), ...args.map(quoteCmdArg)].join(' ');
+  const launchArgs = ['/d', '/s', '/c', `"${commandLine}"`];
+  return { file: process.env.ComSpec || 'cmd.exe', args: launchArgs, display: displayCommand(process.env.ComSpec || 'cmd.exe', launchArgs, process.cwd()) };
+}
 function run(command, args, cwd, label = command) {
   console.log(`[build-chromium-source] ${label}`);
-  console.log(`[build-chromium-source] exec: ${displayCommand(command, args, cwd)}`);
+  const launch = prepareLaunch(command, args);
+  console.log(`[build-chromium-source] exec: ${displayCommand(launch.file, launch.args, cwd)}`);
   const started = Date.now();
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
+    const child = spawn(launch.file, launch.args, {
       cwd,
       stdio: ['ignore', 'pipe', 'pipe'],
-      shell: process.platform === 'win32',
+      shell: false,
       windowsHide: false,
     });
     let lastOutput = Date.now();
@@ -72,15 +92,16 @@ function run(command, args, cwd, label = command) {
     });
     child.once('close', (code) => {
       clearInterval(heartbeat);
-      console.log(`[build-chromium-source] exit: ${displayCommand(command, args, cwd)} -> ${code ?? 'unknown'}`);
+      console.log(`[build-chromium-source] exit: ${displayCommand(launch.file, launch.args, cwd)} -> ${code ?? 'unknown'}`);
       if (code !== 0) reject(new Error(`${label} failed with exit code ${code ?? 'unknown'}`));
       else resolve();
     });
   });
 }
 function runCapture(command, args, cwd, label = command) {
-  console.log(`[build-chromium-source] probe: ${displayCommand(command, args, cwd)}`);
-  const result = spawnSync(command, args, { cwd, encoding: 'utf8', shell: process.platform === 'win32', windowsHide: true });
+  const launch = prepareLaunch(command, args);
+  console.log(`[build-chromium-source] probe: ${displayCommand(launch.file, launch.args, cwd)}`);
+  const result = spawnSync(launch.file, launch.args, { cwd, encoding: 'utf8', shell: false, windowsHide: true });
   if (result.error || result.status !== 0) fail(`${label} failed: ${(result.stderr || result.stdout || result.error?.message || '').trim()}`);
   return result.stdout.trim();
 }
