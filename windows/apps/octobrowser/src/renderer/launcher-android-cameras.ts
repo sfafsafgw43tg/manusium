@@ -47,6 +47,9 @@ export type CameraProblem = '' | 'timeout' | 'reported' | 'none';
 export interface CameraChoices {
   webcams: EmulatorCamera[];
   emulatorAvailable: boolean;
+  hostCameraCount?: number;
+  emulatorPath?: string;
+  sdkRoot?: string;
   problem?: CameraProblem;
   detail?: string;
 }
@@ -262,6 +265,7 @@ export function cameraPicker(options: CameraPickerOptions): CameraPicker {
   let problem: CameraProblem = '';
   let detail = '';
   let windowsCount = 0;
+  let hostCameraCount = 0;
 
   const keyOf = (camera: EmulatorCamera): string => `${camera.name}\u0001${camera.device}`;
   const checkOf = (camera: EmulatorCamera): CameraCheck | undefined => {
@@ -376,7 +380,8 @@ export function cameraPicker(options: CameraPickerOptions): CameraPicker {
         if (problem === 'timeout') lines.push(line(false, t('android.camera.timedOut')));
         else if (problem === 'reported') lines.push(line(false, t('android.camera.emulatorSaid', { detail })));
         if (!listed.length) {
-          if (windowsCount > 0) lines.push(line(false, t('android.camera.windowsSees', { count: windowsCount })));
+          const count = Math.max(windowsCount, hostCameraCount);
+          if (count > 0) lines.push(line(false, t('android.camera.windowsSees', { count })));
           if (problem === 'none') lines.push(line(false, t('android.camera.msgAvdHint')));
         }
       }
@@ -412,6 +417,7 @@ export function cameraPicker(options: CameraPickerOptions): CameraPicker {
       listed = next.webcams;
       problem = next.problem ?? '';
       detail = next.detail ?? '';
+      hostCameraCount = next.hostCameraCount ?? 0;
       windowsCount = await countWindowsCameras();
       // A camera that is gone, or renamed, loses its check.
       for (const [name, entry] of checks) {
