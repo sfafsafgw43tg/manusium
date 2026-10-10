@@ -96,6 +96,10 @@ function buildAssets(app, dist) {
   for (const s of [16, 32, 48, 128, 256]) copy(path.join(b, 'png', `icon-${s}.png`), path.join(out, `icon-${s}.png`));
   if (app === 'octobrowser') {
     copy(path.join(b, 'png', 'profile-running-256.png'), path.join(out, 'profile-running.png'));
+    // Native Chromium uses a purple, badge-free mark for its launcher/tray state.
+    copy(path.join(root, 'branding', 'inkbrowser-chrome', 'png', 'icon-256.png'), path.join(out, 'inkbrowser-chrome.png'));
+    // Native Firefox uses its own purple, badge-free mark for the same state.
+    copy(path.join(root, 'branding', 'inkbrowser-firefox', 'png', 'icon-256.png'), path.join(out, 'inkbrowser-firefox.png'));
     copy(path.join(root, 'resources', 'filters', 'baseline-filters.txt'), path.join(out, 'baseline-filters.txt'));
   }
 }

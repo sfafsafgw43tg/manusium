@@ -2,14 +2,14 @@
 <!-- InkBrowser Chrome: an original three-segment Chromium-inspired mark with the Ink center. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
   <defs>
-    <linearGradient id="red" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ff6b6b"/><stop offset="1" stop-color="#d83a56"/></linearGradient>
-    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#69d69b"/><stop offset="1" stop-color="#27a875"/></linearGradient>
-    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#62a9ff"/><stop offset="1" stop-color="#3f63d7"/></linearGradient>
+    <linearGradient id="violet" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#d8b4ff"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient>
+    <linearGradient id="purple" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a855f7"/><stop offset="1" stop-color="#6d28d9"/></linearGradient>
+    <linearGradient id="indigo" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#8b5cf6"/><stop offset="1" stop-color="#4338ca"/></linearGradient>
   </defs>
-  <circle cx="128" cy="128" r="113" fill="#10131d" stroke="#2b3245" stroke-width="6"/>
-  <path d="M128 19a109 109 0 0 1 94 54l-94 55-31-54z" fill="url(#red)"/>
-  <path d="M222 73a109 109 0 0 1-94 164V128z" fill="url(#green)"/>
-  <path d="M128 237A109 109 0 0 1 34 73l94 55z" fill="url(#blue)"/>
+  <circle cx="128" cy="128" r="113" fill="#120d21" stroke="#54318c" stroke-width="6"/>
+  <path d="M128 19a109 109 0 0 1 94 54l-94 55-31-54z" fill="url(#violet)"/>
+  <path d="M222 73a109 109 0 0 1-94 164V128z" fill="url(#purple)"/>
+  <path d="M128 237A109 109 0 0 1 34 73l94 55z" fill="url(#indigo)"/>
   <circle cx="128" cy="128" r="50" fill="#f6f8ff" stroke="#10131d" stroke-width="5"/>
   <circle cx="128" cy="128" r="40" fill="#241447"/>
   <path d="M128 92a36 36 0 0 1 31 18l-31 18-10-18z" fill="#a855f7"/>

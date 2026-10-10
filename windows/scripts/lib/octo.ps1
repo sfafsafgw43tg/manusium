@@ -2022,7 +2022,7 @@ function Get-SetupSteps {
         return $ok
       } }
     @{ Key = 'stepDeps'; Required = $true; Fatal = $false; Action = { [void](Invoke-EnsureDependencies); return $true } }
-    @{ Key = 'stepRuntimes'; Required = $true; Fatal = $false; Action = {
+    @{ Key = 'stepRuntimes'; Required = $true; Fatal = $true; Action = {
         $target = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'win32-arm64' } else { 'win32-x64' }
         if ($env:OS -ne 'Windows_NT') { $target = 'linux-x64' }
         if ($target -notin @('win32-x64', 'linux-x64')) { Warn "Native runtimes are not staged for $target"; return $false }

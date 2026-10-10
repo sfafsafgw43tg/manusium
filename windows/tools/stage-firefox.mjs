@@ -26,11 +26,18 @@ if (!entry) { console.error(`[stage-firefox] unsupported target ${target}; suppo
 const license = 'MPL-2.0 with additional binary components and Mozilla trademark restrictions; preserve upstream notices.';
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'octo-firefox-stage-'));
 const archive = path.join(temp, entry.format === 'msi' ? 'firefox.msi' : 'firefox.tar.xz');
+const cacheArg = process.argv.find((arg) => arg.startsWith('--cache='))?.slice('--cache='.length);
+const cache = path.resolve(cacheArg ?? path.join(os.homedir(), '.cache', 'octosuite', `firefox-${entry.version}-${target}.${entry.format}`));
 const digest = (file) => crypto.createHash('sha512').update(fs.readFileSync(file)).digest('hex');
 const sha256 = (file) => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 const mirrors = [entry.source, entry.source.replace('https://ftp.mozilla.org/pub/', 'https://download-installer.cdn.mozilla.net/pub/')];
 function downloadVerified() {
   const curl = process.platform === 'win32' ? 'curl.exe' : 'curl';
+  if (fs.existsSync(cache) && digest(cache) === entry.archiveSha512) {
+    fs.copyFileSync(cache, archive);
+    console.log(`[stage-firefox] using verified cache ${cache}`);
+    return 'verified-cache';
+  }
   const errors = [];
   for (const url of mirrors) {
     try {
@@ -38,7 +45,11 @@ function downloadVerified() {
       console.log(`[stage-firefox] downloading ${url}`);
       execFileSync(curl, ['-fL', '--retry', '3', '--retry-delay', '2', '--connect-timeout', '20', url, '-o', archive], { stdio: 'inherit' });
       const actual = digest(archive);
-      if (actual === entry.archiveSha512) return url;
+      if (actual === entry.archiveSha512) {
+        fs.mkdirSync(path.dirname(cache), { recursive: true });
+        fs.copyFileSync(archive, cache);
+        return url;
+      }
       errors.push(`${url}: checksum ${actual}`);
       fs.rmSync(archive, { force: true });
     } catch (error) {
@@ -73,8 +84,9 @@ try {
   } else {
     if (process.platform !== 'win32') throw new Error('Windows Firefox MSI staging must run on Windows');
     const targetDir = path.join(unpacked, 'Firefox');
-    const install = spawnSync('msiexec.exe', ['/a', archive, '/qn', '/norestart', `TARGETDIR=${targetDir}`], { stdio: 'inherit' });
-    if (install.error) throw install.error;
+    const msiexec = process.env.WINDIR ? path.join(process.env.WINDIR, 'System32', 'msiexec.exe') : 'msiexec.exe';
+    const install = spawnSync(msiexec, ['/a', archive, '/qn', '/norestart', `TARGETDIR=${targetDir}`], { stdio: 'inherit' });
+    if (install.error) throw new Error(`Could not start Windows MSI extraction (${msiexec}): ${install.error.message}`);
     if (![0, 3010].includes(install.status ?? -1)) throw new Error(`msiexec administrative extraction failed with exit code ${install.status}`);
     sourceRoot = fs.existsSync(path.join(targetDir, 'core')) ? path.join(targetDir, 'core') : targetDir;
   }

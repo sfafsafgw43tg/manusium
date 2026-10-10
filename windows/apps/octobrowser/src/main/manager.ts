@@ -402,6 +402,10 @@ export class Manager {
 
   private launcherIcon(): string {
     const active = path.join(this.ctx.prep.distDir, 'assets', 'profile-running.png');
+    const nativeChromium = path.join(this.ctx.prep.distDir, 'assets', 'inkbrowser-chrome.png');
+    const nativeFirefox = path.join(this.ctx.prep.distDir, 'assets', 'inkbrowser-firefox.png');
+    if (this.nativeChromium.size > 0 && fs.existsSync(nativeChromium)) return nativeChromium;
+    if (this.nativeFirefox.size > 0 && fs.existsSync(nativeFirefox)) return nativeFirefox;
     return this.children.size > 0 && fs.existsSync(active) ? active : iconPath(this.ctx.prep.distDir);
   }
 

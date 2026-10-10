@@ -1,7 +1,0 @@
-# Browser extension build output; source lives at the repository root.
-dist/
-
-# Python bytecode / local test state
-__pycache__/
-*.py[cod]
-.pytest_cache/
