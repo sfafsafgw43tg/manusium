@@ -1,0 +1,66 @@
+! resources/filters/baseline-filters.txt
+! Title: OctoBrowser baseline (offline fallback)
+! Description: Small, original list of well-known ad/analytics endpoints used ONLY until
+!   the official lists (EasyList, EasyPrivacy, uBlock filters) are downloaded from their
+!   official URLs and verified. Written for OctoSuite - not copied from any list.
+! License: MPL-2.0 (part of OctoSuite)
+! Syntax: Adblock Plus network rules (domain anchors only - no cosmetic rules).
+||doubleclick.net^
+||googlesyndication.com^
+||googleadservices.com^
+||google-analytics.com^
+||googletagmanager.com^$third-party
+||adservice.google.com^
+||analytics.google.com^
+||stats.g.doubleclick.net^
+||adnxs.com^
+||adsrvr.org^
+||advertising.com^
+||amazon-adsystem.com^
+||criteo.com^
+||criteo.net^
+||taboola.com^
+||outbrain.com^
+||pubmatic.com^
+||rubiconproject.com^
+||openx.net^
+||casalemedia.com^
+||moatads.com^
+||scorecardresearch.com^
+||quantserve.com^
+||hotjar.com^
+||hotjar.io^
+||mouseflow.com^
+||fullstory.com^
+||segment.io^
+||mixpanel.com^
+||amplitude.com^$third-party
+||clarity.ms^
+||bat.bing.com^
+||connect.facebook.net^$third-party
+||facebook.com/tr^
+||ads-twitter.com^
+||analytics.twitter.com^
+||ads.linkedin.com^
+||px.ads.linkedin.com^
+||snap.licdn.com^
+||analytics.tiktok.com^
+||ads.yahoo.com^
+||yieldmo.com^
+||smartadserver.com^
+||adform.net^
+||teads.tv^
+||bidswitch.net^
+||demdex.net^
+||omtrdc.net^
+||everesttech.net^
+||krxd.net^
+||bluekai.com^
+||exelator.com^
+||agkn.com^
+||tapad.com^
+||mathtag.com^
+||rlcdn.com^
+||adition.com^
+||gemius.pl^
+||hit.gemius.pl^

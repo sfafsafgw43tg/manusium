@@ -1,0 +1,36 @@
+/* apps/octobrowser/src/internal/internal.css - quiet matte pages for octo://. */
+:root {
+  --bg: #191919; --panel: #222222; --line: #373737; --dim: #575757;
+  --text: #e5e5e5; --muted: #979797;
+  --font: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --bg: #e8e8e8; --panel: #f2f2f2; --line: #cdcdcd; --dim: #9a9a9a;
+  --text: #252525; --muted: #666666;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+* { scrollbar-width: thin; scrollbar-color: var(--dim) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--dim); border: 3px solid transparent; background-clip: content-box; border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); background-clip: content-box; }
+::-webkit-scrollbar-corner { background: transparent; }
+html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font: 14px/1.5 var(--font); }
+#root { max-width: 720px; min-height: 100vh; margin: 0 auto; padding: clamp(72px, 16vh, 180px) 24px 40px; display: flex; flex-direction: column; align-items: center; gap: 13px; text-align: center; }
+.logo { display: flex; align-items: center; gap: 9px; font-size: 24px; font-weight: 500; letter-spacing: -.02em; color: var(--text); }
+.logo .mark { width: 22px; height: 22px; border-radius: 7px; background: var(--text); opacity: .82; }
+.search { width: min(600px, 100%); margin-top: 10px; }
+.search input { width: 100%; padding: 13px 19px; font: inherit; font-size: 15px; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; outline: none; }
+.search input::placeholder { color: var(--muted); }
+.search input:focus { border-color: var(--dim); }
+.hint { color: var(--muted); font-size: 12px; margin: 0; }
+.actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.btn { font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--line); padding: 9px 16px; border-radius: 8px; cursor: pointer; }
+.btn:hover { border-color: var(--dim); }
+.btn.primary { background: var(--text); border: 1px solid var(--text); color: var(--bg); font-weight: 600; }
+.big-icon { width: 58px; height: 58px; border-radius: 10px; display: grid; place-items: center; font-size: 28px; font-weight: 700; background: var(--panel); color: var(--text); border: 1px solid var(--line); }
+h1 { margin: 0; font-size: 24px; }
+.mono { font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; max-width: 100%; }
+.note { background: var(--panel); border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 10px 14px; font-size: 13px; max-width: 620px; }

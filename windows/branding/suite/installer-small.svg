@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- branding/suite/installer-small.svg - simplified OctoSuite installer mark for 16/32 px. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs><clipPath id="c"><path d="M10 1h12l9 9v12l-9 9H10l-9-9V10z"/></clipPath></defs>
+  <g clip-path="url(#c)"><path d="M0 0h32L0 32z" fill="#8b6bff"/><path d="M32 0v32H0z" fill="#14b8a6"/></g>
+  <path d="M11.5 4.5h9l7 7v9l-7 7h-9l-7-7v-9z" fill="#0b1020"/>
+  <path d="M16 9v10M12 15.5l4 4 4-4M11.5 23h9" fill="none" stroke="#e6e8f2" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
