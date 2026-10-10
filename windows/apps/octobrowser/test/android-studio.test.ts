@@ -9,7 +9,7 @@ import {
   mediaBroadcastCommand, mediaCompanionCameraReadiness, normalizeAndroidLaunchPrefs,
   normalizeCameraRotation, normalizeCameraSources, normalizeNetworkSpeed, waitForMediaCompanionCamera, mediaConfig,
   androidCameraChoices,
-  cameraProblemLine, clampCameraLimit, emulatorCameraValues, emulatorWebcams, emulatorWebcamsFrom, parseCameraLimit, resolveActiveCameraAssignments,
+  automaticWebcamFallback, cameraProblemLine, clampCameraLimit, emulatorCameraValues, emulatorWebcams, emulatorWebcamsFrom, parseCameraLimit, resolveActiveCameraAssignments,
   runKeepingOutput,
 } from '../src/main/android-studio';
 import * as fs from 'node:fs';
@@ -713,6 +713,14 @@ describe('wiring a live camera into a device', () => {
     // No Android SDK here, so the emulator cannot be asked. The answer is an
     // empty list, not a guess at webcam0 and not a list built from Windows.
     expect(await emulatorWebcams()).toEqual([]);
+  });
+
+  it('falls back to webcam0 only on Windows when the host has cameras but enumeration is empty', () => {
+    const empty = { webcams: [], problem: 'reported' as const, detail: '' };
+    expect(automaticWebcamFallback(58, empty, 'win32')).toMatchObject([{ name: 'webcam0' }]);
+    expect(automaticWebcamFallback(0, empty, 'win32')).toEqual([]);
+    expect(automaticWebcamFallback(58, empty, 'linux')).toEqual([]);
+    expect(automaticWebcamFallback(58, { ...empty, webcams: [{ name: 'webcam1', device: 'Camera', virtual: false }] }, 'win32')).toEqual([]);
   });
 
   it('advertises only a resolution the chosen source can deliver', () => {

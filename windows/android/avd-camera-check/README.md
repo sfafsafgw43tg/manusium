@@ -59,6 +59,7 @@ Minimum API 24. Dependencies: CameraX 1.3.4, ML Kit Barcode Scanning 17.2.0, App
 | Pure camera-selection unit tests | Added; not run here | Requires the Android/Gradle test toolchain |
 | Android compilation and unit tests | Not verified | No Gradle, wrapper, Android SDK, or `ANDROID_HOME` is available here |
 | ADB, emulator, physical-device, Camera HAL, webcam preview, barcode scan | Not verified | Requires a Windows host with Android SDK, ADB, and a running AVD/device |
+| Automatic Windows host-camera fallback | Implemented in the desktop launcher; device-side result not verified | When Windows reports cameras but `emulator -webcam-list` is empty, the launcher can configure `webcam0` for a stopped AVD and cold-boot it; Camera2 preview still decides whether it worked |
 | HAL/service restart, SELinux, device properties, custom ROM/AOSP | Intentionally not applied | Out of application scope and potentially destructive/root-only |
 
 The source is not being treated as proof that an APK builds or that an AVD camera works.

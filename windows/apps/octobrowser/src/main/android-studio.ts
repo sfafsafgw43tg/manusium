@@ -1675,6 +1675,18 @@ export interface EmulatorCameraReport {
   detail: string;
 }
 
+/**
+ * Windows-only recovery for a known emulator failure mode: Windows reports
+ * cameras, but this emulator build returns an empty `-webcam-list`. The
+ * emulator's first DirectShow endpoint is conventionally `webcam0`. This is
+ * a launch fallback, not a claim that the endpoint was verified; the post-boot
+ * Camera2 check remains authoritative.
+ */
+export function automaticWebcamFallback(hostCameraCount: number, report: EmulatorCameraReport, platform: NodeJS.Platform = process.platform): EmulatorWebcam[] {
+  if (platform !== 'win32' || hostCameraCount < 1 || report.webcams.length > 0) return [];
+  return [{ name: 'webcam0', device: 'Windows host camera (automatic fallback)', virtual: false, foreign: false }];
+}
+
 /** One emulator run that prints the camera list. Whatever it printed is kept, even when it is stopped. */
 function runCameraList(program: string, args: string[], sdkRoot: string, timeout: number): Promise<{ text: string; timedOut: boolean }> {
   return new Promise((resolve) => {
@@ -2817,14 +2829,17 @@ export async function repairAndroidMedia(name: string, input: { cameraDevice?: s
   if (avd.running) throw new Error('Stop the Android device before repairing its camera and microphone');
   const changed: string[] = [];
   const webcams = await emulatorWebcams();
+  const hostCameraCount = (await windowsCameraNames()).length;
+  const fallback = automaticWebcamFallback(hostCameraCount, { webcams, problem: 'reported', detail: '' });
+  const usableWebcams = webcams.length ? webcams : fallback;
   // A camera the caller picked goes to the rear lens. Otherwise the saved
   // choices stand, and a lens without a camera takes an active one.
-  const wanted = input.cameraDevice && webcams.some((item) => item.name === input.cameraDevice) ? input.cameraDevice : '';
+  const wanted = input.cameraDevice && usableWebcams.some((item) => item.name === input.cameraDevice) ? input.cameraDevice : '';
   const selected = normalizeCameraSources(avd.cameraFront, avd.cameraBack);
   const assignments = resolveActiveCameraAssignments(
     selected.front, selected.back,
     avd.cameraFrontDevice, wanted || avd.cameraBackDevice,
-    webcams, [],
+    usableWebcams, [],
     avd.cameraDevice,
   );
   writeConfigValues(avd.path, mediaConfig(assignments.front, assignments.back, true,
@@ -2836,6 +2851,7 @@ export async function repairAndroidMedia(name: string, input: { cameraDevice?: s
     microphoneEnabled: true,
   });
   changed.push('camera', 'microphone');
+  if (fallback.length) changed.push('automatic-webcam-fallback');
   return { changed, check: await androidMediaCheck(clean) };
 }
 
@@ -3538,7 +3554,9 @@ export async function launchAndroidAvd(input: AndroidLaunchInput): Promise<Andro
   // it never starts on a picture that is not a camera.
   const emulatorRoot = rootForPackage(avdSystemPackage(avd)) || tools.root;
   const webcamReport = await emulatorWebcamsFrom(emulator, emulatorRoot);
-  const webcams = webcamReport.webcams;
+  const hostCameraCount = (await windowsCameraNames()).length;
+  const fallback = automaticWebcamFallback(hostCameraCount, webcamReport);
+  const webcams = webcamReport.webcams.length ? webcamReport.webcams : fallback;
   const assignments = resolveActiveCameraAssignments(
     front, back,
     input.cameraFrontDevice ?? avd.cameraFrontDevice ?? '',
@@ -3553,6 +3571,9 @@ export async function launchAndroidAvd(input: AndroidLaunchInput): Promise<Andro
       ? 'The selected Android Emulator could not enumerate a host camera. Close camera-using apps, allow desktop camera access in Windows Privacy settings, then refresh.'
       : 'The selected Android Emulator reported no usable host cameras. Set the AVD cameras to Webcam and cold boot it.';
     cameraWarning = [cameraWarning, reason].filter(Boolean).join(' ');
+  }
+  if (fallback.length && (front === 'webcam' || back === 'webcam')) {
+    cameraWarning = [cameraWarning, 'The emulator did not enumerate cameras; webcam0 was configured automatically and must be verified after the cold boot.'].filter(Boolean).join(' ');
   }
   writeConfigValues(avd.path, mediaConfig(
     assignments.front, assignments.back, input.microphoneEnabled,
