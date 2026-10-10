@@ -1,6 +1,6 @@
 # Windows Chromium source-build prerequisites
 
-`install.bat` now prepares the missing build tools before running `stage:chromium:windows`.
+`install.bat` now prepares and verifies the missing build tools before staging the Chromium and Firefox runtimes.
 
 ## Automatic behavior
 
@@ -10,10 +10,11 @@ When the verified source-built Chromium runtime is missing, the installer:
 2. Clones the official `depot_tools` repository into `%LOCALAPPDATA%\InkBrowser\depot_tools` when `fetch.bat` is absent.
 3. Adds that directory to the current process and the current user's PATH.
 4. Sets `DEPOT_TOOLS_WIN_TOOLCHAIN=0`, so depot_tools uses the local Visual Studio installation.
-5. Runs `gclient.bat` once to bootstrap depot_tools' Windows helpers and Python.
-6. Installs Microsoft Visual Studio Build Tools through the official `winget` source when `vswhere.exe` is not found, requesting the C++ workload, MFC/ATL support, and recommended components.
-7. Runs the source-build command that produces `inkbrowser-chrome.exe`.
-8. Verifies the runtime manifest and executable SHA-256 before the installer can report success.
+5. Runs `gclient.bat --version` to validate the depot_tools wrapper without invoking its usage screen.
+6. Verifies that Visual Studio contains MSVC x64/x86 tools and a Windows 10/11 SDK, not merely that `vswhere.exe` exists. If the workload is missing, it uses the official `winget` source to install Build Tools with the C++ workload, MFC/ATL support, and recommended components.
+7. Verifies `fetch`, `gclient`, `gn`, and `autoninja` before starting the large checkout.
+8. Runs the source-build command that produces `inkbrowser-chrome.exe`, then stages the verified Mozilla Firefox runtime with its SHA-512-checked MSI.
+9. Verifies both runtime manifests and executable hashes before the installer can report success.
 
 The installer stops after a fatal runtime failure. It no longer creates a shortcut or claims to have built the application after Step 6 fails.
 
@@ -21,7 +22,7 @@ The installer stops after a fatal runtime failure. It no longer creates a shortc
 
 A Chromium source checkout is large. The official Windows instructions require at least 100 GB of free NTFS disk space and recommend more than 16 GB of RAM. The source build also requires a supported Windows version, Visual Studio's Desktop development with C++ workload, MFC/ATL support, and the Windows SDK. The build can take a long time and may require administrator approval for Visual Studio installation.
 
-If `winget` is unavailable, or Visual Studio installation fails, the installer reports the missing prerequisite and stops without substituting Chrome for Testing.
+If `winget` is unavailable, the Visual Studio workload is missing, Firefox staging lacks `curl.exe`/Windows Installer, or either runtime fails verification, the installer reports the specific prerequisite and stops without substituting another browser.
 
 ## Sources
 

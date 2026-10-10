@@ -196,7 +196,7 @@ $Messages = @{
     stepAndroid       = 'Android Studio and Java 17'
     stepSdk           = 'Android SDK command-line tools, adb and the emulator'
     stepDeps          = 'Project dependencies (npm ci)'
-    stepRuntimes      = 'Native Chromium runtime (Firefox skipped for now)'
+    stepRuntimes      = 'Native Chromium and Firefox runtimes'
     stepBuild         = 'Building OctoBrowser and OctoDetect'
     uiTitle              = 'OctoSuite installer'
     uiVersion            = 'Version {0}'
@@ -430,7 +430,7 @@ $Messages = @{
     stepAndroid       = 'Android Studio i Java 17'
     stepSdk           = 'Narzędzia wiersza poleceń Android SDK, adb i emulator'
     stepDeps          = 'Zależności projektu (npm ci)'
-    stepRuntimes      = 'Natywny silnik Chromium (Firefox tymczasowo pominięty)'
+    stepRuntimes      = 'Natywne silniki Chromium i Firefox'
     stepBuild         = 'Budowanie OctoBrowser i OctoDetect'
     uiTitle              = 'Instalator OctoSuite'
     uiVersion            = 'Wersja {0}'
@@ -1242,7 +1242,7 @@ function Invoke-RestoreProfile {
 # the official winget repository and each step is logged.
 $Prereqs = @(
   @{ Id = 'OpenJS.NodeJS.LTS'; Name = 'Node.js'; Cmd = 'node'; Min = '22.12.0'; Site = 'https://nodejs.org/'; DirectUrl = 'https://nodejs.org/dist/v22.12.0/node-v22.12.0-x64.msi'; ZipUrl = 'https://nodejs.org/dist/v22.12.0/node-v22.12.0-win-x64.zip'; InstallerType = 'msi' }
-  @{ Id = 'Git.Git';           Name = 'git';     Cmd = 'git';  Min = '2.30.0';  Site = 'https://git-scm.com/'; DirectUrl = 'https://github.com/git-for-windows/git/releases/download/v2.47.1.windows.1/Git-2.47.1-64-bit.exe'; ZipUrl = 'https://github.com/git-for-windows/git/releases/download/v2.47.1.windows.1/MinGit-2.47.1-64-bit.zip'; InstallerType = 'inno' }
+  @{ Id = 'Git.Git';           Name = 'git';     Cmd = 'git';  Min = '2.40.0';  Site = 'https://git-scm.com/'; DirectUrl = 'https://github.com/git-for-windows/git/releases/download/v2.47.1.windows.1/Git-2.47.1-64-bit.exe'; ZipUrl = 'https://github.com/git-for-windows/git/releases/download/v2.47.1.windows.1/MinGit-2.47.1-64-bit.zip'; InstallerType = 'inno' }
 )
 
 # Tools are looked up in PATH first, then - because a console started before the installer
@@ -1568,6 +1568,22 @@ function Ensure-ChromiumBuildToolchain {
   if ($env:OS -ne 'Windows_NT') { return $true }
   $git = Resolve-Tool 'git'
   if (-not $git) { Warn 'Chromium source build needs Git for Windows, but git was not found.'; return $false }
+  $sourceRoot = if ($env:OCTO_CHROMIUM_SOURCE) { $env:OCTO_CHROMIUM_SOURCE } else { 'C:\src' }
+  if (-not (Test-FolderWritable $sourceRoot)) {
+    Warn "Chromium source directory is not writable: $sourceRoot. Choose a writable NTFS directory or grant access, then run install.bat again."
+    return $false
+  }
+  try {
+    $driveRoot = [System.IO.Path]::GetPathRoot($sourceRoot)
+    $freeBytes = ([System.IO.DriveInfo]::new($driveRoot)).AvailableFreeSpace
+    if ($freeBytes -lt 100GB) {
+      Warn "The Chromium build drive has less than 100 GB free ($([math]::Round($freeBytes / 1GB, 1)) GB available). Free space on $driveRoot and run install.bat again."
+      return $false
+    }
+  } catch {
+    Warn "Could not verify free disk space for the Chromium source build drive ($sourceRoot): $($_.Exception.Message)"
+    return $false
+  }
 
   $depot = Join-Path $env:LOCALAPPDATA 'InkBrowser\depot_tools'
   $fetch = Join-Path $depot 'fetch.bat'
@@ -1604,10 +1620,24 @@ function Ensure-ChromiumBuildToolchain {
     (Join-Path $env:ProgramFiles 'Microsoft Visual Studio\Installer\vswhere.exe')
   )
   $vswhere = $vswhereCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
-  if (-not $vswhere) {
+  $vsComponents = @('Microsoft.VisualStudio.Component.VC.Tools.x86.x64', 'Microsoft.VisualStudio.Component.VC.ATLMFC')
+  $vsSdks = @(
+    'Microsoft.VisualStudio.Component.Windows10SDK.19041',
+    'Microsoft.VisualStudio.Component.Windows10SDK.20348',
+    'Microsoft.VisualStudio.Component.Windows11SDK.22000',
+    'Microsoft.VisualStudio.Component.Windows11SDK.22621',
+    'Microsoft.VisualStudio.Component.Windows11SDK.26100'
+  )
+  $vsReady = $false
+  if ($vswhere) {
+    $vsArgs = @('-latest', '-products', '*', '-requires') + $vsComponents + @('-requiresAny') + $vsSdks + @('-property', 'installationPath')
+    $vsResult = Invoke-Native $vswhere $vsArgs $null -Quiet
+    $vsReady = $vsResult.code -eq 0 -and [bool](@($vsResult.text -split "`r?`n" | Where-Object { $_.Trim() -and (Test-Path -LiteralPath $_.Trim()) }).Count)
+  }
+  if (-not $vsReady) {
     $winget = Get-Command 'winget' -ErrorAction SilentlyContinue
     if (-not $winget) {
-      Warn 'Visual Studio Build Tools are missing and winget is unavailable. Install Desktop development with C++ and MFC/ATL support, then run install.bat again.'
+      Warn 'Visual Studio Build Tools are missing the required MSVC/Windows SDK workload and winget is unavailable. Install Desktop development with C++, MSVC x64/x86 tools, a Windows 10/11 SDK, and MFC/ATL support, then run install.bat again.'
       return $false
     }
     Say 'Installing Visual Studio Build Tools with C++ and MFC/ATL support...' 'Cyan'
@@ -1618,9 +1648,13 @@ function Ensure-ChromiumBuildToolchain {
       return $false
     }
     $vswhere = $vswhereCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+    if ($vswhere) {
+      $vsResult = Invoke-Native $vswhere $vsArgs $null -Quiet
+      $vsReady = $vsResult.code -eq 0 -and [bool](@($vsResult.text -split "`r?`n" | Where-Object { $_.Trim() -and (Test-Path -LiteralPath $_.Trim()) }).Count)
+    }
   }
-  if (-not $vswhere) {
-    Warn 'Visual Studio Build Tools were not found after installation. Open Visual Studio Installer, select Desktop development with C++ plus MFC/ATL support, and run install.bat again.'
+  if (-not $vsReady) {
+    Warn 'Visual Studio is installed but the required Chromium workload was not detected. In Visual Studio Installer select Desktop development with C++, MSVC x64/x86 build tools, a Windows 10/11 SDK, and MFC/ATL support, then run install.bat again.'
     return $false
   }
   # Validate the wrapper with a real command. Calling gclient with no arguments
@@ -1634,6 +1668,24 @@ function Ensure-ChromiumBuildToolchain {
     if ($git) { [void](Invoke-Native $git @('config', '--global', 'depot-tools.allowGlobalGitConfig', 'false') $depot -Quiet) }
     $bootstrap = Invoke-Native $gclient @('--version') $depot
     if ($bootstrap.code -ne 0) { Warn "depot_tools version check failed with exit code $($bootstrap.code)."; return $false }
+  }
+  foreach ($toolName in @('fetch', 'gclient', 'gn', 'autoninja')) {
+    if (-not (Resolve-Tool $toolName)) {
+      Warn "depot_tools is missing $toolName after bootstrap. Repair %LOCALAPPDATA%\InkBrowser\depot_tools and run install.bat again."
+      return $false
+    }
+  }
+  return $true
+}
+
+function Ensure-FirefoxStagingToolchain {
+  if ($env:OS -ne 'Windows_NT') { return $true }
+  $missing = @()
+  if (-not (Get-Command 'curl.exe' -ErrorAction SilentlyContinue)) { $missing += 'curl.exe (Windows 10/11 or curl installation)' }
+  if (-not (Test-Path -LiteralPath (Join-Path $env:WINDIR 'System32\msiexec.exe'))) { $missing += 'Windows Installer (msiexec.exe)' }
+  if ($missing.Count -gt 0) {
+    Warn "Firefox staging cannot start because these required tools are missing: $($missing -join ', '). Install or repair them, then run install.bat again."
+    return $false
   }
   return $true
 }
@@ -2142,6 +2194,7 @@ function Get-SetupSteps {
         if ($env:OS -ne 'Windows_NT') { $target = 'linux-x64' }
         if ($target -notin @('win32-x64', 'linux-x64')) { Warn "Native runtimes are not staged for $target"; return $false }
         $stageChromium = if ($target -eq 'win32-x64') { 'stage:chromium:windows' } else { 'stage:chromium' }
+        $stageFirefox = if ($target -eq 'win32-x64') { 'stage:firefox:windows' } else { 'stage:firefox:linux' }
         try {
           # Do not rebuild or overwrite an already verified runtime on every install.
           # Windows Chromium is source-built only; the stage script deliberately rejects
@@ -2161,15 +2214,16 @@ function Get-SetupSteps {
           } else {
             Say 'Verified source-built Chromium runtime already present; reusing it.' 'Green'
           }
-          # Firefox staging is intentionally disabled for this installer pass.
-          # It must never block a usable Chromium installation or be silently
-          # substituted with another engine; Firefox remains unavailable until
-          # its verified runtime download path is repaired separately.
-          Say 'Firefox runtime skipped for now; Chromium is the active native engine.' 'Yellow'
+          if (-not (Test-NativeRuntimeReady 'gecko' $target)) {
+            if ($target -eq 'win32-x64' -and -not (Ensure-FirefoxStagingToolchain)) { return $false }
+            Invoke-Npm @('run', $stageFirefox)
+          } else {
+            Say 'Verified Firefox runtime already present; reusing it.' 'Green'
+          }
           $nodeExe = Resolve-Tool 'node'
           if (-not $nodeExe) { throw 'Node.js is unavailable for native runtime verification.' }
-          $check = Invoke-Native $nodeExe @('tools\verify-native-engines.mjs', '--allow-missing-firefox') $InstallRoot
-          if ($check.code -ne 0) { throw "Native Chromium verification failed with exit code $($check.code)." }
+          $check = Invoke-Native $nodeExe @('tools\verify-native-engines.mjs') $InstallRoot
+          if ($check.code -ne 0) { throw "Native Chromium/Firefox verification failed with exit code $($check.code)." }
           return $true
         } catch { Warn $_.Exception.Message; return $false }
       } }

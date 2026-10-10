@@ -108,6 +108,14 @@ describe('installer recovers from missing vendor packages', () => {
     expect(source).toContain('https://github.com/git-for-windows/git/releases/download/v2.47.1.windows.1/Git-2.47.1-64-bit.exe');
   });
 
+  it('does not elevate the whole installer for ordinary prerequisites', () => {
+    const vbCable = source.slice(source.indexOf('function Install-VbCable'), source.indexOf('$CmdlineToolsUrls'));
+    expect(vbCable).toContain("-Verb RunAs");
+    const ordinaryInstall = source.slice(source.indexOf('function Install-Prerequisite($tool)'), source.indexOf('# Returns $true when every prerequisite'));
+    expect(ordinaryInstall).not.toContain('-Verb RunAs');
+    expect(source).toContain('required MSVC/Windows SDK workload');
+  });
+
   it('supports launching electron.exe directly in dev mode', () => {
     expect(source).toContain("node_modules\\electron\\dist\\electron.exe");
   });

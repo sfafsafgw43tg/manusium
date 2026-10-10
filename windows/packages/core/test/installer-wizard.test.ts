@@ -219,10 +219,10 @@ describe('steps and the console installer', () => {
     expect(firefox).not.toContain('fs.renameSync(sourceStagedExecutable, executablePath)');
     const runtimeStep = functionBody(octo, 'Get-SetupSteps');
     expect(runtimeStep).toContain(String.raw`tools\verify-native-engines.mjs`);
-    expect(runtimeStep).toContain('Native Chromium verification failed');
-    expect(runtimeStep).toContain("'--allow-missing-firefox'");
-    expect(runtimeStep).toContain('Firefox runtime skipped for now');
-    expect(runtimeStep).not.toContain('stage:firefox');
+    expect(runtimeStep).toContain('Native Chromium/Firefox verification failed');
+    expect(runtimeStep).not.toContain("'--allow-missing-firefox'");
+    expect(runtimeStep).toContain('Ensure-FirefoxStagingToolchain');
+    expect(runtimeStep).toContain('stage:firefox:windows');
     expect(octo).toContain('function Test-NativeRuntimeReady');
     expect(octo).toContain("[string]$manifest.distribution -ne 'source-built'");
     expect(octo).toContain('Get-FileHash -LiteralPath $exe -Algorithm SHA256');
@@ -233,6 +233,13 @@ describe('steps and the console installer', () => {
     expect(octo).not.toContain('Invoke-Native $gclient @() $depot');
     expect(octo).toContain('chromium/tools/depot_tools.git');
     expect(octo).toContain('Microsoft.VisualStudio.BuildTools');
+    expect(octo).toContain('Microsoft.VisualStudio.Component.VC.Tools.x86.x64');
+    expect(octo).toContain('Microsoft.VisualStudio.Component.VC.ATLMFC');
+    expect(octo).toContain('Microsoft.VisualStudio.Component.Windows11SDK.22621');
+    expect(octo).toContain("@('-latest', '-products', '*', '-requires')");
+    expect(octo).toContain("$vsReady = $vsResult.code -eq 0");
+    expect(octo).toContain('Ensure-FirefoxStagingToolchain');
+    expect(octo).toContain('OCTO_CHROMIUM_SOURCE');
     expect(octo).toContain("'depot-tools.allowGlobalGitConfig', 'false'");
     expect(octo).toContain("$env:DEPOT_TOOLS_UPDATE = '0'");
     expect(octo).toContain("GetEnvironmentVariable('DEPOT_TOOLS_UPDATE', 'Process')");

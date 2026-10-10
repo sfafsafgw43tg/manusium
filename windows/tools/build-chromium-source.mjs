@@ -267,7 +267,9 @@ async function main() {
   ensureTool('gclient');
   ensureTool('gn');
   ensureTool('autoninja');
-  const source = path.resolve(arg('--source', path.join('C:\\src', 'chromium', 'src')));
+  const source = path.resolve(arg('--source', process.env.OCTO_CHROMIUM_SOURCE
+    ? path.join(process.env.OCTO_CHROMIUM_SOURCE, 'chromium', 'src')
+    : path.join('C:\src', 'chromium', 'src')));
   const outBuild = path.resolve(arg('--out-build', path.join(source, 'out', 'InkBrowser')));
   const outDir = path.resolve(arg('--out', path.join(root, 'resources', 'engines', 'chromium', version)));
   const revision = await sourceCheckout(source, version, flag('--skip-sync'));
