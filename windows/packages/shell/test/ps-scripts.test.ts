@@ -69,7 +69,7 @@ describe('install.bat covers every dependency', () => {
     expect(elevate).toContain('exit $child.ExitCode');
   });
 
-  it('installs the media plugin prerequisites independently of Android', () => {
+  it('keeps media and Android prerequisite tables feature-scoped', () => {
     expect(source).toContain('$MediaPrereqs = @(');
     for (const id of ['Python.Python.3.12', 'OBSProject.OBSStudio', 'VB-Audio.Cable']) {
       const table = /\$MediaPrereqs = @\(([\s\S]*?)\n\)/.exec(source)?.[1] ?? '';
@@ -77,9 +77,10 @@ describe('install.bat covers every dependency', () => {
     }
     const android = /\$AndroidPrereqs = @\(([\s\S]*?)\n\)/.exec(source)?.[1] ?? '';
     for (const id of ['Google.AndroidStudio', 'Microsoft.OpenJDK.17']) expect(android).toContain(id);
-    // Setup runs both tables, media first (the order of the steps decides it).
-    expect(source.indexOf("Key = 'stepMedia'")).toBeGreaterThan(0);
-    expect(source.indexOf("Key = 'stepMedia'")).toBeLessThan(source.indexOf("Key = 'stepAndroid'"));
+    // The Chromium installer does not run either optional table.
+    expect(source).not.toContain("Key = 'stepMedia'");
+    expect(source).not.toContain("Key = 'stepAndroid'");
+    expect(source).not.toContain("Key = 'stepSdk'");
   });
 
   it('never installs SDK packages into a folder the user cannot write to', () => {
@@ -214,7 +215,7 @@ describe('the graphical installer', () => {
   it('runs exactly the steps the console runs', () => {
     expect(uiSource).toContain('Get-SetupSteps');
     const keys = [...source.matchAll(/Key = '(step[A-Za-z]+)'/g)].map((m) => m[1]);
-    expect(keys.length).toBeGreaterThanOrEqual(6);
+    expect(keys).toEqual(['stepPrereqs', 'stepDeps', 'stepRuntimes', 'stepShortcut', 'stepBuild']);
     for (const key of keys) {
       // Every step needs a label in both dictionaries.
       expect(source).toContain(`    ${key.padEnd(17)} = '`);
@@ -228,7 +229,7 @@ describe('the steps are required or optional', () => {
     const required = [...block.matchAll(/Key = '(step[A-Za-z]+)'; Required = \$true/g)].map((m) => m[1]);
     const optional = [...block.matchAll(/Key = '(step[A-Za-z]+)'; Required = \$false/g)].map((m) => m[1]);
     expect(required).toEqual(['stepPrereqs', 'stepDeps', 'stepRuntimes', 'stepBuild']);
-    expect(optional).toEqual(['stepMedia', 'stepAndroid', 'stepSdk', 'stepShortcut']);
+    expect(optional).toEqual(['stepShortcut']);
   });
 });
 

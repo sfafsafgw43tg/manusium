@@ -75,7 +75,7 @@ describe('success is reported only when every required step succeeded', () => {
     const block = octo.slice(octo.indexOf('function Get-SetupSteps'), octo.indexOf('function Show-InstallerWindow'));
     const fatal = [...block.matchAll(/Key = '(step[A-Za-z]+)'; Required = \$(?:true|false); Fatal = \$true/g)].map((m) => m[1]);
     expect(fatal).toEqual(['stepPrereqs', 'stepDeps', 'stepRuntimes']);
-    expect([...block.matchAll(/Fatal = \$false/g)]).toHaveLength(5);
+    expect([...block.matchAll(/Fatal = \$false/g)]).toHaveLength(2);
     expect(octo).toContain('stepRuntimes');
   });
 
@@ -154,8 +154,9 @@ describe('the options reach the real installation', () => {
     expect(octo).toContain(String.raw`'^(https?://)?[A-Za-z0-9.\-]+:\d{1,5}/?$'`);
   });
 
-  it('the Android folder chosen in the window is the SDK step target', () => {
-    expect(octo).toContain('Set-AndroidUserEnvironment (Get-AndroidInstallRoot)');
+  it('keeps Android setup available without coupling it to Chromium installation', () => {
+    expect(octo).toContain('function Install-AndroidSdkComponents');
+    expect(octo).not.toContain("Key = 'stepSdk'");
     expect(functionBody(octo, 'Get-AndroidInstallRoot')).toContain('$chosen = [string]$env:OCTO_SETUP_SDK');
   });
 
@@ -178,9 +179,8 @@ describe('the options reach the real installation', () => {
 });
 
 describe('steps and the console installer', () => {
-  it('builds Windows Chromium from source and verifies both native executables', () => {
+  it('builds Windows Chromium from source and leaves Firefox deferred', () => {
     const chromium = fs.readFileSync(path.join(root, 'tools', 'build-chromium-source.mjs'), 'utf8');
-    const firefox = fs.readFileSync(path.join(root, 'tools', 'stage-firefox.mjs'), 'utf8');
     expect(chromium).toContain('fetching Chromium source');
     expect(chromium).toContain('autoninja');
     expect(chromium).toContain("const parentIsGclientCheckout = fs.existsSync(parentGclient);");
@@ -213,16 +213,12 @@ describe('steps and the console installer', () => {
     expect(chromium).toContain('`fetch chromium` is only valid in an empty parent directory');
     expect(chromium).toContain("distribution: 'source-built'");
     expect(chromium).not.toContain('chrome-for-testing-public');
-    expect(firefox).toContain("'/norestart'");
-    expect(firefox).toContain('3010');
-    expect(firefox).toContain('fs.copyFileSync(sourceStagedExecutable, executablePath)');
-    expect(firefox).not.toContain('fs.renameSync(sourceStagedExecutable, executablePath)');
     const runtimeStep = functionBody(octo, 'Get-SetupSteps');
     expect(runtimeStep).toContain(String.raw`tools\verify-native-engines.mjs`);
-    expect(runtimeStep).toContain('Native Chromium/Firefox verification failed');
-    expect(runtimeStep).not.toContain("'--allow-missing-firefox'");
-    expect(runtimeStep).toContain('Ensure-FirefoxStagingToolchain');
-    expect(runtimeStep).toContain('stage:firefox:windows');
+    expect(runtimeStep).toContain("'--allow-missing-firefox'");
+    expect(runtimeStep).toContain('Native Chromium verification failed');
+    expect(runtimeStep).not.toContain('Ensure-FirefoxStagingToolchain');
+    expect(runtimeStep).not.toContain('stage:firefox:windows');
     expect(octo).toContain('function Test-NativeRuntimeReady');
     expect(octo).toContain("[string]$manifest.distribution -ne 'source-built'");
     expect(octo).toContain('Get-FileHash -LiteralPath $exe -Algorithm SHA256');
@@ -264,7 +260,6 @@ describe('steps and the console installer', () => {
     expect(octo).toContain('$verified = $false');
     expect(octo).toContain('verifying the installed component before reporting success');
     expect(octo).toContain("$vsReady = $vsResult.code -eq 0");
-    expect(octo).toContain('Ensure-FirefoxStagingToolchain');
     expect(octo).toContain('[System.IO.DriveInfo]::GetDrives()');
     expect(octo).toContain('$minimumChromiumFreeBytes = 100GB');
     expect(octo).toContain("$env:OCTO_CHROMIUM_SOURCE = $sourceRoot");
@@ -276,9 +271,9 @@ describe('steps and the console installer', () => {
     expect(runtimeBlock.indexOf("$env:DEPOT_TOOLS_UPDATE = '0'")).toBeLessThan(runtimeBlock.indexOf('(Ensure-ChromiumBuildToolchain)'));
   });
 
-  it('the eight steps keep their order', () => {
+  it('the Chromium installer steps keep their order', () => {
     const keys = [...octo.matchAll(/Key = '(step[A-Za-z]+)'/g)].map((match) => match[1]);
-    expect(keys).toEqual(['stepPrereqs', 'stepMedia', 'stepAndroid', 'stepSdk', 'stepDeps', 'stepRuntimes', 'stepShortcut', 'stepBuild']);
+    expect(keys).toEqual(['stepPrereqs', 'stepDeps', 'stepRuntimes', 'stepShortcut', 'stepBuild']);
   });
 
   it('the required steps include both native runtimes and the build', () => {

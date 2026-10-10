@@ -203,7 +203,7 @@ $Messages = @{
     stepAndroid       = 'Android Studio and Java 17'
     stepSdk           = 'Android SDK command-line tools, adb and the emulator'
     stepDeps          = 'Project dependencies (npm ci)'
-    stepRuntimes      = 'Native Chromium and Firefox runtimes'
+    stepRuntimes      = 'Native Chromium source build'
     stepBuild         = 'Building OctoBrowser and OctoDetect'
     uiTitle              = 'OctoSuite installer'
     uiVersion            = 'Version {0}'
@@ -437,7 +437,7 @@ $Messages = @{
     stepAndroid       = 'Android Studio i Java 17'
     stepSdk           = 'Narzędzia wiersza poleceń Android SDK, adb i emulator'
     stepDeps          = 'Zależności projektu (npm ci)'
-    stepRuntimes      = 'Natywne silniki Chromium i Firefox'
+    stepRuntimes      = 'Natywna kompilacja Chromium ze źródeł'
     stepBuild         = 'Budowanie OctoBrowser i OctoDetect'
     uiTitle              = 'Instalator OctoSuite'
     uiVersion            = 'Wersja {0}'
@@ -2313,20 +2313,14 @@ function Test-NativeRuntimeReady([string]$kind, [string]$target) {
 
 # The setup broken into named steps. The console installer, the installer window and the
 # work process (wizard-run) all walk exactly this list, so they can never drift apart.
-# Only the first step (Node.js/git) is fatal, as in the console installer: when it fails the rest
-# is not run. Required steps must succeed for the result to be ok; optional steps only add features.
+# This installer pass is intentionally scoped to the Chromium source build. Android/media
+# prerequisites and Firefox staging remain available to their feature-specific flows but are
+# not downloaded here and cannot block a Chromium installation.
 function Get-SetupSteps {
   return @(
     @{ Key = 'stepPrereqs'; Required = $true; Fatal = $true; Action = {
         if (Test-GitCheckout) { return (ConvertTo-StepResult (Install-Prerequisites -GitRequired)) }
         return (ConvertTo-StepResult (Install-Prerequisites))
-      } }
-    @{ Key = 'stepMedia'; Required = $false; Fatal = $false; Action = { return (ConvertTo-StepResult (Install-MediaPrerequisites)) } }
-    @{ Key = 'stepAndroid'; Required = $false; Fatal = $false; Action = { return (ConvertTo-StepResult (Install-AndroidPrerequisites)) } }
-    @{ Key = 'stepSdk'; Required = $false; Fatal = $false; Action = {
-        $ok = (ConvertTo-StepResult (Install-AndroidSdkComponents))
-        Set-AndroidUserEnvironment (Get-AndroidInstallRoot)
-        return $ok
       } }
     @{ Key = 'stepDeps'; Required = $true; Fatal = $true; Action = { return (Invoke-EnsureDependencies) } }
     @{ Key = 'stepRuntimes'; Required = $true; Fatal = $true; Action = {
@@ -2334,7 +2328,6 @@ function Get-SetupSteps {
         if ($env:OS -ne 'Windows_NT') { $target = 'linux-x64' }
         if ($target -notin @('win32-x64', 'linux-x64')) { Warn "Native runtimes are not staged for $target"; return $false }
         $stageChromium = if ($target -eq 'win32-x64') { 'stage:chromium:windows' } else { 'stage:chromium' }
-        $stageFirefox = if ($target -eq 'win32-x64') { 'stage:firefox:windows' } else { 'stage:firefox:linux' }
         try {
           # Do not rebuild or overwrite an already verified runtime on every install.
           # Windows Chromium is source-built only; the stage script deliberately rejects
@@ -2354,16 +2347,10 @@ function Get-SetupSteps {
           } else {
             Say 'Verified source-built Chromium runtime already present; reusing it.' 'Green'
           }
-          if (-not (Test-NativeRuntimeReady 'gecko' $target)) {
-            if ($target -eq 'win32-x64' -and -not (Ensure-FirefoxStagingToolchain)) { return $false }
-            Invoke-Npm @('run', $stageFirefox)
-          } else {
-            Say 'Verified Firefox runtime already present; reusing it.' 'Green'
-          }
           $nodeExe = Resolve-Tool 'node'
           if (-not $nodeExe) { throw 'Node.js is unavailable for native runtime verification.' }
-          $check = Invoke-Native $nodeExe @('tools\verify-native-engines.mjs') $InstallRoot
-          if ($check.code -ne 0) { throw "Native Chromium/Firefox verification failed with exit code $($check.code)." }
+          $check = Invoke-Native $nodeExe @('tools\verify-native-engines.mjs', '--allow-missing-firefox') $InstallRoot
+          if ($check.code -ne 0) { throw "Native Chromium verification failed with exit code $($check.code)." }
           return $true
         } catch { Warn $_.Exception.Message; return $false }
       } }

@@ -49,25 +49,23 @@ Where Windows Forms is missing (Server Core) the console path is used automatica
 
 ## What the steps do
 
-Eight steps, in this order. The console installer runs the same list.
+Five steps, in this order. This install pass prepares the Chromium source build only; Android/media
+prerequisites and Firefox staging remain separate feature flows and are not downloaded here.
 
 | Step | Required | If it fails | What it does |
 |---|---|---|---|
 | Node.js and git | yes | **Stops the run**: the later steps are skipped | Installs Node.js 22.12+ and git (winget or the vendor installer) |
-| vStudio plugins | no | Completed with warnings | Python 3, OBS Studio (virtual camera), VB-CABLE (virtual microphone) |
-| Android Studio and Java 17 | no | Completed with warnings | Android Studio and OpenJDK 17 when they are missing |
-| Android SDK tools | no | Completed with warnings | `sdkmanager`, platform-tools, emulator, build-tools, in the chosen folder |
 | Project dependencies | yes | Result failed; the other steps still run | `npm ci` (or `npm install`), and the Electron binary |
-| Native runtimes | yes | Result failed; the other steps still run | Downloads and checksum-verifies the pinned Chromium and Firefox runtimes for the current supported platform; if an official endpoint fails, retries an official mirror and rejects every archive whose checksum is wrong |
+| Native Chromium source build | yes | **Stops the run** | Prepares depot_tools/Visual Studio, checks out the pinned Chromium source, builds it, and verifies the source-built runtime manifest and executable hash |
 | Desktop shortcut | no | Completed with warnings | Octo.su on the desktop |
 | Build | yes | Result failed; the other steps still run | `npm run build` for both applications |
 
 ## When success is shown
 
-Only the first step, Node.js and git, stops the run when it fails, as the console installer
-says: without it nothing can run. The steps after it are shown as skipped. Any other failure lets
-the run go on, so the steps that can still succeed do; a failed Electron download, for example,
-does not stop the build from running. A failed required step (project dependencies or the build)
+Node.js/git, project dependencies, the Chromium source build, and the application build stop the
+run when they fail. The steps after a fatal failure are shown as skipped. Firefox and Android are
+not part of this pass, so their unavailable runtimes do not make a Chromium installation fail. A
+failed required step (project dependencies or the build)
 makes the result **failed**, and the page names the step. A failed optional step gives
 **completed with warnings**, and the page names the step. The result is **completed** only when
 every required step succeeds, the work process reports success with exit code 0, and the apps
