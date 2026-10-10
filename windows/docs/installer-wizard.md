@@ -55,10 +55,10 @@ prerequisites and Firefox staging remain separate feature flows and are not down
 | Step | Required | If it fails | What it does |
 |---|---|---|---|
 | Node.js and git | yes | **Stops the run**: the later steps are skipped | Installs Node.js 22.12+ and git (winget or the vendor installer) |
-| Project dependencies | yes | Result failed; the other steps still run | `npm ci` (or `npm install`), and the Electron binary |
+| Project dependencies | yes | **Stops the run** | `npm ci` (or `npm install`), the required native package setup, and the Electron binary |
 | Native Chromium source build | yes | **Stops the run** | Prepares depot_tools/Visual Studio, checks out the pinned Chromium source, builds it, and verifies the source-built runtime manifest and executable hash |
 | Desktop shortcut | no | Completed with warnings | Octo.su on the desktop |
-| Build | yes | Result failed; the other steps still run | `npm run build` for both applications |
+| Build | yes | **Stops the run** | `npm run build` for both applications |
 
 ## When success is shown
 

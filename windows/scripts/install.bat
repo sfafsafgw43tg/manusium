@@ -1,9 +1,8 @@
 @echo off
 rem scripts\install.bat
 rem Verifies (SHA-256, Authenticode, Ed25519 manifest) and runs OctoSuite-Setup-*.exe. Option: -Source <folder>.
-rem In a source checkout it also installs the prerequisites: Node.js/git, and - after a confirmation -
-rem Android Studio, Python 3, OBS Studio and VB-CABLE, which the Android devices section and the
-rem bundled vStudio virtual camera/microphone need.
+rem In a source checkout it installs only the prerequisites required for the Chromium source build
+rem and application. Android/media prerequisites and Firefox staging are separate feature flows.
 rem
 rem Thin wrapper: all logic is in lib\octo.ps1 (Windows PowerShell 5.1, built into Windows 10/11).
 rem Paths with spaces and Polish characters are safe: %~dp0 is always quoted and
