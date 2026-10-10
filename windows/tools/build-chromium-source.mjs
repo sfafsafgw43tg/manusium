@@ -24,6 +24,7 @@ const versionDefault = '155.0.8059.39';
 const targetDefault = 'win32-x64';
 const overlay = path.join(root, 'tools', 'inkbrowser', 'source', 'BRANDING');
 const gnArgs = path.join(root, 'tools', 'inkbrowser', 'gn', 'release.gn');
+const iconFile = path.join(root, 'branding', 'inkbrowser-chrome', 'icon.ico');
 
 function arg(name, fallback = '') {
   const index = process.argv.indexOf(name);
@@ -113,6 +114,14 @@ function stage(source, buildDir, outDir, version, revision, marker, outBuild) {
   copyTree(buildDir, staged);
   const launcher = path.join(staged, 'inkbrowser-chrome.exe');
   fs.renameSync(path.join(staged, 'chrome.exe'), launcher);
+  if (!fs.existsSync(iconFile)) fail(`InkBrowser icon is missing: ${iconFile}`);
+  fs.copyFileSync(iconFile, path.join(staged, 'inkbrowser-chrome.ico'));
+  const rcedit = arg('--rcedit');
+  if (rcedit) {
+    run(rcedit, [launcher, '--set-icon', iconFile, '--set-version-string', 'ProductName', 'InkBrowser', '--set-version-string', 'FileDescription', 'InkBrowser Chromium'], root, 'embedding InkBrowser icon and name');
+  } else {
+    console.warn('[build-chromium-source] --rcedit not supplied; icon is staged beside the executable and Chromium branding comes from the source overlay');
+  }
   const manifest = {
     schema: 'octo.engine-manifest.v1',
     kind: 'chromium',
@@ -124,6 +133,7 @@ function stage(source, buildDir, outDir, version, revision, marker, outBuild) {
     platforms: ['win32-x64'],
     protocol: 'cdp',
     capabilities: ['window', 'tabs', 'navigation', 'crash-recovery'],
+    branding: { product: 'InkBrowser', executableIcon: 'inkbrowser-chrome.ico', iconSource: 'branding/inkbrowser-chrome/icon.ico' },
     sha256: sha256(launcher),
     source: {
       repository: 'https://chromium.googlesource.com/chromium/src.git',

@@ -14,9 +14,10 @@ class DiagnosticsActivity : AppCompatActivity() {
         val debug = findViewById<CheckBox>(R.id.debugLogging)
         debug.isChecked = Diagnostics.debugEnabled(this)
         debug.setOnCheckedChangeListener { _, checked -> Diagnostics.setDebug(this, checked) }
-        val cameras = CameraCatalog.enumerate(this)
+        val enumeration = CameraCatalog.enumerateDetailed(this)
         findViewById<TextView>(R.id.diagnosticsText).text = Diagnostics.report(
-            this, cameras, CameraPrefs.saved(this), bound = null,
+            this, enumeration.cameras, CameraPrefs.saved(this), bound = null,
+            failure = enumeration.failure, detail = enumeration.detail,
         )
     }
 }

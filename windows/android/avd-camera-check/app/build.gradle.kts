@@ -39,6 +39,7 @@ dependencies {
     implementation("androidx.camera:camera-camera2:$cameraX")
     implementation("androidx.camera:camera-lifecycle:$cameraX")
     implementation("androidx.camera:camera-view:$cameraX")
+    implementation("com.google.mlkit:barcode-scanning:17.2.0")
     implementation("androidx.lifecycle:lifecycle-livedata-core-ktx:2.8.6")
     testImplementation("junit:junit:4.13.2")
 }

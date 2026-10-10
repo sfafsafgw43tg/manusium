@@ -26,6 +26,9 @@ export interface EngineManifest {
   platforms: Array<'win32-x64' | 'win32-arm64' | 'linux-x64' | 'linux-arm64' | 'darwin-x64' | 'darwin-arm64'>;
   capabilities: EngineCapability[];
   sha256?: string;
+  /** Windows Chromium must identify itself as a source build, never CfT. */
+  distribution?: 'source-built' | 'catalog-archive';
+  modified?: boolean;
   source?: { url: string; archiveSha256: string; license: string };
 }
 
@@ -168,6 +171,9 @@ export function discoverEngineRuntime(kind: EngineKind, options: RuntimeDiscover
       if (!fs.existsSync(manifestPath)) continue;
       const manifest = readManifest(manifestPath);
       if (manifest.kind !== kind) throw new EngineRunnerError('manifest-invalid', `Manifest kind does not match ${kind}: ${manifestPath}`);
+      if (kind === 'chromium' && platform === 'win32' && (manifest.distribution !== 'source-built' || manifest.modified !== true)) {
+        throw new EngineRunnerError('manifest-invalid', `Windows Chromium runtime is not source-built: ${manifestPath}`);
+      }
       if (!manifest.platforms.includes(target)) throw new EngineRunnerError('unsupported-platform', `${manifest.kind} ${manifest.version} does not support ${target}`);
       const executablePath = path.resolve(runtimeRoot, manifest.executable);
       if (!executablePath.startsWith(`${path.resolve(runtimeRoot)}${path.sep}`) || !fs.existsSync(executablePath)) {
@@ -176,8 +182,8 @@ export function discoverEngineRuntime(kind: EngineKind, options: RuntimeDiscover
       if (path.basename(executablePath) !== executableName(kind, platform)) {
         throw new EngineRunnerError('manifest-invalid', `Unexpected ${kind} executable name: ${path.basename(executablePath)}`);
       }
-      if (manifest.sha256 && !/^[a-f0-9]{64}$/i.test(manifest.sha256)) throw new EngineRunnerError('manifest-invalid', `Invalid executable SHA-256 in ${manifestPath}`);
-      if (manifest.sha256 && fileSha256(executablePath).toLowerCase() !== manifest.sha256.toLowerCase()) throw new EngineRunnerError('manifest-invalid', `Executable checksum mismatch: ${executablePath}`);
+      if (typeof manifest.sha256 !== 'string' || !/^[a-f0-9]{64}$/i.test(manifest.sha256)) throw new EngineRunnerError('manifest-invalid', `Missing or invalid executable SHA-256 in ${manifestPath}`);
+      if (fileSha256(executablePath).toLowerCase() !== manifest.sha256.toLowerCase()) throw new EngineRunnerError('manifest-invalid', `Executable checksum mismatch: ${executablePath}`);
       return { kind, version: manifest.version, rootDir: runtimeRoot, executablePath, manifestPath, manifest };
     }
   }

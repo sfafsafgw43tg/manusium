@@ -132,26 +132,29 @@ Android Studio creates on first open). The build has not been run in the
 environment where this repository was prepared; treat the first build as the
 test.
 
-Diagnostics: three quick taps on the app title, or:
-
-```text
-adb shell am start -n app.octo.avdcamera/.DiagnosticsActivity
-```
+Diagnostics: three quick taps on the app title. The diagnostics activity is intentionally
+`android:exported="false"`, so it is not an externally launchable ADB endpoint.
 
 ## 7. ADB commands
 
 These are standard ADB commands. None of them changes a system setting. Run them
 once on your own Android version to confirm the output format.
 
-```text
-adb devices
+PowerShell on Windows:
+
+```powershell
+adb devices -l
+adb shell pm check-permission app.octo.avdcamera android.permission.CAMERA
 adb shell pm grant app.octo.avdcamera android.permission.CAMERA
-adb shell am start -a android.settings.APPLICATION_DETAILS_SETTINGS -d package:app.octo.avdcamera
-adb shell dumpsys media.camera | grep -i "device@"
-adb logcat -s AvdCamera:D
+adb shell dumpsys media.camera
+adb logcat -d -s AvdCamera:D CameraService:D cameraserver:D *:S
 adb shell getprop ro.product.model
 adb shell getprop ro.hardware
 ```
+
+The explicit `pm grant` is the only state-changing command in this diagnostic block.
+Do not replace it with commands that delete camera state, alter SELinux/vendor
+properties, or kill camera services.
 
 `scripts/android/avd-camera-check.sh` runs these in order and prints a summary.
 

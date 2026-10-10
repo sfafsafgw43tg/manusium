@@ -42,14 +42,23 @@ object Diagnostics {
         Build.HARDWARE.contains("ranchu") || Build.HARDWARE.contains("goldfish") ||
             Build.PRODUCT.startsWith("sdk_gphone") || Build.PRODUCT.startsWith("sdk_")
 
-    fun report(context: Context, cameras: List<CameraEntry>, selected: String?, bound: String?): String {
+    fun report(
+        context: Context,
+        cameras: List<CameraEntry>,
+        selected: String?,
+        bound: String?,
+        failure: CameraEnumerationFailure = CameraEnumerationFailure.NONE,
+        detail: String? = null,
+    ): String {
         val lines = mutableListOf(
             "Device: ${Build.MANUFACTURER} ${Build.MODEL} (${Build.DEVICE})",
             "Android: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})",
             "Hardware: ${Build.HARDWARE}, product: ${Build.PRODUCT}",
             "Looks like an emulator: ${looksLikeEmulator()}",
             "Cameras reported by Camera2: ${cameras.size}",
+            "Camera2 enumeration result: $failure",
         )
+        if (!detail.isNullOrBlank()) lines += "Camera2 detail: $detail"
         cameras.forEach { lines += "  ${it.label}, level ${it.hardwareLevel}, available ${it.available}" }
         lines += "Selected: ${selected ?: "none"}"
         lines += "Bound and streaming: ${bound ?: "none"}"

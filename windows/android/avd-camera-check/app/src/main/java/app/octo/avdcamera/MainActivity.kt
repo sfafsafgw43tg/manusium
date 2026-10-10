@@ -36,16 +36,19 @@ class MainActivity : AppCompatActivity() {
     private lateinit var permissionButton: Button
     private lateinit var settingsButton: Button
     private lateinit var switchButton: Button
+    private lateinit var scannerButton: Button
     private lateinit var cameraManager: CameraManager
     private val mainHandler = Handler(Looper.getMainLooper())
 
     private val unavailable = HashSet<String>()
     private var cameras: List<CameraEntry> = emptyList()
+    private var enumeration = CameraEnumeration(emptyList())
     private var selectedId: String? = null
     /** The camera whose preview is streaming right now. Only this one counts as active. */
     private var boundId: String? = null
     private var provider: ProcessCameraProvider? = null
     private var permissionRequested = false
+    private var recoveryAttempt = 0
     private var titleTaps = 0
     private var lastTapMs = 0L
 
@@ -63,6 +66,23 @@ class MainActivity : AppCompatActivity() {
         if (boundId == null && bindingId != null) {
             Diagnostics.log("preview did not start for $bindingId")
             statusText.text = getString(R.string.msg_preview_failed)
+            scheduleRecovery("preview watchdog")
+        }
+    }
+
+    /** Camera providers can restart asynchronously; retry only transient failures. */
+    private fun scheduleRecovery(reason: String) {
+        if (recoveryAttempt >= MAX_RECOVERY_ATTEMPTS) return
+        val attempt = ++recoveryAttempt
+        val delay = RECOVERY_DELAYS_MS[attempt - 1]
+        Diagnostics.log("recovery scheduled ($attempt/$MAX_RECOVERY_ATTEMPTS): $reason in ${delay}ms")
+        mainHandler.removeCallbacks(retryRecovery)
+        mainHandler.postDelayed(retryRecovery, delay)
+    }
+
+    private val retryRecovery = Runnable {
+        if (hasPermission()) {
+            if (provider == null) requestCameraProvider() else refreshCameras(rebind = true)
         }
     }
 
@@ -82,7 +102,14 @@ class MainActivity : AppCompatActivity() {
 
     private val requestPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         Diagnostics.log("permission granted=$granted")
-        if (granted) refreshCameras(rebind = true) else showPermissionState()
+        if (granted) requestCameraProvider() else showPermissionState()
+    }
+
+    private val scannerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val payload = result.data?.getStringExtra(ScannerActivity.SCAN_RESULT_EXTRA)
+            if (!payload.isNullOrBlank()) statusText.text = getString(R.string.scanner_result_returned, payload)
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -96,6 +123,7 @@ class MainActivity : AppCompatActivity() {
         permissionButton = findViewById(R.id.permissionButton)
         settingsButton = findViewById(R.id.settingsButton)
         switchButton = findViewById(R.id.switchButton)
+        scannerButton = findViewById(R.id.scannerButton)
         cameraManager = getSystemService(CAMERA_SERVICE) as CameraManager
 
         titleView.setOnClickListener { onTitleTap() }
@@ -107,26 +135,40 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)))
         }
         switchButton.setOnClickListener { selectCamera(CameraSelection.next(selectedId, cameras)) }
+        scannerButton.setOnClickListener { scannerLauncher.launch(Intent(this, ScannerActivity::class.java)) }
     }
 
     override fun onStart() {
         super.onStart()
+        recoveryAttempt = 0
         cameraManager.registerAvailabilityCallback(availability, mainHandler)
         if (hasPermission()) {
-            ProcessCameraProvider.getInstance(this).also { future ->
-                future.addListener({
-                    provider = future.get()
-                    refreshCameras(rebind = true)
-                }, ContextCompat.getMainExecutor(this))
-            }
+            requestCameraProvider()
         } else {
             showPermissionState()
+        }
+    }
+
+    private fun requestCameraProvider() {
+        ProcessCameraProvider.getInstance(this).also { future ->
+            future.addListener({
+                try {
+                    provider = future.get()
+                    refreshCameras(rebind = true)
+                } catch (error: Exception) {
+                    provider = null
+                    Diagnostics.log("camera provider failed: ${error.javaClass.simpleName} ${error.message}")
+                    statusText.text = getString(R.string.msg_preview_failed)
+                    scheduleRecovery("provider ${error.javaClass.simpleName}")
+                }
+            }, ContextCompat.getMainExecutor(this))
         }
     }
 
     override fun onStop() {
         cameraManager.unregisterAvailabilityCallback(availability)
         mainHandler.removeCallbacks(startWatchdog)
+        mainHandler.removeCallbacks(retryRecovery)
         provider?.unbindAll()
         boundId = null
         bindingId = null
@@ -142,11 +184,15 @@ class MainActivity : AppCompatActivity() {
             showPermissionState()
             return
         }
-        cameras = CameraCatalog.enumerate(this, unavailable)
+        enumeration = CameraCatalog.enumerateDetailed(this, unavailable)
+        cameras = enumeration.cameras
         if (cameras.isEmpty()) {
-            showNoCamera()
+            if (enumeration.hasTransientFailure) scheduleRecovery(enumeration.failure.name)
+            showNoCamera(enumeration)
             return
         }
+        recoveryAttempt = 0
+        mainHandler.removeCallbacks(retryRecovery)
         val resolved = CameraSelection.resolve(selectedId ?: CameraPrefs.saved(this), cameras)
         if (resolved != selectedId) {
             selectedId = resolved
@@ -192,6 +238,7 @@ class MainActivity : AppCompatActivity() {
                 if (id in unavailable) R.string.msg_camera_unavailable else R.string.msg_preview_failed,
             )
             boundId = null
+            scheduleRecovery("bind ${error.javaClass.simpleName}")
         }
         paintStatus()
     }
@@ -212,12 +259,18 @@ class MainActivity : AppCompatActivity() {
         switchButton.visibility = View.GONE
     }
 
-    private fun showNoCamera() {
-        statusText.text = if (Diagnostics.looksLikeEmulator()) {
-            getString(R.string.msg_no_camera) + " " + getString(R.string.msg_avd_hint)
-        } else {
-            getString(R.string.msg_no_camera)
+    private fun showNoCamera(result: CameraEnumeration = enumeration) {
+        val cause = when (result.failure) {
+            CameraEnumerationFailure.PERMISSION -> getString(R.string.msg_camera_permission_diagnostic)
+            CameraEnumerationFailure.CAMERA_SERVICE,
+            CameraEnumerationFailure.CAMERA_ACCESS -> getString(R.string.msg_camera_service_diagnostic)
+            CameraEnumerationFailure.EMPTY_HAL -> getString(R.string.msg_camera_hal_diagnostic)
+            CameraEnumerationFailure.CHARACTERISTICS,
+            CameraEnumerationFailure.NONE -> ""
         }
+        val hint = if (Diagnostics.looksLikeEmulator()) " " + getString(R.string.msg_avd_hint) else ""
+        statusText.text = getString(R.string.msg_no_camera) +
+            (if (cause.isNotEmpty()) " $cause" else "") + hint
         cameraName.text = getString(R.string.camera_none_selected)
         switchButton.visibility = View.GONE
     }
@@ -251,5 +304,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val PREVIEW_START_TIMEOUT_MS = 6_000L
         private const val TAP_WINDOW_MS = 700L
+        private const val MAX_RECOVERY_ATTEMPTS = 3
+        private val RECOVERY_DELAYS_MS = longArrayOf(250L, 750L, 1_500L)
     }
 }

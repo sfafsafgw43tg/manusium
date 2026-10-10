@@ -45,4 +45,12 @@ class CameraSelectionTest {
         assertEquals("Front (webcam1)", front.label)
         assertEquals("Camera 9", CameraEntry("9", null, null, true).label)
     }
+
+    @Test
+    fun onlyCameraServiceAndAccessFailuresAreRetried() {
+        assertTrue(CameraEnumeration(emptyList(), CameraEnumerationFailure.CAMERA_SERVICE).hasTransientFailure)
+        assertTrue(CameraEnumeration(emptyList(), CameraEnumerationFailure.CAMERA_ACCESS).hasTransientFailure)
+        assertFalse(CameraEnumeration(emptyList(), CameraEnumerationFailure.EMPTY_HAL).hasTransientFailure)
+        assertFalse(CameraEnumeration(emptyList(), CameraEnumerationFailure.PERMISSION).hasTransientFailure)
+    }
 }

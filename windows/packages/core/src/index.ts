@@ -21,6 +21,7 @@ export * from './mobile';
 export * from './browser-identity';
 export * from './fingerprint';
 export * from './engine-privacy';
+export * from './chromium-config';
 export * from './proxy';
 export * from './proxystore';
 export * from './cookies';

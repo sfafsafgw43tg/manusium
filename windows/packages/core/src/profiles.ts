@@ -34,6 +34,7 @@ import { FingerprintConfig, generateFingerprint, realFingerprint, sanitizeFinger
 import { PROXY_TYPES, ProxyCheckResult, ProxyType, chromiumRules, isValidHost } from './proxy';
 import { ANDROID_VERSIONS, IOS_VERSIONS, MOBILE_DEVICES, MobileDeviceId, MobileEmulationConfig } from './mobile';
 import { DEFAULT_ENGINE_PRIVACY, sanitizeEnginePrivacy, type EnginePrivacySettings } from './engine-privacy';
+import { DEFAULT_NATIVE_CHROMIUM_CONFIG, sanitizeNativeChromiumConfig, type NativeChromiumConfig } from './chromium-config';
 
 /**
  * antidetect = default profile type: behaves like a normal Chrome for every
@@ -211,6 +212,8 @@ export interface Profile {
   fingerprint: FingerprintConfig;
   /** Native engine settings actually applied by the selected runtime. */
   enginePrivacy: EnginePrivacySettings;
+  /** Validated native Chromium identity/metrics contract; not applied unless the runtime supports the field. */
+  nativeChromium: NativeChromiumConfig;
   /** Organisation (profile list). */
   tags: string[];
   folder: string;
@@ -366,6 +369,7 @@ export function defaultProfile(kind: ProfileKind, name: string, id = newProfileI
     smartPaste: true,
     fingerprint: fingerprintFor(kind, seed),
     enginePrivacy: structuredClone(DEFAULT_ENGINE_PRIVACY),
+    nativeChromium: structuredClone(DEFAULT_NATIVE_CHROMIUM_CONFIG),
     tags: [],
     folder: '',
     sortOrder: 0,
@@ -476,6 +480,7 @@ export function sanitizeProfile(input: unknown): Profile {
     smartPaste: typeof p.smartPaste === 'boolean' ? p.smartPaste : base.smartPaste,
     fingerprint: sanitizeFingerprint(p.fingerprint, base.fingerprint),
     enginePrivacy: sanitizeEnginePrivacy(p.enginePrivacy),
+    nativeChromium: sanitizeNativeChromiumConfig(p.nativeChromium),
     tags: Array.isArray(p.tags) ? [...new Set(p.tags.filter((x) => typeof x === 'string').map((x) => x.trim().slice(0, 32)).filter(Boolean))].slice(0, 20) : [],
     folder: typeof p.folder === 'string' ? p.folder.trim().slice(0, 48) : '',
     profileDirectory: typeof p.profileDirectory === 'string' && path.isAbsolute(p.profileDirectory)

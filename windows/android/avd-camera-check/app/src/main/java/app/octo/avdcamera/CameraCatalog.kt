@@ -24,6 +24,25 @@ data class CameraEntry(
         }
 }
 
+enum class CameraEnumerationFailure {
+    NONE,
+    PERMISSION,
+    CAMERA_SERVICE,
+    CAMERA_ACCESS,
+    EMPTY_HAL,
+    CHARACTERISTICS,
+}
+
+data class CameraEnumeration(
+    val cameras: List<CameraEntry>,
+    val failure: CameraEnumerationFailure = CameraEnumerationFailure.NONE,
+    val detail: String? = null,
+) {
+    val hasTransientFailure: Boolean
+        get() = failure == CameraEnumerationFailure.CAMERA_SERVICE ||
+            failure == CameraEnumerationFailure.CAMERA_ACCESS
+}
+
 /** Camera decisions that need no device, so they can be unit-tested on the JVM. */
 object CameraSelection {
     /** Keep the saved camera only while the system still lists it as usable; else the first usable one. */
@@ -49,18 +68,29 @@ object CameraSelection {
 object CameraCatalog {
     private const val TAG = "AvdCamera"
 
-    fun enumerate(context: Context, unavailable: Set<String> = emptySet()): List<CameraEntry> {
-        val manager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+    fun enumerateDetailed(context: Context, unavailable: Set<String> = emptySet()): CameraEnumeration {
+        val manager = context.getSystemService(Context.CAMERA_SERVICE) as? CameraManager
+            ?: return CameraEnumeration(emptyList(), CameraEnumerationFailure.CAMERA_SERVICE, "CameraManager unavailable")
         val ids = try {
             manager.cameraIdList.toList()
+        } catch (error: SecurityException) {
+            Log.w(TAG, "cameraIdList permission failed", error)
+            return CameraEnumeration(emptyList(), CameraEnumerationFailure.PERMISSION, error.message)
         } catch (error: Exception) {
             Log.w(TAG, "cameraIdList failed", error)
-            emptyList()
+            return CameraEnumeration(emptyList(), CameraEnumerationFailure.CAMERA_ACCESS, error.message)
         }
-        return ids.map { id ->
+        if (ids.isEmpty()) {
+            // An empty list is not recoverable by app permission or CameraX. Keep
+            // it distinct from an exception so the UI can point to the AVD/HAL.
+            return CameraEnumeration(emptyList(), CameraEnumerationFailure.EMPTY_HAL, "Camera2 returned zero camera IDs")
+        }
+        var characteristicFailure = false
+        val cameras = ids.map { id ->
             val characteristics = try {
                 manager.getCameraCharacteristics(id)
             } catch (error: Exception) {
+                characteristicFailure = true
                 Log.w(TAG, "characteristics failed for $id", error)
                 null
             }
@@ -71,7 +101,15 @@ object CameraCatalog {
                 available = id !in unavailable,
             )
         }
+        return CameraEnumeration(
+            cameras,
+            if (characteristicFailure) CameraEnumerationFailure.CHARACTERISTICS else CameraEnumerationFailure.NONE,
+            if (characteristicFailure) "One or more camera characteristics could not be read" else null,
+        )
     }
+
+    fun enumerate(context: Context, unavailable: Set<String> = emptySet()): List<CameraEntry> =
+        enumerateDetailed(context, unavailable).cameras
 }
 
 /** The saved camera. Only the id is stored; it is checked against the system on every start. */

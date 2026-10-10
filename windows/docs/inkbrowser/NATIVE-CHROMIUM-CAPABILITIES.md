@@ -15,6 +15,7 @@ This document describes the standalone Chromium process launched for `inkbrowser
 | Font-list changes | Advanced fingerprint editor | `Profile.fingerprint.fonts` and `fontList` | **Not available in native Chromium.** | No native runtime test; the UI labels it unavailable |
 | DOMRect/SVG/client-rect changes | Advanced fingerprint editor | `Profile.fingerprint.clientRects` | **Not available in native Chromium.** | No native runtime test; the UI labels it unavailable |
 | User-Agent, Client Hints, screen, timezone, hardware and device identity overrides | Advanced fingerprint editor | Corresponding `Profile.fingerprint` fields | **Not available in native Chromium.** They are not silently forwarded to the standalone process. | No native runtime test; the UI labels them unavailable |
+| Validated native Chromium configuration object | Profile metadata | `Profile.nativeChromium`, normalized by `sanitizeNativeChromiumConfig()` | **Validated and persisted only in this milestone.** It is not passed to stock Chromium yet, so it does not change page-visible values. | `packages/core/test/chromium-config.test.ts` |
 
 The three supported controls are deliberately separate from the fingerprint draft editor. A saved fingerprint draft does not make native Chromium spoof those values.
 
@@ -51,3 +52,15 @@ The Windows probe should create three fresh isolated profiles and verify:
 - Lifecycle: the process launches, navigates, closes cleanly, and reports a missing or invalid manifest without falling back to another engine.
 
 Until those commands are run on Windows with a real source-built `inkbrowser-chrome.exe`, Windows native-runtime behavior remains unverified in this environment.
+
+## Files and storage locations
+
+- Source-build orchestrator: `tools/build-chromium-source.mjs`
+- Chromium branding overlay: `tools/inkbrowser/source/BRANDING`
+- Purple Chromium icon sources: `branding/inkbrowser-chrome/logo.svg` and `branding/inkbrowser-chrome/icon.ico`
+- Staged Windows runtime: `resources/engines/chromium/<version>/inkbrowser-chrome.exe`
+- Runtime manifest and executable hash: `resources/engines/chromium/<version>/runtime.json`
+- Per-profile native Chromium data at runtime: the app data layout's `profiles/<profile-id>/engine/inkbrowser-profile/`
+- Persisted profile metadata, including `nativeChromium`: the app data layout's `config/profiles.json`
+
+The native configuration object is intentionally not described as active fingerprint spoofing. Stock Chromium does not consume these fields without source-level enforcement, and the launcher continues to expose only the three tested native controls above.
