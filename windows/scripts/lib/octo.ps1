@@ -2147,7 +2147,16 @@ function Get-SetupSteps {
           # Chrome for Testing archives, so a missing runtime must remain a hard failure.
           if (-not (Test-NativeRuntimeReady 'chromium' $target)) {
             if ($target -eq 'win32-x64' -and -not (Ensure-ChromiumBuildToolchain)) { return $false }
-            Invoke-Npm @('run', $stageChromium)
+            $previousDepotToolsUpdate = [Environment]::GetEnvironmentVariable('DEPOT_TOOLS_UPDATE', 'Process')
+            try {
+              # The Node source builder must not inherit a developer/system
+              # DEPOT_TOOLS_UPDATE=1 and start another depot_tools self-update.
+              $env:DEPOT_TOOLS_UPDATE = '0'
+              Invoke-Npm @('run', $stageChromium)
+            } finally {
+              if ($null -eq $previousDepotToolsUpdate) { Remove-Item Env:DEPOT_TOOLS_UPDATE -ErrorAction SilentlyContinue }
+              else { $env:DEPOT_TOOLS_UPDATE = $previousDepotToolsUpdate }
+            }
           } else {
             Say 'Verified source-built Chromium runtime already present; reusing it.' 'Green'
           }

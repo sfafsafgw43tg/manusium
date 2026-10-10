@@ -192,6 +192,7 @@ describe('steps and the console installer', () => {
     expect(chromium).toContain("['sync', '-n', '-v'");
     expect(chromium).toContain('using compatible gclient sync flags');
     expect(chromium).toContain("process.env.DEPOT_TOOLS_UPDATE = '0'");
+    expect(chromium).toContain('Do not preserve an inherited DEPOT_TOOLS_UPDATE=1');
     expect(chromium).toContain('automatic self-update disabled');
     expect(chromium).toContain('phase: synchronizing Chromium dependencies');
     expect(chromium).toContain('fetching Chromium source (no history)');
@@ -222,6 +223,8 @@ describe('steps and the console installer', () => {
     expect(octo).toContain('chromium/tools/depot_tools.git');
     expect(octo).toContain('Microsoft.VisualStudio.BuildTools');
     expect(octo).toContain("'depot-tools.allowGlobalGitConfig', 'false'");
+    expect(octo).toContain("$env:DEPOT_TOOLS_UPDATE = '0'");
+    expect(octo).toContain("GetEnvironmentVariable('DEPOT_TOOLS_UPDATE', 'Process')");
   });
 
   it('the eight steps keep their order', () => {

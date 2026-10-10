@@ -94,10 +94,11 @@ async function sourceCheckout(source, version, skipSync) {
   // install.bat bootstraps depot_tools before this script runs. Prevent the
   // wrapper from silently self-updating again at the start of every fetch;
   // that is the source of the apparent pause at "Updating depot_tools...".
-  if (!process.env.DEPOT_TOOLS_UPDATE) {
-    process.env.DEPOT_TOOLS_UPDATE = '0';
-    console.log('[build-chromium-source] using the bootstrapped depot_tools; automatic self-update disabled');
-  }
+  // Do not preserve an inherited DEPOT_TOOLS_UPDATE=1 (or another value) from
+  // a developer shell: this build must use the depot_tools already bootstrapped
+  // by install.bat and must not silently start a second self-update.
+  process.env.DEPOT_TOOLS_UPDATE = '0';
+  console.log('[build-chromium-source] using the bootstrapped depot_tools; automatic self-update disabled');
   const versionFile = path.join(source, 'chrome', 'VERSION');
   const sourceGit = path.join(source, '.git');
   const parentGclient = path.join(parent, '.gclient');
