@@ -1647,9 +1647,9 @@ function Ensure-ChromiumBuildToolchain {
     'Microsoft.VisualStudio.Component.Windows11SDK.26100'
   )
   $vsReady = $false
+  $vsWhereArgs = @('-latest', '-products', '*', '-requires') + $vsComponents + @('-requiresAny') + $vsSdks + @('-property', 'installationPath')
   if ($vswhere) {
-    $vsArgs = @('-latest', '-products', '*', '-requires') + $vsComponents + @('-requiresAny') + $vsSdks + @('-property', 'installationPath')
-    $vsResult = Invoke-Native $vswhere $vsArgs $null -Quiet
+    $vsResult = Invoke-Native $vswhere $vsWhereArgs $null -Quiet
     $vsReady = $vsResult.code -eq 0 -and [bool](@($vsResult.text -split "`r?`n" | Where-Object { $_.Trim() -and (Test-Path -LiteralPath $_.Trim()) }).Count)
   }
   if (-not $vsReady) {
@@ -1659,15 +1659,34 @@ function Ensure-ChromiumBuildToolchain {
       return $false
     }
     Say 'Installing Visual Studio Build Tools with C++ and MFC/ATL support...' 'Cyan'
-    $vsArgs = @('install', '--exact', '--id', 'Microsoft.VisualStudio.BuildTools', '--source', 'winget', '--silent', '--accept-package-agreements', '--accept-source-agreements', '--disable-interactivity', '--override', '--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --add Microsoft.VisualStudio.Component.VC.ATLMFC --includeRecommended')
-    $vsInstall = Start-Process -FilePath $winget.Source -ArgumentList $vsArgs -Wait -PassThru -NoNewWindow
+    $vsLogDir = Join-Path $env:LOCALAPPDATA 'InkBrowser\logs'
+    New-Item -ItemType Directory -Path $vsLogDir -Force | Out-Null
+    $vsLog = Join-Path $vsLogDir 'visual-studio-winget.log'
+    # winget's --override value must be one quoted argument. Without the quotes,
+    # Start-Process joins the array and winget parses --passive itself, producing
+    # the observed "argument name was not recognized" failure.
+    $vsOverride = '--wait --passive --add Microsoft.VisualStudio.Workload.NativeDesktop --add Microsoft.VisualStudio.Component.VC.ATLMFC --includeRecommended'
+    $vsArgs = @('install', '--exact', '--id', 'Microsoft.VisualStudio.BuildTools', '--source', 'winget', '--silent', '--accept-package-agreements', '--accept-source-agreements', '--disable-interactivity', '--log', $vsLog, '--override', ('"{0}"' -f $vsOverride))
+    Write-Log 'info' "Visual Studio winget command: winget $($vsArgs -join ' ')"
+    $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    if (-not $isAdmin) { Say 'Visual Studio requires administrator rights. Windows will show UAC for this step only; the rest of the installer remains unelevated.' 'Yellow' }
+    try {
+      if ($isAdmin) {
+        $vsInstall = Start-Process -FilePath $winget.Source -ArgumentList $vsArgs -Wait -PassThru -NoNewWindow
+      } else {
+        $vsInstall = Start-Process -FilePath $winget.Source -ArgumentList $vsArgs -Wait -PassThru -Verb RunAs
+      }
+    } catch {
+      Warn "Visual Studio Build Tools could not be started (UAC may have been cancelled). Log: $vsLog. Details: $($_.Exception.Message)"
+      return $false
+    }
     if ($WingetBenign -notcontains $vsInstall.ExitCode) {
-      Warn "Visual Studio Build Tools installation failed with exit code $($vsInstall.ExitCode)."
+      Warn "Visual Studio Build Tools installation failed with exit code $($vsInstall.ExitCode). Command: winget $($vsArgs -join ' '). Log: $vsLog"
       return $false
     }
     $vswhere = $vswhereCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
     if ($vswhere) {
-      $vsResult = Invoke-Native $vswhere $vsArgs $null -Quiet
+      $vsResult = Invoke-Native $vswhere $vsWhereArgs $null -Quiet
       $vsReady = $vsResult.code -eq 0 -and [bool](@($vsResult.text -split "`r?`n" | Where-Object { $_.Trim() -and (Test-Path -LiteralPath $_.Trim()) }).Count)
     }
   }

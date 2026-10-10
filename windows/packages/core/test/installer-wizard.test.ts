@@ -237,6 +237,14 @@ describe('steps and the console installer', () => {
     expect(octo).toContain('Microsoft.VisualStudio.Component.VC.ATLMFC');
     expect(octo).toContain('Microsoft.VisualStudio.Component.Windows11SDK.22621');
     expect(octo).toContain("@('-latest', '-products', '*', '-requires')");
+    expect(octo).toContain('Microsoft.VisualStudio.Workload.NativeDesktop');
+    expect(octo).toContain("$vsOverride = '--wait --passive --add Microsoft.VisualStudio.Workload.NativeDesktop");
+    expect(octo).toContain("('\"{0}\"' -f $vsOverride)");
+    expect(octo).toContain("'--log', $vsLog");
+    expect(octo).toContain("-Verb RunAs");
+    expect(octo).toContain('Visual Studio winget command: winget');
+    expect(octo).toContain('Visual Studio Build Tools installation failed with exit code');
+    expect(octo).toContain('$vsWhereArgs');
     expect(octo).toContain("$vsReady = $vsResult.code -eq 0");
     expect(octo).toContain('Ensure-FirefoxStagingToolchain');
     expect(octo).toContain('[System.IO.DriveInfo]::GetDrives()');
