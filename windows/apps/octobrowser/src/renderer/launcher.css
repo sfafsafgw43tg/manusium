@@ -134,7 +134,7 @@ code { background: var(--bg2); border: 1px solid var(--line); padding: 2px 7px; 
 /* ------------------------------------------------------------ layout */
 #app { flex: 1; display: flex; min-height: 0; }
 #rail { width: 186px; flex: none; display: flex; flex-direction: column; align-items: stretch; background: var(--bg); border-right: 1px solid var(--line); padding: 12px 8px 10px; gap: 6px; transition: width .18s ease; }
-#railHead { display: flex; align-items: center; gap: 8px; justify-content: space-between; padding: 2px 4px 9px; border-bottom: 1px solid var(--line); }
+#railHead { position: relative; display: flex; align-items: center; gap: 8px; justify-content: flex-end; min-height: 48px; padding: 2px 4px 9px; border-bottom: 1px solid var(--line); }
 #railToggle { border: 1px solid var(--line); background: var(--panel); }
 #railToggle:hover { border-color: var(--accent); }
 #nav { display: flex; flex-direction: column; gap: 2px; flex: 1; overflow-y: auto; }
@@ -147,6 +147,7 @@ code { background: var(--bg2); border: 1px solid var(--line); padding: 2px 7px; 
 #sideFoot { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
 body.rail-collapsed #rail { width: 58px; padding-inline: 6px; }
 body.rail-collapsed #railHead { justify-content: center; padding-bottom: 8px; } body.rail-collapsed #railToggle { position: static; }
+body.rail-collapsed #railHead .brand { display: none; }
 body.rail-collapsed .rail-lbl, body.rail-collapsed .rail-lang, body.rail-collapsed .ver { display: none; }
 body.rail-collapsed .rail-item { justify-content: center; padding: 10px 0; } body.rail-collapsed #sideFoot .rail-item { justify-content: center; }
 body.rail-collapsed .rail-item::after { content: attr(aria-label); position: absolute; left: calc(100% + 9px); z-index: 20; padding: 6px 8px; border: 1px solid var(--line2); border-radius: 6px; background: var(--panel); color: var(--text); white-space: nowrap; box-shadow: 0 8px 20px #0006; opacity: 0; pointer-events: none; transform: translateX(-4px); transition: opacity .12s ease, transform .12s ease; }
@@ -885,10 +886,10 @@ textarea.ua:focus {
 .mass-row.bad .mr-proxy { color: #cdcdcd; font-family: inherit; }
 .ed-tabs button { display: inline-flex; align-items: center; gap: 6px; }
 
-/* Enlarged octopus brand mark, without the redundant wordmark. */
-.brand { display: flex; align-items: center; justify-content: center; width: 28px; min-width: 28px; color: var(--fg); }
-.brand .brand-mark { flex: none; width: 28px; height: 28px; }
-body.rail-collapsed .brand { justify-content: center; }
+/* Centered octopus brand mark. The collapse action removes it completely so
+   the compact rail contains only navigation controls. */
+.brand { position: absolute; left: 50%; top: 2px; display: flex; align-items: center; justify-content: center; width: 40px; height: 36px; color: var(--accent-h); transform: translateX(-50%); pointer-events: none; }
+.brand .brand-mark { flex: none; width: 36px; height: 36px; filter: drop-shadow(0 2px 5px rgb(0 0 0 / .2)); }
 
 /* Proxy folders and rotation ------------------------------------------- */
 .folderbar { gap: 6px; margin: 0 0 8px; }
@@ -956,7 +957,7 @@ p.hint.warn { color: var(--danger); }
 .android-net .net-row { display: grid; grid-template-columns: minmax(80px, 1fr) auto auto auto auto; gap: 8px; align-items: center; }
 
 /* Create-device progress: percentage bar plus the current step underneath. */
-.android-progress { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 4px; }
+.android-progress { display: flex; flex: 0 0 auto; flex-direction: column; gap: 6px; width: 100%; margin: 0; padding: 8px 2px 2px; border-top: 1px solid var(--line); }
 .android-progress .progress-row { display: flex; align-items: center; gap: 10px; }
 .android-progress .progress-track { flex: 1; height: 8px; border-radius: 999px; background: var(--bg2); border: 1px solid var(--line); overflow: hidden; }
 .android-progress .progress-fill { height: 100%; width: 2%; background: var(--text); opacity: .75; transition: width .25s linear; }

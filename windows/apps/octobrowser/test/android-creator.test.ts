@@ -89,6 +89,12 @@ const installUi = read('apps/octobrowser/src/renderer/launcher-android-install.t
 const manager = read('apps/octobrowser/src/main/manager.ts');
 
 describe('the Android page', () => {
+  it('centers the launcher brand and hides it completely in the collapsed rail', () => {
+    expect(css).toContain('#railHead { position: relative;');
+    expect(css).toContain('.brand { position: absolute; left: 50%;');
+    expect(css).toContain('body.rail-collapsed #railHead .brand { display: none; }');
+  });
+
   it('no longer carries the "Browse all phones" dropdown', () => {
     for (const source of [page, creator, catalogue]) {
       expect(source).not.toContain('browseCatalog');
@@ -173,6 +179,12 @@ describe('the guided creator', () => {
     for (const cls of ['.wizard', '.wiz-rail', '.wiz-step', '.wiz-panel', '.wiz-actions', '.pick-card', '.pick-lines', '.engine-chip']) {
       expect(css).toContain(cls);
     }
+  });
+
+  it('keeps download progress in the creator footer instead of the scrolling panel', () => {
+    expect(creator.indexOf('progressBox,\n      h(\'div\', { class: \'modal-actions wiz-actions\' }')).toBeGreaterThan(-1);
+    expect(css).toContain('.android-progress { display: flex; flex: 0 0 auto;');
+    expect(css).toContain('.modal-box.wizard-modal .wiz-actions { flex: 0 0 auto; }');
   });
 });
 

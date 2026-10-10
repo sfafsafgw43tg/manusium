@@ -1250,7 +1250,6 @@ export function androidCreateWizard(context: CreatorContext): void {
       appsHost,
       toggle(draft.notify, 'android.notifyWhenDone', (value) => { draft.notify = value; }),
       h('p', { class: 'hint', text: t('android.notifyHint') }),
-      progressBox,
       failureBox);
 
     drawSummary();
@@ -1433,6 +1432,7 @@ export function androidCreateWizard(context: CreatorContext): void {
     box.append(
       h('div', { class: 'wizard' }, rail,
         h('div', { class: 'wiz-main' }, h('div', { class: 'wiz-head' }, panelTitle, panelDesc), panel)),
+      progressBox,
       h('div', { class: 'modal-actions wiz-actions' }, hint, cancel, back, next));
     paint();
     // modal() focuses the first primary button, which is "Next" in the footer.
