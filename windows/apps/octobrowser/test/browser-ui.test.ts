@@ -62,6 +62,8 @@ describe('browser entry UI', () => {
     expect(browserCss).toContain('top: 78px;');
     expect(browserCss).toContain('left: 92px;');
     expect(browserCss).toContain('right: auto;');
+    expect(browser).toContain('bars.size > 0 || pageInfoOpen');
+    expect(browser).toContain('Native view ordering is above CSS z-index');
     expect(browser).toContain('let shuttingDown = false;');
     expect(browser).toContain('if (shuttingDown) return;');
     expect(browser).toContain('shuttingDown = true;');
@@ -343,13 +345,12 @@ describe('browser entry UI', () => {
     }
   });
 
-  it('keeps a question out of the page so the site stays clickable', () => {
-    // A prompt drawn over the page forces the whole chrome above the web view,
-    // and from then on every click lands in the chrome - that is the "site
-    // became unresponsive" failure. The chrome layer is therefore only raised
-    // for panels that really cover content, and the save card is a window.
-    expect(browser).toContain('function chromeNeedsFront(): boolean {\n  return !shuttingDown && (pageInfoOpen || translateOpen || chromeMenuOpen || downloadsTrayOpen || passwordsPopoutOpen);\n}');
-    expect(browser).not.toContain('|| permissionBarOpen();');
+  it('keeps Electron notifications visible above native tabs and releases the layer afterwards', () => {
+    // Native WebContentsView ordering is above CSS z-index. Notifications must
+    // raise the trusted chrome while present, then renderBars/removeBar lower it
+    // again after dismissal or timeout.
+    expect(browser).toContain('bars.size > 0 || pageInfoOpen');
+    expect(browser).toContain('Native view ordering is above CSS z-index');
     expect(saveCardMain).toContain('ipcMain.handle(answerChannel');
     expect(saveCardMain).toContain('if (e.sender.id !== cardId) return false;');
     // Every path that hides a surface re-checks the layer state.

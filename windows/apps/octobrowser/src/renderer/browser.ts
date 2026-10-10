@@ -727,15 +727,15 @@ function permissionBarOpen(): boolean {
 /**
  * Does the trusted chrome have to be drawn ON TOP of the live page?
  *
- * Only surfaces that genuinely overlap the page area do. The password card and
- * the permission bubble live in the toolbar strip (above the page view), so
- * they are visible without raising anything - and, crucially, without turning
- * the page into a dead rectangle. Raising the chrome over the page makes every
- * click land in the chrome instead of the site, which is exactly the
- * "one site becomes unresponsive to clicking" failure.
+ * Notifications are rendered in the trusted Electron chrome view, while page
+ * tabs are separate native views. Native view ordering is above CSS z-index,
+ * so a notification can otherwise disappear behind the active tab. Raise the
+ * trusted chrome for the short lifetime of a notification; renderBars() lowers
+ * it again after dismissal/timeout. This is intentionally centralized so a
+ * notification can never be left behind by one of its close paths.
  */
 function chromeNeedsFront(): boolean {
-  return !shuttingDown && (pageInfoOpen || translateOpen || chromeMenuOpen || downloadsTrayOpen || passwordsPopoutOpen);
+  return !shuttingDown && (bars.size > 0 || pageInfoOpen || translateOpen || chromeMenuOpen || downloadsTrayOpen || passwordsPopoutOpen);
 }
 
 let chromeFront = false;
