@@ -2146,12 +2146,12 @@ function Get-SetupSteps {
           # Windows Chromium is source-built only; the stage script deliberately rejects
           # Chrome for Testing archives, so a missing runtime must remain a hard failure.
           if (-not (Test-NativeRuntimeReady 'chromium' $target)) {
-            if ($target -eq 'win32-x64' -and -not (Ensure-ChromiumBuildToolchain)) { return $false }
             $previousDepotToolsUpdate = [Environment]::GetEnvironmentVariable('DEPOT_TOOLS_UPDATE', 'Process')
             try {
-              # The Node source builder must not inherit a developer/system
-              # DEPOT_TOOLS_UPDATE=1 and start another depot_tools self-update.
+              # Set this before Ensure-ChromiumBuildToolchain: its gclient
+              # bootstrap is also capable of self-updating depot_tools.
               $env:DEPOT_TOOLS_UPDATE = '0'
+              if ($target -eq 'win32-x64' -and -not (Ensure-ChromiumBuildToolchain)) { return $false }
               Invoke-Npm @('run', $stageChromium)
             } finally {
               if ($null -eq $previousDepotToolsUpdate) { Remove-Item Env:DEPOT_TOOLS_UPDATE -ErrorAction SilentlyContinue }

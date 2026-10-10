@@ -225,6 +225,8 @@ describe('steps and the console installer', () => {
     expect(octo).toContain("'depot-tools.allowGlobalGitConfig', 'false'");
     expect(octo).toContain("$env:DEPOT_TOOLS_UPDATE = '0'");
     expect(octo).toContain("GetEnvironmentVariable('DEPOT_TOOLS_UPDATE', 'Process')");
+    const runtimeBlock = octo.slice(octo.indexOf("@{ Key = 'stepRuntimes'; Required"), octo.indexOf("@{ Key = 'stepShortcut'; Required"));
+    expect(runtimeBlock.indexOf("$env:DEPOT_TOOLS_UPDATE = '0'")).toBeLessThan(runtimeBlock.indexOf('(Ensure-ChromiumBuildToolchain)'));
   });
 
   it('the eight steps keep their order', () => {
