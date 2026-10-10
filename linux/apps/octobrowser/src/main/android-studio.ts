@@ -79,6 +79,10 @@ export type GpuMode = 'auto' | 'host' | 'swiftshader_indirect' | 'off';
 export type BootMode = 'quick' | 'cold';
 export type NetworkSpeed = 'full' | 'lte' | 'umts' | 'edge' | 'gsm';
 
+export function normalizeNetworkSpeed(value: unknown): NetworkSpeed {
+  return value === 'full' || value === 'lte' || value === 'umts' || value === 'edge' || value === 'gsm' ? value : 'lte';
+}
+
 export interface MediaCompanionStatus {
   /** Which plugin this status describes: vStudio Mobile or vStudio Web. */
   plugin: MediaPluginId;
@@ -156,6 +160,7 @@ export interface AndroidAvd {
    */
   incomplete: boolean;
   microphoneEnabled: boolean;
+  networkSpeed: NetworkSpeed;
   diskBytes: number;
   identity?: DeviceIdentity;
 }
@@ -1798,6 +1803,11 @@ export interface CameraChoices {
   webcams: EmulatorWebcam[];
   /** The Android Emulator is installed, so its camera list could be asked. */
   emulatorAvailable: boolean;
+  /** Number of host cameras reported by the OS-level probe, when available. */
+  hostCameraCount?: number;
+  /** Exact emulator binary and SDK root used for the last probe. */
+  emulatorPath?: string;
+  sdkRoot?: string;
   /** Why `webcams` is empty: the list timed out, the emulator reported a failure, or it found no camera. */
   problem: CameraListProblem;
   /** The emulator's own words for the failure, when it gave some. */
@@ -1824,7 +1834,8 @@ export function androidCameraChoicesCached(): Promise<CameraChoices> {
 
 export async function androidCameraChoices(): Promise<CameraChoices> {
   const tools = optionalSdk();
-  if (!tools?.emulator) return { webcams: [], emulatorAvailable: false, problem: '', detail: '' };
+  const hostCameraCount = (await windowsCameraNames()).length || undefined;
+  if (!tools?.emulator) return { webcams: [], emulatorAvailable: false, hostCameraCount, problem: '', detail: '' };
   const candidates = [...new Set([
     tools.emulator,
     ...knownRoots().map((root) => locate(root, 'emulator')).filter(Boolean),
@@ -1833,10 +1844,10 @@ export async function androidCameraChoices(): Promise<CameraChoices> {
   for (const emulator of candidates) {
     const root = path.dirname(path.dirname(emulator));
     const report = await emulatorCameraReport({ emulator, root }, CAMERA_PICKER_LIMIT_MS, true);
-    if (report.webcams.length) return { webcams: report.webcams, emulatorAvailable: true, problem: '', detail: '' };
+    if (report.webcams.length) return { webcams: report.webcams, emulatorAvailable: true, hostCameraCount, emulatorPath: emulator, sdkRoot: root, problem: '', detail: '' };
     last = report;
   }
-  return { webcams: [], emulatorAvailable: true, problem: last.problem, detail: last.detail };
+  return { webcams: [], emulatorAvailable: true, hostCameraCount, emulatorPath: candidates[0], sdkRoot: path.dirname(path.dirname(candidates[0] ?? '')), problem: last.problem, detail: last.detail };
 }
 
 export interface ActiveCameraAssignments {
@@ -3368,6 +3379,7 @@ export async function listAndroidAvds(): Promise<AndroidAvd[]> {
       cameraDevice: [configValue(item.path, 'octobrowser.cameraDevice'), configValue(item.path, 'hw.camera.back'), configValue(item.path, 'hw.camera.front')]
         .find((value) => WEBCAM.test(value)) ?? '',
       microphoneEnabled: configValue(item.path, 'hw.audioInput') !== 'no',
+      networkSpeed: normalizeNetworkSpeed(configValue(item.path, 'runtime.network.speed')),
       incomplete: avdIncomplete(item.path),
       diskBytes: diskSizes[index] ?? 0,
       identity: deviceIdentityOf(item.path),
@@ -3774,7 +3786,7 @@ function launchPrefsFile(): string {
 
 const DEFAULT_LAUNCH_PREFS: AndroidLaunchPrefs = {
   proxyId: '', cameraFront: 'webcam', cameraBack: 'webcam', cameraFrontDevice: '', cameraBackDevice: '', cameraDevice: '',
-  microphoneEnabled: true, microphoneDevice: '', bootMode: 'quick', networkSpeed: 'full', secondaryDisplay: 'none', locale: '', mediaFolder: '',
+  microphoneEnabled: true, microphoneDevice: '', bootMode: 'quick', networkSpeed: 'lte', secondaryDisplay: 'none', locale: '', mediaFolder: '',
   apps: [], appFiles: {},
 };
 

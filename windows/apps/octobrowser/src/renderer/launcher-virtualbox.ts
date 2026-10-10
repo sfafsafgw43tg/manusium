@@ -23,7 +23,7 @@ type NetworkSpeed = 'full' | 'lte' | 'umts' | 'edge' | 'gsm';
 interface AndroidDevice { id: string; brand: string; model: string; width: number; height: number; density: number; inches: number; ramMb: number; shippedApi: number; year: number }
 interface AndroidSystem { id: string; runsHere?: boolean; label: string; api: number; release: string; abi: string; imageBytes: number; googlePlay: boolean; installed: boolean; family?: 'phone' | 'tv' | 'wear' | 'automotive'; familyLabel?: string }
 interface MediaCompanion { plugin: string; ready?: boolean; requirements?: Array<{ key: string; ok: boolean }>; pluginName: string; enabled: boolean; bundleAvailable: boolean; bundleBytes: number; installed: boolean; path: string; files: number; pythonAvailable: boolean; virtualCameraDriver: boolean; virtualMicrophoneDriver: boolean; running: boolean }
-interface AndroidMachine { name: string; path: string; target: string; running: boolean; deviceLabel: string; resolution: string; ramMb: number; dataPartition: string; cameraFront: CameraSource; cameraBack: CameraSource; cameraFrontDevice: string; cameraBackDevice: string; cameraDevice: string; microphoneEnabled: boolean; incomplete: boolean; diskBytes: number; identity?: DeviceIdentity }
+interface AndroidMachine { name: string; path: string; target: string; running: boolean; deviceLabel: string; resolution: string; ramMb: number; dataPartition: string; cameraFront: CameraSource; cameraBack: CameraSource; cameraFrontDevice: string; cameraBackDevice: string; cameraDevice: string; microphoneEnabled: boolean; networkSpeed: NetworkSpeed; incomplete: boolean; diskBytes: number; identity?: DeviceIdentity }
 interface AndroidStatus { javaVersion?: number; javaHome?: string; searched: string[]; missing: '' | 'sdk' | 'cmdline-tools' | 'emulator'; manualSdkRoot: boolean; available: boolean; sdkRoot: string; studioAppPath: string; avdManagerAvailable: boolean; emulatorAvailable: boolean; adbAvailable: boolean; defaultDirectory: string; mediaCompanion: MediaCompanion; devices: AndroidDevice[]; systems: AndroidSystem[] }
 interface AndroidResult { available: boolean; machines: AndroidMachine[] }
 interface AndroidLaunchPrefs {
@@ -366,7 +366,7 @@ function androidRow(machine: AndroidMachine, load: () => Promise<void>): HTMLEle
     width: Number(machine.resolution.split('x')[0]) || undefined, height: Number(machine.resolution.split('x')[1]) || undefined,
     cameraFront: machine.cameraFront, cameraBack: machine.cameraBack,
     cameraFrontDevice: machine.cameraFrontDevice, cameraBackDevice: machine.cameraBackDevice,
-    cameraDevice: machine.cameraDevice, microphoneEnabled: machine.microphoneEnabled,
+    cameraDevice: machine.cameraDevice, microphoneEnabled: machine.microphoneEnabled, networkSpeed: machine.networkSpeed,
     handset: machine.deviceLabel || machine.name,
     identity: machine.identity,
   }, load);

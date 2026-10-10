@@ -7,7 +7,7 @@ import {
   folderWritable, defaultInstallRoot, androidInstallTarget, setAndroidInstallRoot, packageUnknown, javaMajor, javaVersionFound, brokenArchive, prependPath, meaningfulOutput, androidCliPackage, androidCliArgs, usesNewCli, androidToolLogPath, androidEmulatorLogPath, androidCameraLogPath, openCappedLog, CMDLINE_TOOLS_URLS, ensureCommandLineTools, androidPackageInstalled, clearAndroidInstallRoot, normaliseSdkRoot, rootForPackage, hostAbis, imageRunsHere, emulatorForPackage,
   parseAvdList, scanAvdFolders, writeAvdPointer, avdSearchDirectories, importAvdFolder, listAndroidAvds, parseWebcamList,
   mediaBroadcastCommand, mediaCompanionCameraReadiness, normalizeAndroidLaunchPrefs,
-  normalizeCameraRotation, normalizeCameraSources, waitForMediaCompanionCamera, mediaConfig,
+  normalizeCameraRotation, normalizeCameraSources, normalizeNetworkSpeed, waitForMediaCompanionCamera, mediaConfig,
   androidCameraChoices,
   cameraProblemLine, clampCameraLimit, emulatorCameraValues, emulatorWebcams, emulatorWebcamsFrom, parseCameraLimit, resolveActiveCameraAssignments,
   runKeepingOutput,
@@ -17,6 +17,13 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 
 describe('Android Studio local bridge', () => {
+  it('uses LTE as the Android Studio network default without rewriting explicit choices', () => {
+    expect(normalizeNetworkSpeed(undefined)).toBe('lte');
+    expect(normalizeNetworkSpeed('not-a-speed')).toBe('lte');
+    expect(normalizeNetworkSpeed('full')).toBe('full');
+    expect(normalizeNetworkSpeed('gsm')).toBe('gsm');
+  });
+
   it('does not invent cameras when an exact emulator binary or SDK root is unavailable', async () => {
     await expect(emulatorWebcamsFrom('', '')).resolves.toEqual({ webcams: [], problem: 'none', detail: '' });
   });
@@ -812,7 +819,7 @@ describe('wiring a live camera into a device', () => {
     // the picker says so from emulatorAvailable.
     expect(choices.webcams).toEqual([]);
     expect(choices.emulatorAvailable).toBe(false);
-    expect(Object.keys(choices).sort()).toEqual(['detail', 'emulatorAvailable', 'problem', 'webcams']);
+    expect(Object.keys(choices).sort()).toEqual(['detail', 'emulatorAvailable', 'hostCameraCount', 'problem', 'webcams']);
     expect(choices.problem).toBe('');
   });
 

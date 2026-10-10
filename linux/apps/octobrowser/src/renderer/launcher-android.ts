@@ -334,6 +334,7 @@ export function deviceSettingsDialog(target: {
   name: string; running: boolean;
   ramMb?: number; cores?: number; dataGb?: number; width?: number; height?: number; dpi?: number;
   cameraFront?: string; cameraBack?: string; cameraFrontDevice?: string; cameraBackDevice?: string; cameraDevice?: string; microphoneEnabled?: boolean;
+  networkSpeed?: 'full' | 'lte' | 'umts' | 'edge' | 'gsm';
   /** Handset this device imitates (name, model and the device identity). */
   handset?: string;
   identity?: DeviceIdentity;
@@ -414,7 +415,7 @@ export function deviceSettingsDialog(target: {
     const microphone = toggle(target.microphoneEnabled !== false, 'android.media.microphone');
     const gpu = select<string>('auto', [['auto', t('android.gpu.auto')], ['host', t('android.gpu.host')], ['swiftshader_indirect', t('android.gpu.software')], ['off', t('android.gpu.off')]]);
     const boot = select<string>('quick', [['quick', t('android.boot.quick')], ['cold', t('android.boot.cold')]]);
-    const netSpeed = select<string>('full', [['full', t('android.net.full')], ['lte', 'LTE'], ['umts', 'UMTS (3G)'], ['edge', 'EDGE'], ['gsm', 'GSM']]);
+    const netSpeed = select<string>(target.networkSpeed ?? 'lte', [['full', t('android.net.full')], ['lte', 'LTE'], ['umts', 'UMTS (3G)'], ['edge', 'EDGE'], ['gsm', 'GSM']]);
     const save = h('button', { class: 'btn primary', text: t('common.save') });
     const cancel = h('button', { class: 'btn', text: t('common.cancel') });
     cancel.onclick = closeModal;
@@ -612,7 +613,6 @@ export function androidNetworkBar(reload: () => Promise<void>): HTMLElement {
   void refresh();
   return bar;
 }
-
 
 
 
