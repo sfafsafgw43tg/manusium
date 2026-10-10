@@ -1749,8 +1749,7 @@ function windowsCameraNames(): Promise<WindowsCameraName[]> {
  */
 function readWindowsCameraNames(): Promise<WindowsCameraName[]> {
   const script = "try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }; "
-    + "Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue "
-    + "| Where-Object { $_.InstanceId -like 'USB\\*' -or $_.InstanceId -like 'SWD\\*' } "
+    + "Get-PnpDevice -Class Camera,Image -Status OK -ErrorAction SilentlyContinue "
     + "| Select-Object InstanceId, FriendlyName | ConvertTo-Json -Compress";
   return new Promise((resolve) => {
     execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script],
