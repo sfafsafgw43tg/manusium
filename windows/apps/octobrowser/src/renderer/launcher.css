@@ -679,6 +679,11 @@ progress { width: 100%; accent-color: var(--accent); }
 /* ------------------------------------------------------------ modal */
 .modal { position: fixed; inset: 0; background: #000b; display: grid; place-items: center; z-index: 30; padding: 16px; }
 .modal-box { width: min(540px, 94vw); max-height: 90vh; overflow-y: auto; background: var(--panel); border: 1px solid var(--line2); border-radius: 12px; padding: 20px 24px; display: flex; flex-direction: column; gap: var(--gap); box-shadow: 0 16px 50px #000; }
+.startup-boot-splash { position:fixed; inset:0; z-index:100; display:grid; place-items:center; padding:18px; background:#10091c; color:#fff; }
+.startup-boot-card { display:flex; flex-direction:column; align-items:center; gap:10px; min-width:190px; padding:28px 34px; border:1px solid rgb(255 255 255 / 18%); border-radius:20px; background:linear-gradient(145deg, #42206b, #762c83 58%, #9b3c85); box-shadow:0 22px 70px rgb(0 0 0 / 38%), inset 0 1px rgb(255 255 255 / 18%); font-size:13px; }
+.startup-boot-card strong { font-size:24px; letter-spacing:-.03em; }
+.startup-boot-card span { font-size:13px; opacity:.82; }
+.startup-boot-mark { display:grid; place-items:center; width:52px; height:52px; border:2px solid rgb(255 255 255 / 66%); border-radius:50%; font-size:36px; line-height:1; opacity:.9; animation:startup-spin .9s linear infinite; }
 .startup-overlay { position: fixed; inset: 0; z-index: 35; display: grid; place-items: center; padding: 18px; background: color-mix(in srgb, var(--bg, #080512) 78%, #000 22%); }
 .startup-overlay.hidden { display: none; }
 .startup-panel { width: min(390px, 92vw); min-height: 238px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 34px 28px 30px; color: var(--text, #fff); text-align: center; border: 1px solid color-mix(in srgb, var(--line2, #fff) 72%, transparent); border-radius: 22px; background: linear-gradient(145deg, color-mix(in srgb, var(--accent-bg, #5524a5) 88%, var(--bg2, #8d2fc1)), color-mix(in srgb, var(--accent, #8d2fc1) 74%, var(--panel, #5524a5)), color-mix(in srgb, var(--accent-h, #d32b9e) 66%, var(--panel2, #8d2fc1))); box-shadow: 0 22px 70px color-mix(in srgb, var(--bg, #11051f) 72%, #000 28%), inset 0 1px rgb(255 255 255 / 20%); animation: startup-panel-in .22s var(--mo-ease) both; }

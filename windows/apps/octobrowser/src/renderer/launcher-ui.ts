@@ -242,6 +242,7 @@ export function beginStartupScreen(retry: () => void): boolean {
   startupActive = true;
   startupRetry = retry;
   document.body.setAttribute('aria-busy', 'true');
+  document.getElementById('startup-boot-splash')?.remove();
   if (!startupOverlay) {
     const panel = h('div', { class: 'startup-panel', role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true' });
     const mark = h('div', { class: 'startup-brand' }, brandLogo(58), h('span', { text: 'Octo.su' }));

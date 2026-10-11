@@ -553,7 +553,10 @@ export class Manager {
       height: 880,
       minWidth: 1040,
       minHeight: 660,
-      show: false,
+      // Show immediately: launcher.html contains a static boot surface and
+      // the renderer replaces it with the themed startup overlay. Waiting for
+      // ready-to-show would hide the entire loading experience on fast starts.
+      show: true,
       backgroundColor: chrome.color,
       // The renderer owns the title bar. Native overlay controls would create
       // a second button set over the app content.
@@ -588,7 +591,7 @@ export class Manager {
       void this.decideLauncherClose(this.launcher!);
     });
     this.launcher.once('ready-to-show', () => {
-      this.launcher?.show();
+      this.launcher?.focus();
       onReady?.();
     });
     void this.launcher.loadFile(path.join(distDir, 'renderer', 'launcher.html'), { query: tab ? { tab } : {} });
