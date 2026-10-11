@@ -637,8 +637,16 @@ function renderSettings(v: HTMLElement): void {
   ));
 
   const archiveBody = h('div', { class: 'archive-list' }, h('p', { class: 'muted', text: t('settings.archiveLoading') }));
-  v.append(h('div', { class: 'panel profile-archive-panel' }, h('h2', { text: t('settings.profileArchive') }),
-    h('p', { class: 'hint', text: t('settings.profileArchiveHint') }), archiveBody));
+  const archivePanel = h('details', { class: 'panel profile-archive-panel' });
+  const archiveSummary = h('summary', { class: 'archive-summary' },
+    h('span', { class: 'archive-summary-title' }, h('h2', { text: t('settings.profileArchive') })),
+    h('span', { class: 'archive-summary-arrow', 'aria-hidden': 'true', text: '⌄' }));
+  archivePanel.append(archiveSummary, h('p', { class: 'hint', text: t('settings.profileArchiveHint') }), archiveBody);
+  try { archivePanel.open = localStorage.getItem('octo.profile-archive-open') === '1'; } catch { /* private storage can be unavailable */ }
+  archivePanel.addEventListener('toggle', () => {
+    try { localStorage.setItem('octo.profile-archive-open', archivePanel.open ? '1' : '0'); } catch { /* keep the archive usable without storage */ }
+  });
+  v.append(archivePanel);
   void run(api.invoke<Array<{ id: string; name: string; kind: string; archivedAt?: string }>>('mgr:archived')).then((archived) => {
     archiveBody.replaceChildren();
     if (!archived?.length) {

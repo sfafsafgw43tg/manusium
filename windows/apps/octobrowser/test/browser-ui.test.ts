@@ -595,8 +595,13 @@ describe('browser entry UI', () => {
     expect(launcher).toContain("placeholder: t('settings.searchSettings')");
     expect(launcher).toContain("'mgr:archived'");
     expect(launcher).toContain("'mgr:archive-restore'");
+    expect(launcher).toContain("h('details', { class: 'panel profile-archive-panel' })");
+    expect(launcher).toContain("localStorage.getItem('octo.profile-archive-open')");
+    expect(launcher).toContain("localStorage.setItem('octo.profile-archive-open'");
     expect(launcherCss).toContain('.settings-search-row');
     expect(launcherCss).toContain('.archive-row');
+    expect(launcherCss).toContain('.profile-archive-panel > .archive-summary');
+    expect(launcherCss).toContain('.profile-archive-panel[open] .archive-summary-arrow');
   });
   it('keeps the Settings search compact and visible while scrolling', () => {
     expect(launcherCss).toContain('.settings-search-row { position: sticky;');
