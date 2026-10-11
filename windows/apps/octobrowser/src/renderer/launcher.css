@@ -416,8 +416,8 @@ button.tg:hover { border-color: var(--accent); }
 .danger-zone h2 { color: var(--text); }
 
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 20px 22px; margin-bottom: var(--gap-lg); display: flex; flex-direction: column; gap: var(--gap); max-width: 920px; flex: none; }
-.settings-search-row { display: flex; align-items: center; gap: 8px; max-width: 920px; margin: 0 0 var(--gap-lg); padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--muted); }
-.settings-search-row .settings-search { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); }
+.settings-search-row { position: sticky; top: -16px; z-index: 25; display: flex; align-items: center; gap: 6px; width: min(100%, 420px); max-width: 420px; min-height: 34px; margin: -4px 0 14px; padding: 5px 9px; border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--panel) 96%, transparent); color: var(--muted); box-shadow: 0 5px 16px #0003; backdrop-filter: blur(10px); }
+.settings-search-row .settings-search { flex: 1; min-width: 0; height: 24px; padding: 2px 4px; border: 0; outline: 0; background: transparent; color: var(--text); }
 .archive-list { display: flex; flex-direction: column; gap: 8px; }
 .archive-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; }
 .archive-row:hover { border-color: var(--accent); background: var(--accent-bg); }

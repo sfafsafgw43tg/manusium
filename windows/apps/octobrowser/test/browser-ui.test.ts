@@ -542,6 +542,12 @@ describe('browser entry UI', () => {
     expect(launcherCss).toContain('.settings-search-row');
     expect(launcherCss).toContain('.archive-row');
   });
+  it('keeps the Settings search compact and visible while scrolling', () => {
+    expect(launcherCss).toContain('.settings-search-row { position: sticky;');
+    expect(launcherCss).toContain('top: -16px;');
+    expect(launcherCss).toContain('max-width: 420px;');
+    expect(launcherCss).toContain('backdrop-filter: blur(10px);');
+  });
 });
 
 describe('tab right-click dropdown', () => {
