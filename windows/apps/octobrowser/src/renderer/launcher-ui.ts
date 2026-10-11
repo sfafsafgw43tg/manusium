@@ -277,6 +277,16 @@ export function beginStartupScreen(retry: () => void): boolean {
   return true;
 }
 
+/** Refresh labels after the boot dictionary and selected language are loaded. */
+export function refreshStartupScreen(): void {
+  if (!startupOverlay) return;
+  startupOverlay.setAttribute('aria-label', t('startup.title'));
+  const status = startupOverlay.querySelector<HTMLElement>('.startup-status');
+  const retryButton = startupOverlay.querySelector<HTMLButtonElement>('.startup-retry');
+  if (startupActive && status) status.textContent = t('startup.starting');
+  if (retryButton) retryButton.textContent = t('startup.retry');
+}
+
 /** Finish the startup surface on the actual launch result; failures remain retryable. */
 export function finishStartupScreen(ok: boolean, message = ''): void {
   startupActive = false;

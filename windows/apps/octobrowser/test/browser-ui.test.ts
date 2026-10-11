@@ -99,16 +99,21 @@ describe('browser entry UI', () => {
     expect(i18nPl).toContain("'appBackground.openProfiles':");
   });
 
-  it('shows the Octo.su startup panel only around real profile launch work', () => {
+  it('shows the themed startup panel only during app boot, never profile launch', () => {
     expect(launcherUi).toContain('export function beginStartupScreen');
     expect(launcherUi).toContain("role: 'dialog'");
     expect(launcherUi).toContain("'aria-live': 'polite'");
     expect(launcherUi).toContain('startupRetry');
     expect(launcherUi).toContain('finishStartupScreen');
-    expect(launcherProfiles).toContain("beginStartupScreen(() => { void startProfile(p); })");
-    expect(launcherProfiles).toContain("finishStartupScreen(false, t('startup.failedDetail'))");
-    expect(launcherDialogs).toContain("beginStartupScreen(() => { void go(forceRestricted); })");
+    expect(launcher).toContain('beginStartupScreen(() => window.location.reload());');
+    expect(launcher).toContain('boot().then(() => finishStartupScreen(true))');
+    expect(launcher).toContain('refreshStartupScreen();');
+    expect(launcherProfiles).not.toContain('beginStartupScreen');
+    expect(launcherProfiles).not.toContain('finishStartupScreen');
+    expect(launcherDialogs).not.toContain('beginStartupScreen');
+    expect(launcherDialogs).not.toContain('finishStartupScreen');
     expect(launcherCss).toContain('.startup-overlay');
+    expect(launcherCss).toContain('var(--accent-bg');
     expect(launcherCss).toContain('.startup-spinner');
     expect(launcherCss).toContain('@media (prefers-reduced-motion: reduce)');
     expect(i18nEn).toContain("'startup.starting': 'Starting…'");

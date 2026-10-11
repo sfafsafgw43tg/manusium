@@ -10,7 +10,7 @@ import { api, clear } from '@octo/shell/renderer/bridge';
 import { applyI18n, h, setDicts, setLang, t } from '@octo/shell/renderer/i18n-client';
 import { icon } from '@octo/shell/renderer/icons';
 import { keyProtectionPanel } from '@octo/shell/renderer/keypanel';
-import { $, S, L, Init, brandLogo, Profile, SavedProxy, Settings, UpdateStatus, View, PluginEntry, CorePluginEntry, animateIn, busy, run, toast, closeModal, closePopup, confirmDialog, field, select, toggle, input, copyText, modal } from './launcher-ui';
+import { $, S, L, Init, brandLogo, Profile, SavedProxy, Settings, UpdateStatus, View, PluginEntry, CorePluginEntry, animateIn, busy, run, toast, closeModal, closePopup, confirmDialog, field, select, toggle, input, copyText, modal, beginStartupScreen, finishStartupScreen, refreshStartupScreen } from './launcher-ui';
 import { renderProfiles, renderFolders } from './launcher-profiles';
 import { renderProxies } from './launcher-proxies';
 import { renderTrash } from './launcher-trash';
@@ -914,6 +914,7 @@ async function boot(): Promise<void> {
   setLang(init.lang);
   document.documentElement.lang = init.lang;
   applyI18n();
+  refreshStartupScreen();
   railCollapsed = sessionStorage.getItem('octo-rail-collapsed') === '1';
   $('railToggle').onclick = () => { railCollapsed = !railCollapsed; sessionStorage.setItem('octo-rail-collapsed', railCollapsed ? '1' : '0'); applyRailState(); };
   applyRailState();
@@ -958,9 +959,9 @@ async function boot(): Promise<void> {
   $('modal').addEventListener('mousedown', (e) => { if (e.target === $('modal')) closeModal(); });
   render();
 }
-
-boot().catch((err) => {
-  document.body.append(h('pre', { class: 'fatal', text: `Launcher error: ${String((err as Error)?.message ?? err)}` }));
+beginStartupScreen(() => window.location.reload());
+boot().then(() => finishStartupScreen(true)).catch((err) => {
+  finishStartupScreen(false, String((err as Error)?.message ?? err));
 });
 
 /**
