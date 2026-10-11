@@ -685,8 +685,17 @@ function renderSettings(v: HTMLElement): void {
     ['kush', 'Kush Garden', 'settings.theme.kush'],
     ['tactical', 'Field Console', 'settings.theme.tactical'],
   ];
+  const paletteThemes: Array<[Settings['ui']['theme'], string, string]> = [
+    ['aubergine', 'Aubergine', 'settings.theme.aubergine'], ['aqua', 'Aqua', 'settings.theme.aqua'],
+    ['banana', 'Banana', 'settings.theme.banana'], ['blend', 'Blend', 'settings.theme.blend'],
+    ['blossom', 'Blossom', 'settings.theme.blossom'], ['bubblegum', 'Bubblegum', 'settings.theme.bubblegum'],
+    ['candyCane', 'Candy Cane', 'settings.theme.candyCane'], ['cherry', 'Cherry', 'settings.theme.cherry'],
+    ['christmas', 'Christmas', 'settings.theme.christmas'], ['coral', 'Coral', 'settings.theme.coral'],
+    ['digitalHorizon', 'Digital Horizon', 'settings.theme.digitalHorizon'], ['express', 'Express', 'settings.theme.express'],
+  ];
   const themeGrid = h('div', { class: 'theme-grid', role: 'radiogroup', 'aria-label': t('settings.theme') });
   const funGrid = h('div', { class: 'theme-grid fun-theme-grid', role: 'radiogroup', 'aria-label': t('settings.funThemes') });
+  const paletteGrid = h('div', { class: 'theme-grid palette-theme-grid', role: 'radiogroup', 'aria-label': t('settings.paletteThemes') });
   const preview = () => h('span', { class: 'theme-swatch', 'aria-hidden': 'true' },
     h('span', { class: 'theme-preview-bar' }, h('i'), h('i'), h('i')),
     h('span', { class: 'theme-preview-body' },
@@ -724,9 +733,13 @@ function renderSettings(v: HTMLElement): void {
   };
   addThemeCards(themeGrid, themes);
   addThemeCards(funGrid, funThemes);
+  addThemeCards(paletteGrid, paletteThemes);
   const funPanel = h('details', { class: 'fun-themes-panel' }) as HTMLDetailsElement;
   funPanel.open = funThemes.some(([id]) => s.ui.theme === id);
   funPanel.append(h('summary', { text: t('settings.funThemes') }), h('p', { class: 'hint', text: t('settings.funThemesHint') }), funGrid);
+  const palettePanel = h('details', { class: 'fun-themes-panel palette-themes-panel' }) as HTMLDetailsElement;
+  palettePanel.open = paletteThemes.some(([id]) => s.ui.theme === id);
+  palettePanel.append(h('summary', { text: t('settings.paletteThemes') }), h('p', { class: 'hint', text: t('settings.paletteThemesHint') }), paletteGrid);
   const themePanel = h('details', { class: 'panel theme-panel theme-panel-collapsible' }) as HTMLDetailsElement;
   themePanel.open = sessionStorage.getItem('octo-themes-open') === '1';
   themePanel.addEventListener('toggle', () => sessionStorage.setItem('octo-themes-open', themePanel.open ? '1' : '0'));
@@ -734,7 +747,7 @@ function renderSettings(v: HTMLElement): void {
     h('summary', { class: 'theme-panel-summary' },
       h('span', { class: 'theme-summary-title' }, h('h2', { text: t('settings.theme') })),
       h('span', { class: 'theme-summary-hint', text: t('settings.themeHint') })),
-    h('div', { class: 'theme-panel-content' }, h('p', { class: 'hint', text: t('settings.themeHint') }), themeGrid, funPanel),
+    h('div', { class: 'theme-panel-content' }, h('p', { class: 'hint', text: t('settings.themeHint') }), themeGrid, funPanel, palettePanel),
   );
   v.append(themePanel);
 
