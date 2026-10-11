@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "PrOximAl Editor",
+  "version": "1.0.0",
+  "description": "Local workspace for document review, synthetic test data and deliberate form filling.",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "PrOximAl Editor",
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "options_ui": {
+    "page": "workspace.html",
+    "open_in_tab": true
+  },
+  "permissions": ["activeTab", "contextMenus", "scripting", "storage"],
+  "commands": {
+    "open-workspace": {
+      "suggested_key": { "default": "Ctrl+Shift+P", "mac": "Command+Shift+P" },
+      "description": "Open PrOximAl workspace"
+    },
+    "fill-test-form": {
+      "suggested_key": { "default": "Ctrl+Shift+U", "mac": "Command+Shift+U" },
+      "description": "Fill the current page with the active synthetic test profile"
+    }
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'none'; img-src 'self' blob: data:; frame-src blob:"
+  }
+}

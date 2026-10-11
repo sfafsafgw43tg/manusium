@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- branding/inkbrowser/logo.svg - InkBrowser mark, the uploaded three-blade logo
+     redrawn as a vector in the OctoBrowser purple. The white ring and the dark
+     centre are part of the mark. Octo's own octopus (branding/octobrowser) is not
+     used here: it stays on octo.su. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <radialGradient id="ink" cx="128" cy="128" r="112" gradientUnits="userSpaceOnUse">
+      <stop offset="0.45" stop-color="#3b0a6b"/>
+      <stop offset="0.78" stop-color="#7c3aed"/>
+      <stop offset="1" stop-color="#c4a2ff"/>
+    </radialGradient>
+  </defs>
+  <g fill="url(#ink)" stroke="#12081f" stroke-width="3" stroke-linejoin="round">
+    <path d="M128.00 16.00A112 112 0 0 1 224.99 184.00L158.56 170.07A52 52 0 0 0 149.15 80.50Z"/>
+    <path d="M224.99 184.00A112 112 0 0 1 31.01 184.00L76.28 133.44A52 52 0 0 0 158.56 170.07Z"/>
+    <path d="M31.01 184.00A112 112 0 0 1 128.00 16.00L149.15 80.50A52 52 0 0 0 76.28 133.44Z"/>
+  </g>
+  <circle cx="128" cy="128" r="50" fill="#ffffff"/>
+  <circle cx="128" cy="128" r="42" fill="#0b0712"/>
+</svg>

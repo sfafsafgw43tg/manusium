@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GOAL in Browser</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body class="popup">
+    <header class="popup-head">
+      <h1>GOAL in Browser</h1>
+      <label class="switch"><input id="protection" type="checkbox" /><span>Protection</span></label>
+    </header>
+
+    <section class="card">
+      <h2>Level</h2>
+      <div class="segmented" role="group" aria-label="Protection level">
+        <button type="button" data-preset="standard" aria-pressed="false">Standard</button>
+        <button type="button" data-preset="strict" aria-pressed="false">Strict</button>
+        <button type="button" data-preset="ultra" aria-pressed="false">Ultra</button>
+      </div>
+      <p id="preset-text" class="note"></p>
+      <p id="preset-note" class="note warn" hidden></p>
+    </section>
+
+    <section class="card">
+      <h2>This site</h2>
+      <p id="site-name" class="site-name">Loading...</p>
+      <p id="site-note" class="note"></p>
+      <button id="site-toggle" type="button" disabled>Allow this site</button>
+    </section>
+
+    <section class="card">
+      <h2>Status</h2>
+      <p id="summary" class="note">Loading...</p>
+      <details>
+        <summary>Show every setting</summary>
+        <ul id="report" class="report"></ul>
+      </details>
+    </section>
+
+    <footer class="popup-foot">
+      <button id="open-options" type="button" class="link">Settings, lists and site access</button>
+      <p id="error" class="error" role="alert" hidden></p>
+    </footer>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

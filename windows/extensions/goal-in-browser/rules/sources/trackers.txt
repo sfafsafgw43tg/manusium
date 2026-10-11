@@ -1,0 +1,45 @@
+# Cross-site tracker and analytics domains (starter list, hand-maintained, not exhaustive).
+# One entry per line: a hostname (blocks it and its subdomains) or hostname/path (blocks that path).
+# Lines starting with # are comments. Regenerate rules/trackers.json with: npm run build
+google-analytics.com
+googletagmanager.com
+doubleclick.net
+googleadservices.com
+googlesyndication.com
+2mdn.net
+connect.facebook.net
+facebook.com/tr/
+hotjar.com
+mixpanel.com
+mxpnl.com
+segment.com
+segment.io
+fullstory.com
+mouseflow.com
+clarity.ms
+crazyegg.com
+luckyorange.com
+luckyorange.net
+scorecardresearch.com
+quantserve.com
+krxd.net
+demdex.net
+omtrdc.net
+adsrvr.org
+amplitude.com
+heapanalytics.com
+hs-analytics.net
+bat.bing.com
+analytics.tiktok.com
+px.ads.linkedin.com
+snap.licdn.com
+criteo.com
+criteo.net
+taboola.com
+outbrain.com
+rubiconproject.com
+pubmatic.com
+openx.net
+casalemedia.com
+adnxs.com
+rlcdn.com

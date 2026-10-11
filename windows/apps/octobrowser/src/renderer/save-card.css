@@ -1,0 +1,71 @@
+/* apps/octobrowser/src/renderer/save-card.css
+   The floating "Save login?" card. Its window is transparent and has no frame,
+   so the card itself carries the shape, the colours and the shadow. The card
+   fills the window: what the user sees IS this element. */
+:root {
+  --bg: #181818; --bg2: #202020; --panel: #282828; --panel2: #303030; --line: #404040; --line2: #4a4a4a;
+  --text: #f2f2f2; --muted: #b9b9b9; --dim: #8f8f8f; --accent: #dfe6f2; --accent-h: #ffffff;
+}
+:root[data-theme="light"] {
+  --bg: #ededed; --bg2: #e4e4e4; --panel: #f4f4f4; --panel2: #dedede; --line: #c9c9c9; --line2: #d4d4d4;
+  --text: #1f1f1f; --muted: #5f5f5f; --dim: #808080; --accent: #3a3a3a; --accent-h: #1f1f1f;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; background: transparent; overflow: hidden; }
+body {
+  font: 13px "Segoe UI", system-ui, -apple-system, sans-serif;
+  color: var(--text);
+  display: flex;
+  padding: 6px;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.save-card {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  flex: 1;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--line) 72%, var(--text));
+  border-radius: 16px;
+  background: linear-gradient(155deg, var(--panel), var(--bg2));
+  box-shadow: 0 22px 54px #00000062, inset 0 1px 0 #ffffff0b;
+  animation: save-card-in .18s cubic-bezier(.2,.86,.2,1);
+}
+:root[data-theme="light"] .save-card { background: linear-gradient(155deg, #fff, var(--panel)); box-shadow: 0 16px 36px #0000001f; }
+@keyframes save-card-in { from { opacity: 0; transform: translateY(-8px) scale(.98); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .save-card { animation: none; } }
+
+.save-card-head, .save-card-title-wrap, .save-card-site, .save-card-actions { display: flex; align-items: center; }
+.save-card-head { justify-content: space-between; gap: 12px; }
+.save-card-title-wrap { min-width: 0; gap: 10px; }
+.save-card-title-wrap > div { min-width: 0; display: flex; flex-direction: column; }
+.save-card-title-wrap strong { font-size: 15px; letter-spacing: .01em; line-height: 1.2; }
+.save-card-origin { max-width: 200px; overflow: hidden; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.save-card-mark { display: grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: 12px; background: var(--text); color: var(--bg); box-shadow: inset 0 0 0 1px #ffffff24, 0 5px 14px #00000028; transform: rotate(-4deg); }
+.save-card-mark svg { transform: rotate(4deg); }
+.save-card-close { display: grid; place-items: center; width: 28px; height: 28px; flex: none; border: 0; border-radius: 50%; background: var(--panel2); color: var(--muted); cursor: pointer; }
+.save-card-close:hover { color: var(--text); background: var(--line); }
+.save-card-site { align-items: flex-start; gap: 10px; padding: 11px; border: 1px solid var(--line); border-radius: 13px; background: color-mix(in srgb, var(--bg2) 82%, transparent); }
+.save-card-letter { display: grid; place-items: center; width: 34px; height: 34px; flex: none; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font-size: 16px; font-weight: 700; }
+.save-card-fields { min-width: 0; flex: 1; display: grid; gap: 8px; }
+.save-card-field { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.save-card-field + .save-card-field { padding-top: 7px; border-top: 1px solid var(--line); }
+.save-card-field > span { color: var(--muted); font-size: 10px; }
+.save-card-input { width: 100%; min-height: 30px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 12px; font-family: inherit; transition: border-color .15s ease, box-shadow .15s ease, background .15s ease; }
+.save-card-input:focus { border-color: var(--text); background: var(--bg2); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--text) 13%, transparent); }
+.save-card-pwd { position: relative; display: flex; align-items: center; width: 100%; }
+.save-card-pwd input { padding-right: 28px; }
+.save-card-eye { position: absolute; right: 4px; display: grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+.save-card-eye:hover { color: var(--text); }
+.save-card-vault { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--muted); font-size: 11px; }
+.save-card-vault svg { flex: none; color: var(--text); }
+.save-card-actions { gap: 8px; margin-top: auto; }
+.save-card-action { flex: 1; min-height: 36px; border: 1px solid var(--line); border-radius: 10px; padding: 6px 12px; font: inherit; font-weight: 600; cursor: pointer; transition: transform .15s ease, background .15s ease, opacity .15s ease; }
+.save-card-action:hover { transform: translateY(-1px); }
+.save-card-action.secondary { background: transparent; color: var(--text); }
+.save-card-action.secondary:hover { background: var(--panel2); }
+.save-card-action.primary { border-color: var(--text); background: var(--text); color: var(--bg); }
+.save-card-action.primary:hover { opacity: .88; }
+.save-card-never { align-self: center; border: 0; padding: 2px 6px; background: transparent; color: var(--muted); font-size: 11px; cursor: pointer; font-family: inherit; }
+.save-card-never:hover { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }

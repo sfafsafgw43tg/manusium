@@ -1,0 +1,21 @@
+<!doctype html>
+<!-- apps/octodetect/src/probe/probe.html - local audit page served by OctoDetect on 127.0.0.1 only. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex">
+  <title>OctoDetect.su – audit</title>
+  <link rel="stylesheet" href="probe.css">
+</head>
+<body>
+  <main>
+    <div class="logo"><span class="mark"></span>OctoDetect<span class="su">.su</span></div>
+    <h1 id="title">Local privacy audit</h1>
+    <p id="msg">Collecting what this browser exposes to websites… Nothing leaves this computer.</p>
+    <div class="bar"><div id="progress"></div></div>
+  </main>
+  <script src="probe.js"></script>
+</body>
+</html>

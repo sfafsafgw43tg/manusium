@@ -1,0 +1,21 @@
+<!doctype html>
+<!-- apps/octodetect/src/renderer/detect.html - main window of OctoDetect.su. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:">
+  <title>OctoDetect.su</title>
+  <link rel="stylesheet" href="detect.css">
+</head>
+<body>
+  <aside id="side">
+    <div class="brand"><div><b>OctoDetect</b><span>.su</span></div></div>
+    <nav id="nav"></nav>
+    <div id="sideFoot" class="muted small"></div>
+  </aside>
+  <main><section id="view"></section></main>
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true"><div class="modal-box" id="modalBox"></div></div>
+  <div id="toasts" aria-live="polite"></div>
+  <script src="detect.js"></script>
+</body>
+</html>

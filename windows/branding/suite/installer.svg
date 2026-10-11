@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- branding/suite/installer.svg - OctoSuite installer icon (original artwork, MPL-2.0 project asset).
+     Octagon split diagonally: violet half (OctoBrowser) and teal half (OctoDetect), with a down arrow. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="s-v" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9b7bff"/><stop offset="1" stop-color="#5b8cff"/></linearGradient>
+    <linearGradient id="s-t" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2dd4bf"/><stop offset="1" stop-color="#10b981"/></linearGradient>
+    <clipPath id="s-oct"><path d="M84 12h88l72 72v88l-72 72H84l-72-72V84z"/></clipPath>
+  </defs>
+  <g clip-path="url(#s-oct)">
+    <path d="M0 0h256L0 256z" fill="url(#s-v)"/>
+    <path d="M256 0v256H0z" fill="url(#s-t)"/>
+  </g>
+  <path d="M92 32h72l60 60v72l-60 60H92l-60-60V92z" fill="#0b1020"/>
+  <path d="M128 72v84M94 124l34 34 34-34" fill="none" stroke="#e6e8f2" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M88 184h80" stroke="#e6e8f2" stroke-width="14" stroke-linecap="round"/>
+</svg>

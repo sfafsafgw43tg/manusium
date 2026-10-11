@@ -1,0 +1,15 @@
+/*
+ * packages/shell/renderer/unlock.css - master-password window.
+ * Same monochrome tokens as the rest of the suite (shared.css).
+ */
+.unlock { display: flex; flex-direction: column; gap: var(--gap); padding: 26px 28px; height: 100%; }
+.unlock h1 { font-size: 19px; margin: 0; }
+.unlock p { margin: 0; font-size: 13px; }
+.unlock form { display: flex; gap: 10px; align-items: center; }
+.unlock form input { flex: 1; }
+.unlock form .btn { flex: none; }
+.unlock .link { border: 0; background: transparent; color: var(--muted); text-decoration: underline; padding: 6px 0; }
+.unlock .link:hover { color: var(--text); }
+.unlock footer { margin-top: auto; display: flex; align-items: center; gap: 12px; }
+.unlock .spacer { flex: 1; }
+.unlock .info, .unlock .note { font-size: 12.5px; }

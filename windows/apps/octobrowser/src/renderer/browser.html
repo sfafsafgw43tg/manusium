@@ -1,0 +1,124 @@
+<!doctype html>
+<!-- apps/octobrowser/src/renderer/browser.html - trusted browser chrome (tabs, toolbar, panels). -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: https: http:; font-src 'self'">
+  <title>Octo.su</title>
+  <link rel="stylesheet" href="browser.css">
+</head>
+<body>
+  <div id="closeveil" class="hidden" role="alertdialog" aria-modal="true" aria-labelledby="cvTitle">
+    <div class="cv-box">
+      <div id="cvCountdown" class="cv-countdown hidden" aria-live="polite"></div>
+      <b id="cvTitle">Octo.su</b>
+      <p id="cvBody"></p>
+      <p id="cvCountdownText" class="cv-countdown-text hidden"></p>
+      <div class="cv-actions">
+        <button id="cvClose" class="cv-close">Close browser</button>
+        <button id="cvForce" class="cv-force">Force close</button>
+        <span id="cvWarn" class="cv-warn"></span>
+      </div>
+      <button id="cvKeep" class="cv-keep">Continue</button>
+    </div>
+  </div>
+  <div id="app">
+    <header id="tabstrip" role="tablist" aria-label="Tabs">
+      <div id="tabs"></div>
+      <button id="newTab" class="icon-btn" data-i18n-title="ui.newTab"></button>
+      <div id="appDrag" class="drag" aria-hidden="true"></div>
+      <div id="profileBadge" class="profile-badge" role="button" tabindex="0"></div>
+      <div class="window-controls" role="group" aria-label="Window controls">
+        <button id="windowMinimize" class="window-control" type="button" aria-label="Minimize" title="Minimize"></button>
+        <button id="windowMaximize" class="window-control" type="button" aria-label="Maximize" title="Maximize"></button>
+        <button id="windowClose" class="window-control window-close" type="button" aria-label="Close" title="Close"></button>
+      </div>
+    </header>
+    <nav id="toolbar">
+      <button id="back" class="icon-btn" data-i18n-title="ctx.back"></button>
+      <button id="forward" class="icon-btn" data-i18n-title="ctx.forward"></button>
+      <button id="reload" class="icon-btn" data-i18n-title="ctx.reload"></button>
+      <div id="omnibox">
+        <button type="button" id="secIcon" class="sec" aria-haspopup="dialog"></button>
+        <input id="address" type="text" spellcheck="false" autocomplete="off" data-i18n-ph="ui.addressPlaceholder" aria-label="Address">
+        <span id="zoom" class="chip hidden"></span>
+        <span id="blockedCount" class="chip hidden" data-i18n-title="ui.blockedOnPage"></span>
+        <button id="translateBtn" class="icon-btn small" data-i18n-title="tr.title" aria-label="Translate"></button>
+        <button id="star" class="icon-btn small" data-i18n-title="ui.bookmark"></button>
+      </div>
+      <div id="status" class="status-icons"></div>
+    </nav>
+    <div id="chromeMenu" class="chrome-menu hidden" role="menu" aria-label="Browser menu"></div>
+    <div id="downloadsTray" class="downloads-tray hidden" role="dialog" aria-label="Downloads">
+      <div class="downloads-tray-head">
+        <h3 id="downloadsTrayTitle" data-i18n="dl.recentHistory">Recent download history</h3>
+        <button id="downloadsTrayClose" class="downloads-tray-close" data-i18n-title="dl.closeDownloads" aria-label="Close downloads"></button>
+      </div>
+      <div id="downloadsTrayBody" class="downloads-tray-body"></div>
+      <div id="downloadsTrayFoot" class="downloads-tray-foot" role="button" tabindex="0">
+        <span class="downloads-tray-foot-link" id="downloadsTrayFullHistory" data-i18n="dl.fullHistory">Full download history</span>
+        <span class="downloads-tray-foot-icon" id="downloadsTrayFootIcon"></span>
+      </div>
+    </div>
+    <div id="passwordsPopout" class="passwords-popout hidden" role="dialog" aria-label="Password manager">
+      <div class="pw-popout-head">
+        <button id="pwPopoutMenu" class="pw-icon-btn" title="Menu" aria-label="Menu"></button>
+        <div class="pw-filter-pill">
+          <span class="pw-filter-icon" id="pwFilterIcon"></span>
+          <span id="pwFilterLabel" data-i18n="pw.allItems">All items</span>
+        </div>
+        <div class="pw-search-wrap">
+          <span class="pw-search-icon" id="pwSearchIcon"></span>
+          <input id="pwSearchInput" type="search" placeholder="Search in all items..." autocomplete="off" spellcheck="false" data-i18n-ph="pw.searchPlaceholder" aria-label="Search items">
+        </div>
+        <div class="pw-vault-badge">
+          <span id="pwVaultStatus" data-i18n="pw.vaultLabel">Vault</span>
+        </div>
+        <button id="pwAddNew" class="pw-add-btn" title="Add item" aria-label="Add item"></button>
+        <button id="pwPopoutClose" class="pw-close-btn" title="Close" aria-label="Close"></button>
+      </div>
+      <div id="pwStats" class="pw-stats"></div>
+      <div class="pw-popout-subhead">
+        <div class="pw-tabs">
+          <button id="pwTabAll" class="pw-tab active"><span data-i18n="pw.allTab">All</span> (<span id="pwCount">0</span>)</button>
+          <button id="pwTabRecent" class="pw-tab" data-i18n="pw.recentTab">Recent</button>
+        </div>
+        <button id="pwSortBtn" class="pw-icon-btn small" title="Sort items" aria-label="Sort items"></button>
+      </div>
+      <div id="pwMasterDetail" class="pw-master-detail">
+        <div id="pwListCol" class="pw-list-col"></div>
+        <div id="pwDetailCol" class="pw-detail-col"></div>
+      </div>
+    </div>
+    <div id="pageInfo" class="page-info hidden" role="dialog" aria-label="Page info"></div>
+    <div id="translateBar" class="translate-bar hidden" role="dialog" aria-label="Translate"></div>
+    <div id="bookbar" class="hidden"></div>
+    <div id="bars" aria-live="polite"></div>
+    <!-- The password save/update card is NOT drawn here: it is its own small
+         always-on-top window (main/save-card.ts + renderer/save-card.html), so
+         no layer of this window ever has to sit above the web page. -->
+    <div id="findbar" class="hidden">
+      <input id="findInput" type="text" data-i18n-ph="ui.find" aria-label="Find">
+      <span id="findCount" class="muted"></span>
+      <button id="findPrev" class="icon-btn small"></button>
+      <button id="findNext" class="icon-btn small"></button>
+      <button id="findClose" class="icon-btn small"></button>
+    </div>
+    <main id="main">
+      <aside id="vtabs" class="hidden"></aside>
+      <section id="content" aria-label="Page"></section>
+      <aside id="panel" class="hidden" aria-live="polite">
+        <div class="panel-head"><h2 id="panelTitle"></h2><button id="panelClose" class="icon-btn small"></button></div>
+        <div id="panelBody"></div>
+      </aside>
+    </main>
+  </div>
+  <div id="overlay" class="hidden">
+    <div class="dialog" id="tabSearch">
+      <input id="tabSearchInput" type="text" data-i18n-ph="ui.searchTabs">
+      <div id="tabSearchList"></div>
+    </div>
+  </div>
+  <script src="browser.js"></script>
+</body>
+</html>

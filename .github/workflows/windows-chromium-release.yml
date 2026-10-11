@@ -1,0 +1,166 @@
+name: Windows Chromium Release Build
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-chromium-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  windows-chromium:
+    # The source checkout/build needs a fixed large disk and the runner's
+    # installed Visual Studio Build Tools. Users never run this job.
+    runs-on: [self-hosted, windows, x64, inkbrowser-chromium]
+    timeout-minutes: 600
+    defaults:
+      run:
+        working-directory: windows
+    env:
+      CI: 'true'
+      DEPOT_TOOLS_UPDATE: '0'
+      DEPOT_TOOLS_WIN_TOOLCHAIN: '0'
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: windows/package-lock.json
+
+      - name: Initialize build logs
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force -Path ci-logs | Out-Null
+
+      - name: Install project dependencies
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          npm ci 2>&1 | Tee-Object -FilePath ci-logs/npm-ci.log
+          if ($LASTEXITCODE -ne 0) { throw "npm ci failed with exit code $LASTEXITCODE" }
+
+      - name: Typecheck and unit tests
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          npm run typecheck 2>&1 | Tee-Object -FilePath ci-logs/typecheck.log
+          if ($LASTEXITCODE -ne 0) { throw "typecheck failed with exit code $LASTEXITCODE" }
+          npm test 2>&1 | Tee-Object -FilePath ci-logs/unit-tests.log
+          if ($LASTEXITCODE -ne 0) { throw "unit tests failed with exit code $LASTEXITCODE" }
+
+      - name: Bootstrap depot_tools
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $depot = Join-Path $env:RUNNER_TEMP 'inkbrowser-depot_tools'
+          if (-not (Test-Path (Join-Path $depot 'fetch.bat'))) {
+            Remove-Item -LiteralPath $depot -Recurse -Force -ErrorAction SilentlyContinue
+            git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git $depot
+          }
+          if (-not (Test-Path (Join-Path $depot 'fetch.bat'))) { throw "depot_tools bootstrap failed: $depot" }
+          Add-Content $env:GITHUB_PATH $depot
+          if (-not $env:OCTO_CHROMIUM_SOURCE) { throw 'OCTO_CHROMIUM_SOURCE must point to a fixed drive with at least 100 GB free.' }
+
+      - name: Verify Windows Chromium prerequisites
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $sourceRoot = [System.IO.Path]::GetFullPath($env:OCTO_CHROMIUM_SOURCE)
+          $driveName = [System.IO.Path]::GetPathRoot($sourceRoot).TrimEnd('\').TrimEnd(':')
+          $free = (Get-PSDrive -Name $driveName).Free
+          if ($free -lt 100GB) { throw "Chromium source drive has only $([math]::Round($free / 1GB, 1)) GB free; at least 100 GB is required." }
+          foreach ($tool in @('git', 'fetch', 'gclient', 'gn', 'autoninja')) {
+            if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) { throw "$tool is not available on PATH." }
+          }
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          if (-not (Test-Path $vswhere)) { throw "vswhere.exe is missing: $vswhere" }
+          $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Workload.NativeDesktop Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $vs) { throw 'Visual Studio NativeDesktop/MSVC x64-x86 components were not found.' }
+          $sdkRoot = Join-Path ($vs | Select-Object -First 1) 'Windows Kits\10\bin'
+          if (-not (Test-Path $sdkRoot)) { throw "Windows SDK bin directory is missing under $($vs | Select-Object -First 1)" }
+          Write-Host "Chromium source root: $sourceRoot"
+          Write-Host "Chromium source drive free space: $([math]::Round($free / 1GB, 1)) GB"
+
+      - name: Build Chromium source runtime
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          npm run build:chromium:windows 2>&1 | Tee-Object -FilePath ci-logs/chromium-build.log
+          if ($LASTEXITCODE -ne 0) { throw "npm run build:chromium:windows failed with exit code $LASTEXITCODE" }
+
+      - name: Verify source-built Chromium
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          npm run verify:chromium:windows 2>&1 | Tee-Object -FilePath ci-logs/chromium-staged-verify.log
+          if ($LASTEXITCODE -ne 0) { throw "npm run verify:chromium:windows failed with exit code $LASTEXITCODE" }
+
+      - name: Build browser distribution
+        shell: pwsh
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          npm run dist:browser 2>&1 | Tee-Object -FilePath ci-logs/dist-browser.log
+          if ($LASTEXITCODE -ne 0) { throw "npm run dist:browser failed with exit code $LASTEXITCODE" }
+
+      - name: Verify packaged Chromium and run native packaged test
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          npm run verify:chromium:packaged 2>&1 | Tee-Object -FilePath ci-logs/chromium-packaged-verify.log
+          if ($LASTEXITCODE -ne 0) { throw "npm run verify:chromium:packaged failed with exit code $LASTEXITCODE" }
+          npm run test:native-packaged:windows 2>&1 | Tee-Object -FilePath ci-logs/chromium-native-test.log
+          if ($LASTEXITCODE -ne 0) { throw "npm run test:native-packaged:windows failed with exit code $LASTEXITCODE" }
+
+      - name: Check Electron fuses
+        shell: pwsh
+        run: |
+          node tools/check-fuses.mjs 2>&1 | Tee-Object -FilePath ci-logs/fuses.log
+          if ($LASTEXITCODE -ne 0) { throw "fuse check failed with exit code $LASTEXITCODE" }
+
+      - name: Install Inno Setup 6
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup --no-progress -y }
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { throw 'ISCC.exe was not found after Inno Setup installation.' }
+
+      - name: Build installer
+        shell: pwsh
+        env:
+          OCTO_SIGNTOOL: ${{ secrets.OCTO_SIGNTOOL }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          npm run installer 2>&1 | Tee-Object -FilePath ci-logs/installer-build.log
+          if ($LASTEXITCODE -ne 0) { throw "npm run installer failed with exit code $LASTEXITCODE" }
+
+      - name: Verify installer payload after installation
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          ./tools/ci/installer-e2e.ps1 2>&1 | Tee-Object -FilePath ci-logs/installer-e2e.log
+          if ($LASTEXITCODE -ne 0) { throw "installer E2E failed with exit code $LASTEXITCODE" }
+
+      - name: Upload verified installer and build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: InkBrowser-Windows-installer-${{ github.run_number }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            windows/release/OctoSuite-Setup-*.exe
+            windows/ci-logs/**
+            windows/release/octobrowser/win-unpacked/resources/engines/chromium/155.0.8059.39/runtime.json
+            windows/release/octobrowser/win-unpacked/resources/engines/chromium/155.0.8059.39/inkbrowser-chrome.exe

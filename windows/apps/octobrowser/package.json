@@ -1,0 +1,66 @@
+{
+  "name": "octobrowser",
+  "productName": "Octo.su",
+  "version": "0.1.1",
+  "description": "Private, secure multi-purpose browser (OctoSuite)",
+  "homepage": "https://github.com/sff4gds/newrepo",
+  "repository": "https://github.com/sfafsafgw43tg/manusium",
+  "author": {
+    "name": "OctoSuite contributors",
+    "email": "octosuite@users.noreply.github.com"
+  },
+  "license": "MPL-2.0",
+  "private": true,
+  "main": "dist/main.js",
+  "build": {
+    "appId": "su.octo.browser",
+    "productName": "Octo.su",
+    "executableName": "Octo.su",
+    "electronVersion": "44.4.5",
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../../resources/engines",
+        "to": "engines"
+      }
+    ],
+    "linux": {
+      "executableName": "Octo.su",
+      "icon": "dist/assets/icon-256.png",
+      "category": "Network",
+      "synopsis": "Isolated multi-engine privacy browser",
+      "description": "Native Chromium and Firefox profiles with isolated storage and engine-specific privacy controls.",
+      "maintainer": "octosuite@users.noreply.github.com",
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "syncDesktopName": true,
+      "desktop": {
+        "entry": {
+          "StartupWMClass": "Octo.su"
+        }
+      }
+    },
+    "publish": null
+  }
+}

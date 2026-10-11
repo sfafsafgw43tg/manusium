@@ -1,0 +1,11 @@
+/* apps/octodetect/src/probe/probe.css - local audit page (teal / emerald on dark slate). */
+html, body { margin: 0; height: 100%; background: #07161a; color: #e2f3f1; font: 15px/1.5 "Segoe UI", system-ui, sans-serif; }
+main { max-width: 560px; margin: 0 auto; padding: 16vh 24px; text-align: center; display: flex; flex-direction: column; gap: 14px; align-items: center; }
+.logo { display: flex; align-items: center; gap: 10px; font-size: 26px; font-weight: 600; }
+.logo .mark { width: 30px; height: 30px; border-radius: 10px; background: linear-gradient(135deg, #14b8a6, #22d3ee); }
+.su { color: #14b8a6; }
+h1 { margin: 0; font-size: 20px; }
+p { color: #8fb3b0; margin: 0; }
+.bar { width: 100%; height: 6px; background: #0f2a30; border-radius: 3px; overflow: hidden; }
+#progress { width: 5%; height: 100%; background: linear-gradient(90deg, #14b8a6, #22d3ee); transition: width .2s; }
+.done #progress { width: 100%; }
