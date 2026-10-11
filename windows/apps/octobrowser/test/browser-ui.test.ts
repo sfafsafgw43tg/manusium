@@ -82,6 +82,16 @@ describe('browser entry UI', () => {
     expect(launcherCss).toContain('34%');
     expect(launcherCss).toContain('68%');
   });
+  it('adds sparse, theme-specific background effects behind the six requested palettes', () => {
+    for (const theme of ['amethyst', 'purple', 'forest', 'emerald', 'olive', 'rose']) {
+      expect(launcherCss).toContain(`data-app-theme="${theme}"`);
+    }
+    for (const animation of ['theme-amethyst-drift', 'theme-purple-motes', 'theme-leaf-drift', 'theme-emerald-motes', 'theme-olive-leaves', 'theme-rose-petals']) {
+      expect(launcherCss).toContain(`@keyframes ${animation}`);
+    }
+    expect(launcherCss).toContain('z-index:0; pointer-events:none; opacity:.38');
+    expect(launcherCss).toContain('@media (prefers-reduced-motion: reduce) { body::before, body::after { animation:none !important; } }');
+  });
 
   it('restores the selected profile folder after the launcher is reopened', () => {
     expect(launcherProfiles).toContain("const ACTIVE_FOLDER_KEY = 'octo.active-profile-folder';");
