@@ -120,6 +120,18 @@ same lines live, and *Open log file* opens the file.
 - `scripts\lib\octo-ui.ps1`: the window. It starts the work process with the `OCTO_SETUP_*`
   variables, reads its output on a timer, and never runs an install step itself.
 
+The installed Chromium runtime is copied by Electron Builder to:
+
+```text
+<InstallDir>\OctoBrowser\resources\engines\chromium\155.0.8059.39\inkbrowser-chrome.exe
+```
+
+Electron resolves `<InstallDir>\OctoBrowser\resources` through `process.resourcesPath`.
+The packaged verification requires the manifest, executable checksum, Chromium DLLs, PAK files,
+ICU data, V8 snapshot, and `locales\en-US.pak`. `npm run dist:browser` verifies both the staged
+source runtime and the copied `win-unpacked` tree. `npm run installer` repeats the copied-tree
+check before invoking Inno Setup, so an incomplete Chromium bundle cannot produce an installer.
+
 ## Tests
 
 | Where | What | Runs in |

@@ -33,6 +33,9 @@ async function main() {
     const dir = path.join(root, 'release', app, 'win-unpacked');
     if (!fs.existsSync(dir)) throw new Error(`Missing ${path.relative(root, dir)} - run "npm run dist" first.`);
   }
+  const runtimeVerifier = path.join(root, 'tools', 'verify-packaged-chromium.mjs');
+  const runtimeCheck = spawnSync(process.execPath, [runtimeVerifier], { cwd: root, stdio: 'inherit', windowsHide: true });
+  if (runtimeCheck.status !== 0) throw new Error('Packaged Chromium verification failed; refusing to build an installer without a complete verified runtime.');
   const iscc = findIscc();
   if (!iscc) throw new Error('ISCC.exe (Inno Setup 6) not found. Install it from https://jrsoftware.org or set ISCC.');
   const script = path.join(root, 'installer', 'octosuite.iss');
