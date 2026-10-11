@@ -92,6 +92,16 @@ describe('browser entry UI', () => {
     expect(launcherCss).toContain('z-index:0; pointer-events:none; opacity:.38');
     expect(launcherCss).toContain('@media (prefers-reduced-motion: reduce) { body::before, body::after { animation:none !important; } }');
   });
+  it('adds calm art-directed effects for sunset, copper, frost, blue, and both winter themes', () => {
+    for (const theme of ['sunset', 'copper', 'liquidGlass', 'frutigerAero', 'winterNight', 'winterDay']) {
+      expect(launcherCss).toContain(`data-app-theme="${theme}"`);
+    }
+    for (const animation of ['theme-sunset-dust', 'theme-copper-embers', 'theme-frost-crystals', 'theme-lightblue-motes', 'theme-night-atmosphere', 'theme-day-frost']) {
+      expect(launcherCss).toContain(`@keyframes ${animation}`);
+    }
+    expect(launcherCss).toContain('theme-frost-crystals 54s');
+    expect(launcherCss).toContain('theme-night-atmosphere 64s');
+  });
 
   it('restores the selected profile folder after the launcher is reopened', () => {
     expect(launcherProfiles).toContain("const ACTIVE_FOLDER_KEY = 'octo.active-profile-folder';");
