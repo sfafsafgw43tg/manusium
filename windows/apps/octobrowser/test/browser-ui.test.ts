@@ -74,13 +74,15 @@ describe('browser entry UI', () => {
 
   it('renders both winter themes as sparse, soft, breezy snowfall', () => {
     expect(launcherCss).toContain(':root[data-app-theme="winterNight"] body::before,\n:root[data-app-theme="winterDay"] body::before');
-    expect(launcherCss).toContain('seasonal-snowfall-random 47s linear infinite');
+    expect(launcherCss).toContain('seasonal-snowfall-random 83s linear infinite alternate');
     expect(launcherCss).toContain('opacity:.38');
     expect(launcherCss).toContain('filter:blur(.3px)');
     expect(launcherCss).not.toContain('data:image/svg+xml');
     expect(launcherCss).toContain('background-size:347px 521px, 613px 887px, 907px 479px');
     expect(launcherCss).toContain('29%');
     expect(launcherCss).toContain('57%');
+    expect(launcherCss).toContain('opacity:.5');
+    expect(launcherCss).toContain('82%');
   });
   it('adds sparse, theme-specific background effects behind the six requested palettes', () => {
     for (const theme of ['amethyst', 'purple', 'forest', 'emerald', 'olive', 'rose']) {
