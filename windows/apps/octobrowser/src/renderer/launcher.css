@@ -594,6 +594,22 @@ progress { width: 100%; accent-color: var(--accent); }
 /* ------------------------------------------------------------ modal */
 .modal { position: fixed; inset: 0; background: #000b; display: grid; place-items: center; z-index: 30; padding: 16px; }
 .modal-box { width: min(540px, 94vw); max-height: 90vh; overflow-y: auto; background: var(--panel); border: 1px solid var(--line2); border-radius: 12px; padding: 20px 24px; display: flex; flex-direction: column; gap: var(--gap); box-shadow: 0 16px 50px #000; }
+.startup-overlay { position: fixed; inset: 0; z-index: 35; display: grid; place-items: center; padding: 18px; background: rgb(8 5 18 / 78%); }
+.startup-overlay.hidden { display: none; }
+.startup-panel { width: min(390px, 92vw); min-height: 238px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 34px 28px 30px; color: #fff; text-align: center; border: 1px solid rgb(255 255 255 / 22%); border-radius: 22px; background: linear-gradient(145deg, #5524a5 0%, #8d2fc1 52%, #d32b9e 100%); box-shadow: 0 22px 70px rgb(17 3 39 / 62%), inset 0 1px rgb(255 255 255 / 20%); animation: startup-panel-in .22s var(--mo-ease) both; }
+.startup-brand { display: flex; align-items: center; gap: 12px; color: #fff; font-size: 24px; font-weight: 800; letter-spacing: -.03em; }
+.startup-brand .brand-mark { color: #fff; filter: drop-shadow(0 4px 8px rgb(28 4 58 / 30%)); }
+.startup-progress { display: inline-flex; align-items: center; gap: 10px; min-height: 28px; }
+.startup-status { margin: 0; font-size: 14px; font-weight: 650; letter-spacing: .01em; }
+.startup-spinner { width: 16px; height: 16px; border: 2px solid rgb(255 255 255 / 34%); border-top-color: #fff; border-radius: 50%; animation: startup-spin .72s linear infinite; }
+.startup-spinner.hidden { display: none; }
+.startup-error { max-width: 310px; margin: -4px 0 0; color: #ffe8f7; font-size: 12px; line-height: 1.45; }
+.startup-retry { min-width: 112px; border-color: rgb(255 255 255 / 34%); background: rgb(255 255 255 / 14%); color: #fff; }
+.startup-retry:hover, .startup-retry:focus-visible { background: rgb(255 255 255 / 24%); border-color: rgb(255 255 255 / 62%); }
+@keyframes startup-spin { to { transform: rotate(360deg); } }
+@keyframes startup-panel-in { from { opacity: 0; transform: translateY(5px) scale(.985); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .startup-panel { animation: none; } .startup-spinner { animation: none; border-top-color: #fff; } }
+@media (max-width: 480px) { .startup-panel { min-height: 210px; padding: 28px 20px 24px; border-radius: 18px; } .startup-brand { font-size: 21px; } }
 .modal-box.wide { width: min(780px, 95vw); }
 .modal-box.xwide { width: min(1040px, 96vw); }
 /* A deliberately plain two-choice close confirmation. It is renderer UI, not

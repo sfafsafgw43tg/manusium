@@ -8,7 +8,7 @@ import { api } from '@octo/shell/renderer/bridge';
 import { h, t } from '@octo/shell/renderer/i18n-client';
 import { icon } from '@octo/shell/renderer/icons';
 import { phraseDisplay, phraseEntry } from '@octo/shell/renderer/phrase';
-import { Profile, run, toast, modal, closeModal, field, toggle, tv, inkbrowserLaunchMessage } from './launcher-ui';
+import { Profile, beginStartupScreen, finishStartupScreen, run, toast, modal, closeModal, field, toggle, tv, inkbrowserLaunchMessage } from './launcher-ui';
 
 interface IsoItem { labelKey: string; value: string; state: 'allowed' | 'blocked' | 'limited' | 'info' }
 
@@ -176,21 +176,22 @@ export async function preLaunch(p: Profile): Promise<void> {
     const err = h('div', { class: 'err' });
     const ok = h('button', { class: 'btn primary' }, icon('play', 15), ` ${t('profile.launch')}`);
     const go = async (forceRestricted = false) => {
+      if (!beginStartupScreen(() => { void go(forceRestricted); })) return;
       ok.disabled = true;
       const r = await run(api.invoke<{ status: string; detail?: string }>('mgr:launch', p.id, { passphrase: entry?.value(), forceRestricted }));
       ok.disabled = false;
-      if (!r) return;
+      if (!r) { finishStartupScreen(false, t('startup.failedDetail')); return; }
       switch (r.status) {
-        case 'started': case 'focused': case 'wsb-launched': case 'tor-launched': closeModal(); toast(t(`launch.status.${r.status}`), 'ok'); break;
-        case 'need-passphrase': err.textContent = t('launch.passphraseNeeded'); entry?.focus(); break;
-        case 'wrong-passphrase': err.textContent = t('unlock.wrong'); entry?.setError(t('unlock.wrong')); entry?.focus(); break;
-        case 'inkbrowser-launched': closeModal(); toast(t('launch.status.inkbrowser-launched'), 'ok'); break;
-        case 'firefox-launched': closeModal(); toast(t('launch.status.firefox-launched'), 'ok'); break;
-        case 'firefox-engine-unavailable': err.textContent = t('launch.status.firefox-engine-unavailable'); break;
-        case 'inkbrowser-missing': case 'inkbrowser-conflict': err.textContent = inkbrowserLaunchMessage(r.status, r.detail); break;
-        case 'tor-missing': torMissing(); break;
-        case 'wsb-unavailable': wsbUnavailable(p); break;
-        default: err.textContent = r.status;
+        case 'started': case 'focused': case 'wsb-launched': case 'tor-launched': finishStartupScreen(true); closeModal(); toast(t(`launch.status.${r.status}`), 'ok'); break;
+        case 'need-passphrase': finishStartupScreen(true); err.textContent = t('launch.passphraseNeeded'); entry?.focus(); break;
+        case 'wrong-passphrase': finishStartupScreen(true); err.textContent = t('unlock.wrong'); entry?.setError(t('unlock.wrong')); entry?.focus(); break;
+        case 'inkbrowser-launched': finishStartupScreen(true); closeModal(); toast(t('launch.status.inkbrowser-launched'), 'ok'); break;
+        case 'firefox-launched': finishStartupScreen(true); closeModal(); toast(t('launch.status.firefox-launched'), 'ok'); break;
+        case 'firefox-engine-unavailable': finishStartupScreen(false, t('launch.status.firefox-engine-unavailable')); err.textContent = t('launch.status.firefox-engine-unavailable'); break;
+        case 'inkbrowser-missing': case 'inkbrowser-conflict': { const message = inkbrowserLaunchMessage(r.status, r.detail); finishStartupScreen(false, message); err.textContent = message; break; }
+        case 'tor-missing': finishStartupScreen(true); torMissing(); break;
+        case 'wsb-unavailable': finishStartupScreen(true); wsbUnavailable(p); break;
+        default: finishStartupScreen(false, r.status); err.textContent = r.status;
       }
     };
     ok.onclick = () => void go();

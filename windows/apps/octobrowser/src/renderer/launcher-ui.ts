@@ -231,7 +231,71 @@ export async function run<T>(p: Promise<T>, okKey?: string): Promise<T | undefin
     return undefined;
   }
 }
+// ------------------------------------------------------------------ startup overlay
+let startupOverlay: HTMLElement | null = null;
+let startupActive = false;
+let startupRetry: (() => void) | null = null;
 
+/** Show a lightweight startup surface only while a real profile launch is pending. */
+export function beginStartupScreen(retry: () => void): boolean {
+  if (startupActive) return false;
+  startupActive = true;
+  startupRetry = retry;
+  if (!startupOverlay) {
+    const panel = h('div', { class: 'startup-panel', role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true' });
+    const mark = h('div', { class: 'startup-brand' }, brandLogo(58), h('span', { text: 'Octo.su' }));
+    const spinner = h('span', { class: 'startup-spinner', 'aria-hidden': 'true' });
+    const status = h('p', { class: 'startup-status', text: t('startup.starting') });
+    const error = h('p', { class: 'startup-error', role: 'alert', hidden: true });
+    const retryButton = h('button', { class: 'btn startup-retry', type: 'button', text: t('startup.retry'), hidden: true }) as HTMLButtonElement;
+    retryButton.onclick = () => {
+      if (!startupRetry || startupActive) return;
+      const next = startupRetry;
+      startupOverlay?.classList.remove('is-error');
+      spinner.classList.remove('hidden');
+      status.textContent = t('startup.starting');
+      error.hidden = true;
+      retryButton.hidden = true;
+      startupRetry = next;
+      startupActive = true;
+      next();
+    };
+    panel.append(mark, h('div', { class: 'startup-progress' }, spinner, status), error, retryButton);
+    startupOverlay = h('div', { class: 'startup-overlay', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('startup.title') }, panel);
+    document.body.append(startupOverlay);
+  } else {
+    startupOverlay.classList.remove('is-error', 'hidden');
+    const status = startupOverlay.querySelector<HTMLElement>('.startup-status');
+    const error = startupOverlay.querySelector<HTMLElement>('.startup-error');
+    const retryButton = startupOverlay.querySelector<HTMLButtonElement>('.startup-retry');
+    const spinner = startupOverlay.querySelector<HTMLElement>('.startup-spinner');
+    if (status) status.textContent = t('startup.starting');
+    if (error) error.hidden = true;
+    if (retryButton) retryButton.hidden = true;
+    spinner?.classList.remove('hidden');
+  }
+  return true;
+}
+
+/** Finish the startup surface on the actual launch result; failures remain retryable. */
+export function finishStartupScreen(ok: boolean, message = ''): void {
+  startupActive = false;
+  if (!startupOverlay) return;
+  if (ok) {
+    startupOverlay.classList.add('hidden');
+    startupRetry = null;
+    return;
+  }
+  startupOverlay.classList.add('is-error');
+  startupOverlay.classList.remove('hidden');
+  startupOverlay.querySelector<HTMLElement>('.startup-spinner')?.classList.add('hidden');
+  const status = startupOverlay.querySelector<HTMLElement>('.startup-status');
+  const error = startupOverlay.querySelector<HTMLElement>('.startup-error');
+  const retryButton = startupOverlay.querySelector<HTMLButtonElement>('.startup-retry');
+  if (status) status.textContent = t('startup.failed');
+  if (error) { error.textContent = message || t('startup.failedDetail'); error.hidden = false; }
+  if (retryButton) retryButton.hidden = false;
+}
 // ------------------------------------------------------------------ modal
 
 let modalOnClose: (() => void) | null = null;

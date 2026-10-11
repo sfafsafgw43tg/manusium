@@ -13,7 +13,7 @@ import { chromiumUserAgent } from '@octo/core/user-agent';
 import { browserEngineFor } from '@octo/core/inkbrowser';
 import {
   $, S, Profile, FpOs, Fingerprint, run, toast, errText, modal, closeModal, confirmDialog, popupMenu, MenuItem, osIcon, osLabel,
-  fmtDuration, worktime, proxyText, checkLine, field, input, select,
+  fmtDuration, worktime, proxyText, checkLine, field, input, select, beginStartupScreen, finishStartupScreen,
 } from './launcher-ui';
 import { inkbrowserLaunchMessage } from './launcher-ui';
 import { openEditor } from './launcher-editor';
@@ -172,17 +172,18 @@ function visibleProfiles(): Profile[] {
 /** START: launch directly; dialogs only when something is needed (passphrase, Tor Browser...). */
 export async function startProfile(p: Profile): Promise<void> {
   if (p.encrypted && p.sealed) { void preLaunch(p); return; }
+  if (!beginStartupScreen(() => { void startProfile(p); })) return;
   const r = await run(api.invoke<{ status: string; detail?: string }>('mgr:launch', p.id, {}));
-  if (!r) return;
+  if (!r) { finishStartupScreen(false, t('startup.failedDetail')); return; }
   switch (r.status) {
-    case 'started': case 'focused': case 'wsb-launched': case 'tor-launched': case 'inkbrowser-launched': case 'firefox-launched': break;
-    case 'need-passphrase': case 'wrong-passphrase': void preLaunch(p); break;
-    case 'tor-missing': torMissing(); break;
-    case 'wsb-unavailable': wsbUnavailable(p); break;
-    case 'inkbrowser-missing': case 'inkbrowser-conflict': toast(inkbrowserLaunchMessage(r.status, r.detail), 'err'); break;
-    case 'firefox-engine-unavailable': toast(`${t('launch.status.firefox-engine-unavailable')} (${r.detail ?? 'runtime-unavailable'})`, 'err'); break;
-    case 'firefox-launch-failed': toast(t('launch.status.firefox-launch-failed'), 'err'); break;
-    default: toast(r.status, 'err');
+    case 'started': case 'focused': case 'wsb-launched': case 'tor-launched': case 'inkbrowser-launched': case 'firefox-launched': finishStartupScreen(true); break;
+    case 'need-passphrase': case 'wrong-passphrase': finishStartupScreen(true); void preLaunch(p); break;
+    case 'tor-missing': finishStartupScreen(true); torMissing(); break;
+    case 'wsb-unavailable': finishStartupScreen(true); wsbUnavailable(p); break;
+    case 'inkbrowser-missing': case 'inkbrowser-conflict': finishStartupScreen(false, inkbrowserLaunchMessage(r.status, r.detail)); toast(inkbrowserLaunchMessage(r.status, r.detail), 'err'); break;
+    case 'firefox-engine-unavailable': finishStartupScreen(false, t('launch.status.firefox-engine-unavailable')); toast(`${t('launch.status.firefox-engine-unavailable')} (${r.detail ?? 'runtime-unavailable'})`, 'err'); break;
+    case 'firefox-launch-failed': finishStartupScreen(false, t('launch.status.firefox-launch-failed')); toast(t('launch.status.firefox-launch-failed'), 'err'); break;
+    default: finishStartupScreen(false, r.status); toast(r.status, 'err');
   }
 }
 
