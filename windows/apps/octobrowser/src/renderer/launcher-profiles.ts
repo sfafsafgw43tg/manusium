@@ -23,6 +23,20 @@ import { preLaunch, duplicateDialog, exportDialog, importDialog, encryptionDialo
 // ------------------------------------------------------------------ folders
 
 const FOLDERS_KEY = 'octo.folders';
+const ACTIVE_FOLDER_KEY = 'octo.active-profile-folder';
+
+function storedActiveFolder(): string {
+  try { return localStorage.getItem(ACTIVE_FOLDER_KEY) ?? ''; } catch { return ''; }
+}
+
+function saveActiveFolder(folder: string): void {
+  try { localStorage.setItem(ACTIVE_FOLDER_KEY, folder); } catch { /* storage may be unavailable */ }
+}
+
+// Restore the last profile folder before the first launcher paint. The value is
+// validated against allFolders() when the folder rail is rendered, so deleted
+// or renamed folders never leave the profile list stuck on a phantom folder.
+S.folder = storedActiveFolder();
 
 function storedFolders(): string[] {
   try { return (JSON.parse(localStorage.getItem(FOLDERS_KEY) ?? '[]') as unknown[]).map(String); } catch { return []; }
@@ -50,7 +64,7 @@ function folderDialog(rename?: string): void {
       if (rename) {
         const ids = S.profiles.filter((p) => p.folder === rename).map((p) => p.id);
         if (ids.length) await run(api.invoke('mgr:profile-bulk', 'folder', ids, v));
-        if (S.folder === rename) S.folder = v;
+        if (S.folder === rename) { S.folder = v; saveActiveFolder(v); }
       }
       closeModal();
       S.render();
@@ -72,7 +86,7 @@ function folderMenu(anchor: HTMLElement, f: string): void {
         const ids = S.profiles.filter((p) => p.folder === f).map((p) => p.id);
         if (ids.length) await api.invoke('mgr:profile-bulk', 'folder', ids, '');
         saveFolders(storedFolders().filter((x) => x !== f));
-        if (S.folder === f) S.folder = '';
+        if (S.folder === f) { S.folder = ''; saveActiveFolder(''); }
         S.render();
         return true;
       }, 'toast.saved'),
@@ -89,6 +103,10 @@ async function chooseFolderDirectory(folder: string): Promise<void> {
 
 export function renderFolders(side: HTMLElement): void {
   clear(side);
+  if (S.folder && S.folder !== '__none' && !allFolders().includes(S.folder)) {
+    S.folder = '';
+    saveActiveFolder('');
+  }
   const search = input('', { placeholder: t('ui.searchFolder'), 'aria-label': t('ui.searchFolder') });
   const add = h('button', { class: 'icon-btn accent', title: t('ui.folderNew'), 'aria-label': t('ui.folderNew') }, icon('folderPlus', 20));
   add.onclick = () => folderDialog();
@@ -98,7 +116,7 @@ export function renderFolders(side: HTMLElement): void {
     const q = search.value.trim().toLowerCase();
     const item = (key: string, label: string, count: number, ic: string) => {
       const b = h('button', { class: `folder${S.folder === key ? ' on' : ''}`, role: 'listitem' }, icon(ic, 16), h('span', { class: 'grow ell', text: label }), h('span', { class: 'count', text: String(count) }));
-      b.onclick = () => { S.folder = key; S.selected.clear(); S.render(); };
+      b.onclick = () => { S.folder = key; saveActiveFolder(key); S.selected.clear(); S.render(); };
       if (key && key !== '__none') {
         const more = h('span', { class: 'folder-more', title: t('common.more'), role: 'button', tabindex: '0' }, icon('dots', 16));
         more.onclick = (e) => { e.stopPropagation(); folderMenu(more, key); };

@@ -79,6 +79,14 @@ describe('browser entry UI', () => {
     expect(launcherCss).toContain('67%');
   });
 
+  it('restores the selected profile folder after the launcher is reopened', () => {
+    expect(launcherProfiles).toContain("const ACTIVE_FOLDER_KEY = 'octo.active-profile-folder';");
+    expect(launcherProfiles).toContain('S.folder = storedActiveFolder();');
+    expect(launcherProfiles).toContain('saveActiveFolder(key);');
+    expect(launcherProfiles).toContain("saveActiveFolder('');");
+    expect(launcherProfiles).toContain('!allFolders().includes(S.folder)');
+  });
+
   it('skips close confirmation when idle and includes active profiles when prompting', () => {
     expect(manager).toContain('if (runningIds.size === 0) { this.beginAppQuit(); return; }');
     expect(manager).toContain("win.webContents.send('mgr:app-close-request', {");
