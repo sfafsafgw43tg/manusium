@@ -23,7 +23,8 @@
 #   reset-profile   [-Profile name|id]                     (reset-profile.bat)
 #   backup-profile  [-Profile name|id] [-Destination dir]  (backup-profile.bat)
 #   restore-profile [-Profile name|id] [-Archive file.zip] (restore-profile.bat)
-# Common switches: -Yes (do not ask for confirmation), -Background (complete hidden setup), -Lang en|pl
+# Common switches: -Yes (do not ask for confirmation), -Background (complete hidden setup),
+# -SkipDependencies (do not run npm install/ci), -Lang en|pl
 #
 # Security rules implemented here:
 #   * paths are always quoted / passed as objects (spaces, Polish characters, '&', '!')
@@ -52,6 +53,9 @@ param(
   # failures are written to the normal installer log; UAC dialogs remain visible when Windows
   # requires approval for Visual Studio, drivers, or another privileged installer.
   [switch]$Background,
+  # Skip npm install/ci entirely. This is useful for an already-installed checkout
+  # when the package registry is unavailable; the final readiness/build checks remain.
+  [switch]$SkipDependencies,
   # Internal marker added by elevate-installer.ps1; the elevated batch carries it through
   # hidden/background relaunches so elevation is never requested a second time.
   [switch]$Elevated,
@@ -2274,16 +2278,21 @@ function New-DesktopShortcut {
 # start hooks run the same script, so every way of opening the app passes
 # through it. An installed copy has no sources to check and returns at once.
 function Invoke-EnsureDependencies {
+  if ($SkipDependencies) {
+    Warn 'Skipping npm dependency installation at the user request (-SkipDependencies).'
+    return $true
+  }
   $ensureScript = Join-Path $InstallRoot 'tools\ensure-deps.mjs'
   if (-not (Test-Path -LiteralPath $ensureScript)) { return $true }
   $nodeExe = Resolve-Tool 'node'
-  if (-not $nodeExe) { Fail (T 'depsNodeMissing') }
+  if (-not $nodeExe) { Warn (T 'depsNodeMissing'); return $false }
   Say (T 'depsChecking') 'Cyan'
   $r = Invoke-Native $nodeExe @($ensureScript) $InstallRoot
   if ($r.code -ne 0) {
     # Keep the tail of the output in the log so a failed install can be diagnosed later.
     foreach ($line in @($r.text -split "`r?`n" | Select-Object -Last 20)) { Write-Log 'error' $line }
-    Fail (T 'depsFailed' $r.code)
+    Warn (T 'depsFailed' $r.code)
+    return $false
   }
   return $true
 }

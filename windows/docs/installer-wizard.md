@@ -70,7 +70,7 @@ checkout is runnable. Native Chromium staging is optional: a missing toolchain, 
 failed runtime verification is shown as a warning and the installer continues with Electron.
 The steps after a fatal failure are shown as skipped. Firefox and Android are
 not part of this pass, so their unavailable runtimes do not make a Chromium installation fail. A
-failed required step (project dependencies or the build)
+failed required step (the build)
 makes the result **failed**, and the page names the step. A failed optional step gives
 **completed with warnings**, and the page names the step. The result is **completed** only when
 every required step succeeds, the work process reports success with exit code 0, and the apps
@@ -91,6 +91,16 @@ the success line after a failed required step. The console command exits 0 for a
 - Closing the window during an installation asks the same question.
 - A dependency install that was stopped leaves no install record, so the next start reinstalls
   the packages (see `docs/dependencies.md`).
+
+For an already-built checkout whose npm registry is unavailable, run:
+
+```bat
+install.bat -SkipDependencies
+```
+
+This bypasses both `npm install` and `npm ci`. It does not fabricate missing
+Electron files or application bundles; a fresh incomplete checkout still fails
+the final readiness check instead of being reported as runnable.
 
 ## Logs
 

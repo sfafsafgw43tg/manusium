@@ -270,6 +270,11 @@ describe('classic visible installer launch', () => {
     expect(installBat).toContain('if not defined OCTO_NOPAUSE pause');
   });
 
+  it('supports explicitly skipping npm dependency installation', () => {
+    expect(source).toContain('[switch]$SkipDependencies');
+    expect(source).toContain('Skipping npm dependency installation at the user request (-SkipDependencies).');
+  });
+
   it('hides any console the window is attached to, and restores it', () => {
     expect(uiSource).toContain('GetConsoleWindow');
     expect(uiSource).toContain('function Set-ConsoleVisible');
