@@ -72,14 +72,15 @@ describe('browser entry UI', () => {
     expect(browser).toContain('dismissAllPopouts();');
   });
 
-  it('renders Winter Night as layered falling dots while keeping the seasonal drift system', () => {
-    expect(launcherCss).toContain('seasonal-snow-drift');
-    expect(launcherCss).toContain(':root[data-app-theme="winterNight"] body::before { opacity:.64; background-image:radial-gradient');
-    expect(launcherCss).toContain('seasonal-snow-dots');
-    expect(launcherCss).toContain('data:image/svg+xml');
-    expect(launcherCss).toContain('background-size:96px 96px, 151px 151px, 73px 73px');
-    expect(launcherCss).toContain('32%');
-    expect(launcherCss).toContain('67%');
+  it('renders both winter themes as sparse, soft, breezy snowfall', () => {
+    expect(launcherCss).toContain(':root[data-app-theme="winterNight"] body::before,\n:root[data-app-theme="winterDay"] body::before');
+    expect(launcherCss).toContain('seasonal-snowfall 30s linear infinite');
+    expect(launcherCss).toContain('opacity:.42');
+    expect(launcherCss).toContain('filter:blur(.32px)');
+    expect(launcherCss).not.toContain('data:image/svg+xml');
+    expect(launcherCss).toContain('background-size:43px 57px, 79px 107px, 127px 149px');
+    expect(launcherCss).toContain('34%');
+    expect(launcherCss).toContain('68%');
   });
 
   it('restores the selected profile folder after the launcher is reopened', () => {
