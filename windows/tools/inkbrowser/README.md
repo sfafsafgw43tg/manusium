@@ -16,10 +16,14 @@ ship build tools or source with the browser. The Windows build orchestrator is
 
 ## Stage a build (Windows build machine)
 
-The normal Windows package path is a **source build**, not Chrome for Testing:
+The Windows **developer/CI** package path is a **source build**, not Chrome for Testing.
+Normal users do not run this workflow and do not install Visual Studio.
 
 ```
 npm run build:chromium:windows
+npm run verify:chromium:windows
+npm run dist
+npm run installer
 # Optional overrides:
 node tools/build-chromium-source.mjs --source C:\src\chromium\src --out resources\engines\chromium\155.0.8059.39
 # exit 0 valid, 1 layout failure, 2 usage or I/O error
@@ -34,8 +38,10 @@ The resulting `runtime.json` records the Chromium revision, overlay hash, GN arg
 hash, and `distribution: source-built`. A Chrome for Testing archive or a renamed
 vendor executable is rejected by Windows discovery and verification.
 
-The destination must be empty or new. Without `--rcedit` the stage still runs, and it
-warns that the icon was not embedded.
+The release workflow runs the source build and verifier before `npm run dist`; Electron Builder
+then copies `resources/engines` into the user installer through `extraResources`. The user-side
+`install.bat` only validates that bundled runtime and never invokes this script. The destination
+must be empty or new. Without `--rcedit` the stage still runs, and it warns that the icon was not embedded.
 
 ## Check a tree
 

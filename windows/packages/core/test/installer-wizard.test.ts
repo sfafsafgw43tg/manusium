@@ -181,7 +181,7 @@ describe('the options reach the real installation', () => {
 });
 
 describe('steps and the console installer', () => {
-  it('builds Windows Chromium from source and leaves Firefox deferred', () => {
+  it('uses bundled Windows Chromium and leaves source compilation to CI', () => {
     const chromium = fs.readFileSync(path.join(root, 'tools', 'build-chromium-source.mjs'), 'utf8');
     expect(chromium).toContain('fetching Chromium source');
     expect(chromium).toContain('autoninja');
@@ -216,6 +216,10 @@ describe('steps and the console installer', () => {
     expect(chromium).toContain("distribution: 'source-built'");
     expect(chromium).not.toContain('chrome-for-testing-public');
     const runtimeStep = functionBody(octo, 'Get-SetupSteps');
+    expect(runtimeStep).toContain('bundled source-built Chromium runtime');
+    expect(runtimeStep).toContain('does not compile Chromium or install Visual Studio');
+    expect(runtimeStep).not.toContain('Ensure-ChromiumBuildToolchain');
+    expect(runtimeStep).not.toContain("Invoke-Npm @('run', $stageChromium)");
     expect(runtimeStep).toContain(String.raw`tools\verify-native-engines.mjs`);
     expect(runtimeStep).toContain("'--allow-missing-firefox'");
     expect(runtimeStep).toContain('Native Chromium verification failed');
@@ -226,7 +230,6 @@ describe('steps and the console installer', () => {
     expect(octo).toContain('Get-FileHash -LiteralPath $exe -Algorithm SHA256');
     expect(runtimeStep).toContain("Test-NativeRuntimeReady 'chromium' $target");
     expect(octo).toContain('function Ensure-ChromiumBuildToolchain');
-    expect(runtimeStep).toContain('Ensure-ChromiumBuildToolchain');
     expect(octo).toContain("Invoke-Native $gclient @('--version') $depot");
     expect(octo).not.toContain('Invoke-Native $gclient @() $depot');
     expect(octo).toContain('function Normalize-CmdlineToolsLayout');
@@ -266,11 +269,9 @@ describe('steps and the console installer', () => {
     expect(octo).toContain('$minimumChromiumFreeBytes = 100GB');
     expect(octo).toContain("$env:OCTO_CHROMIUM_SOURCE = $sourceRoot");
     expect(octo).toContain('OCTO_CHROMIUM_SOURCE');
-    expect(octo).toContain("'depot-tools.allowGlobalGitConfig', 'false'");
-    expect(octo).toContain("$env:DEPOT_TOOLS_UPDATE = '0'");
-    expect(octo).toContain("GetEnvironmentVariable('DEPOT_TOOLS_UPDATE', 'Process')");
     const runtimeBlock = octo.slice(octo.indexOf("@{ Key = 'stepRuntimes'; Required"), octo.indexOf("@{ Key = 'stepShortcut'; Required"));
-    expect(runtimeBlock.indexOf("$env:DEPOT_TOOLS_UPDATE = '0'")).toBeLessThan(runtimeBlock.indexOf('(Ensure-ChromiumBuildToolchain)'));
+    expect(runtimeBlock).not.toContain('Ensure-ChromiumBuildToolchain');
+    expect(runtimeBlock).not.toContain('DEPOT_TOOLS_UPDATE');
   });
 
   it('the Chromium installer steps keep their order', () => {

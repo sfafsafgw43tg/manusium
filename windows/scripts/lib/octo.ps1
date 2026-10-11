@@ -2339,25 +2339,15 @@ function Get-SetupSteps {
         $target = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'win32-arm64' } else { 'win32-x64' }
         if ($env:OS -ne 'Windows_NT') { $target = 'linux-x64' }
         if ($target -notin @('win32-x64', 'linux-x64')) { Warn "Native runtimes are not staged for $target"; return $false }
-        $stageChromium = if ($target -eq 'win32-x64') { 'stage:chromium:windows' } else { 'stage:chromium' }
         try {
-          # Do not rebuild or overwrite an already verified runtime on every install.
-          # Windows Chromium is source-built only; the stage script deliberately rejects
-          # Chrome for Testing archives, so a missing runtime must remain a hard failure.
+          # Normal users receive Chromium prebuilt inside the signed installer.
+          # Never invoke Visual Studio, depot_tools, fetch, gclient, or a local
+          # source build from install.bat. The source build is developer/CI-only.
           if (-not (Test-NativeRuntimeReady 'chromium' $target)) {
-            $previousDepotToolsUpdate = [Environment]::GetEnvironmentVariable('DEPOT_TOOLS_UPDATE', 'Process')
-            try {
-              # Set this before Ensure-ChromiumBuildToolchain: its gclient
-              # bootstrap is also capable of self-updating depot_tools.
-              $env:DEPOT_TOOLS_UPDATE = '0'
-              if ($target -eq 'win32-x64' -and -not (Ensure-ChromiumBuildToolchain)) { return $false }
-              Invoke-Npm @('run', $stageChromium)
-            } finally {
-              if ($null -eq $previousDepotToolsUpdate) { Remove-Item Env:DEPOT_TOOLS_UPDATE -ErrorAction SilentlyContinue }
-              else { $env:DEPOT_TOOLS_UPDATE = $previousDepotToolsUpdate }
-            }
+            Warn 'The bundled source-built Chromium runtime is missing or failed verification. This installer does not compile Chromium or install Visual Studio; rebuild the signed Windows release package on the CI/build machine.'
+            return $false
           } else {
-            Say 'Verified source-built Chromium runtime already present; reusing it.' 'Green'
+            Say 'Verified bundled source-built Chromium runtime; no local compiler setup is required.' 'Green'
           }
           $nodeExe = Resolve-Tool 'node'
           if (-not $nodeExe) { throw 'Node.js is unavailable for native runtime verification.' }

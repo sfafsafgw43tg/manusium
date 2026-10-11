@@ -2,7 +2,7 @@
 
 `scripts\install.bat` and `scripts\first-install.bat` open the setup wizard in a source
 checkout. The default pass installs only what the Chromium desktop app needs: Node.js and git,
-project dependencies, the source-built Chromium runtime, the optional desktop shortcut, and the
+project dependencies, the prebuilt Chromium runtime bundled in a release installer, the optional desktop shortcut, and the
 application build. Android/media plugins and Firefox are separate feature flows and are skipped
 when unavailable; they are not allowed to block the desktop app. The wizard is built with Windows Forms in Windows PowerShell 5.1, which Windows
 10 and 11 include, so there is nothing to install first. It uses a black classic-installer
@@ -50,14 +50,15 @@ Where Windows Forms is missing (Server Core) the console path is used automatica
 
 ## What the steps do
 
-Five steps, in this order. This install pass prepares the Chromium source build only; Android/media
-prerequisites and Firefox staging remain separate feature flows and are not downloaded here.
+Five steps, in this order. This install pass validates the prebuilt Chromium runtime shipped in
+the release package. It does not install Visual Studio, depot_tools, Python, or Chromium source
+build prerequisites. Android/media prerequisites and Firefox staging remain separate feature flows.
 
 | Step | Required | If it fails | What it does |
 |---|---|---|---|
 | Node.js and git | yes | **Stops the run**: the later steps are skipped | Installs Node.js 22.12+ and git (winget or the vendor installer) |
 | Project dependencies | no | Completed with warnings | Attempts `npm install` and clean `npm ci` fallback; skips the step when npm fails, but the final readiness check still refuses to claim a fresh/incomplete checkout is runnable |
-| Native Chromium source build | no | Completed with warnings | Attempts depot_tools/Visual Studio setup, checks out the pinned Chromium source, builds it, and verifies the source-built runtime manifest and executable hash; Electron remains available if this optional step fails |
+| Bundled Chromium runtime | no | Completed with warnings | Verifies the packaged source-built runtime manifest and executable hash; it never installs Visual Studio or compiles Chromium on the user machine |
 | Desktop shortcut | no | Completed with warnings | Octo.su on the desktop |
 | Build | yes | **Stops the run** | `npm run build` for both applications |
 
@@ -66,8 +67,9 @@ prerequisites and Firefox staging remain separate feature flows and are not down
 Node.js/git and the application build stop the
 run when they fail. Project dependency installation is warning-only: npm failures are shown and
 the installer continues, but the final readiness check still refuses to claim a fresh/incomplete
-checkout is runnable. Native Chromium staging is optional: a missing toolchain, failed checkout, or
-failed runtime verification is shown as a warning and the installer continues with Electron.
+checkout is runnable. Native Chromium is produced before release by the Windows CI/build machine.
+A missing or failed bundled-runtime verification is shown as a warning and the installer continues
+with Electron; it never installs Visual Studio or performs a local Chromium source build.
 The steps after a fatal failure are shown as skipped. Firefox and Android are
 not part of this pass, so their unavailable runtimes do not make a Chromium installation fail. A
 failed required step (the build)

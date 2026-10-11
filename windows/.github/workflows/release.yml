@@ -42,8 +42,13 @@ jobs:
       - run: npm run test:native-firefox-packaged
 
   release:
-    runs-on: windows-latest
+    # A dedicated runner is required because a Chromium checkout/build needs
+    # substantially more disk than the hosted runner provides.
+    runs-on: [self-hosted, windows, x64, inkbrowser-chromium]
     timeout-minutes: 75
+    defaults:
+      run:
+        working-directory: windows
     env:
       CI: 'true'
     steps:
@@ -68,12 +73,30 @@ jobs:
       - run: npm test
       - run: npm run i18n:check
 
+      - name: Bootstrap depot_tools for the CI-only Chromium build
+        shell: pwsh
+        run: |
+          $depot = Join-Path $env:RUNNER_TEMP 'inkbrowser-depot_tools'
+          if (-not (Test-Path (Join-Path $depot 'fetch.bat'))) {
+            Remove-Item -LiteralPath $depot -Recurse -Force -ErrorAction SilentlyContinue
+            git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git $depot
+          }
+          if (-not (Test-Path (Join-Path $depot 'fetch.bat'))) { throw "depot_tools bootstrap failed: $depot" }
+          Add-Content $env:GITHUB_PATH $depot
+          Add-Content $env:GITHUB_ENV 'DEPOT_TOOLS_UPDATE=0'
+          Add-Content $env:GITHUB_ENV 'DEPOT_TOOLS_WIN_TOOLCHAIN=0'
+          if (-not $env:OCTO_CHROMIUM_SOURCE) { throw 'Set OCTO_CHROMIUM_SOURCE on the self-hosted runner to a fixed drive with at least 100 GB free.' }
+
       - name: Package both apps
         env:
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-        run: npm run dist
+        run: |
+          # Developer/CI-only step: users receive the resulting runtime in
+          # the installer and never compile Chromium locally.
+          npm run build:chromium:windows
+          npm run dist
 
       - name: Verify staged packaged Chromium runtime
         run: npm run test:native-packaged:windows
