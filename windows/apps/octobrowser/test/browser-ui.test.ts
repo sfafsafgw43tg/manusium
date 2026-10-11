@@ -15,6 +15,7 @@ const runtime = read('apps/octobrowser/src/main/runtime.ts');
 const windowController = read('apps/octobrowser/src/main/window.ts');
 const browserCss = read('apps/octobrowser/src/renderer/browser.css');
 const launcherProfiles = read('apps/octobrowser/src/renderer/launcher-profiles.ts');
+const launcherDialogs = read('apps/octobrowser/src/renderer/launcher-dialogs.ts');
 const launcher = read('apps/octobrowser/src/renderer/launcher.ts');
 const launcherUi = read('apps/octobrowser/src/renderer/launcher-ui.ts');
 const launcherCss = read('apps/octobrowser/src/renderer/launcher.css');
@@ -94,6 +95,22 @@ describe('browser entry UI', () => {
     expect(launcher).toContain('appBackground.openProfilesHint');
     expect(i18nEn).toContain("'appBackground.openProfiles':");
     expect(i18nPl).toContain("'appBackground.openProfiles':");
+  });
+
+  it('shows the Octo.su startup panel only around real profile launch work', () => {
+    expect(launcherUi).toContain('export function beginStartupScreen');
+    expect(launcherUi).toContain("role: 'dialog'");
+    expect(launcherUi).toContain("'aria-live': 'polite'");
+    expect(launcherUi).toContain('startupRetry');
+    expect(launcherUi).toContain('finishStartupScreen');
+    expect(launcherProfiles).toContain("beginStartupScreen(() => { void startProfile(p); })");
+    expect(launcherProfiles).toContain("finishStartupScreen(false, t('startup.failedDetail'))");
+    expect(launcherDialogs).toContain("beginStartupScreen(() => { void go(forceRestricted); })");
+    expect(launcherCss).toContain('.startup-overlay');
+    expect(launcherCss).toContain('.startup-spinner');
+    expect(launcherCss).toContain('@media (prefers-reduced-motion: reduce)');
+    expect(i18nEn).toContain("'startup.starting': 'Starting…'");
+    expect(i18nPl).toContain("'startup.starting': 'Uruchamianie…'");
   });
 
   it('exposes Chrome-first, Firefox-second, and lightweight Electron Base choices in the creator', () => {
