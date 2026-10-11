@@ -171,6 +171,16 @@ function engineResourceRoots(): string[] {
   return [...new Set([process.resourcesPath, path.join(process.cwd(), 'resources')])];
 }
 
+/** Find the verified Chromium runtime bundled with the app, if release packaging supplied it. */
+function bundledChromiumExecutable(version = DEFAULT_CHROMIUM_VERSION): string | null {
+  for (const resourcesPath of engineResourceRoots()) {
+    try {
+      return discoverEngineRuntime('chromium', { resourcesPath, version }).executablePath;
+    } catch { /* try the next trusted resource root */ }
+  }
+  return null;
+}
+
 function isCrossDeviceError(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false;
   const e = error as NodeJS.ErrnoException;
@@ -815,11 +825,11 @@ export class Manager {
       } catch (error) {
         // Development installations may still use the historical per-user
         // InkBrowser location. Packaged builds must provide runtime.json and
-        // therefore do not silently accept an arbitrary browser directory.
+        // must never silently accept an arbitrary browser directory.
         if (!(error instanceof EngineRunnerError) || error.code !== 'runtime-missing') throw error;
-        exe = findInkBrowser();
+        exe = app.isPackaged ? null : findInkBrowser();
       }
-      if (!exe) return { status: 'inkbrowser-missing' };
+      if (!exe) return { status: 'inkbrowser-missing', detail: 'bundled-runtime-missing' };
       const profileFolder = path.join(this.ctx.layout.profileEngineDir(p.id), 'inkbrowser-profile');
       prepareChromiumPrivacy(profileFolder, p.enginePrivacy.chromium);
       const debugPort = await this.freePort();
@@ -2341,7 +2351,7 @@ export class Manager {
       torBrowser: !!findTorBrowser(ctx.settings.load().tor.torBrowserPath),
       firefoxAvailable: firefoxAvailability(ctx.settings.load().firefox.firefoxPath).available
         || engineResourceRoots().some((resourcesPath) => !!discoverFirefoxRuntime(resourcesPath, path.join(ctx.layout.engine, 'runtimes', 'gecko'))),
-      inkbrowserInstalled: !!findInkBrowser(),
+      inkbrowserInstalled: Boolean(bundledChromiumExecutable() || (!app.isPackaged && findInkBrowser())),
       chromiumRuntimes: listInstalled(path.join(ctx.layout.engine, 'runtimes', 'chromium')),
       settings: ctx.settings.load(),
       searchEngines: Object.keys(SEARCH_ENGINES),

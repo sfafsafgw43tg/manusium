@@ -42,6 +42,13 @@ describe('launch order in the manager', () => {
     expect(src).toContain('profile.native-chromium-exited');
   });
 
+  it('uses the verified packaged runtime for health status', () => {
+    expect(src).toContain('function bundledChromiumExecutable');
+    expect(src).toContain('inkbrowserInstalled: Boolean(bundledChromiumExecutable()');
+    expect(src).toContain('exe = app.isPackaged ? null : findInkBrowser()');
+    expect(src).toContain("detail: 'bundled-runtime-missing'");
+  });
+
   it('moves profile directories across Windows drives with verified copy-then-delete semantics', () => {
     expect(src).toContain('function volumeRoot(value: string)');
     expect(src).toContain('const knownDifferentVolume = volumeRoot(source) !== volumeRoot(destination);');
