@@ -74,13 +74,13 @@ describe('browser entry UI', () => {
 
   it('renders both winter themes as sparse, soft, breezy snowfall', () => {
     expect(launcherCss).toContain(':root[data-app-theme="winterNight"] body::before,\n:root[data-app-theme="winterDay"] body::before');
-    expect(launcherCss).toContain('seasonal-snowfall 30s linear infinite');
-    expect(launcherCss).toContain('opacity:.42');
-    expect(launcherCss).toContain('filter:blur(.32px)');
+    expect(launcherCss).toContain('seasonal-snowfall-random 47s linear infinite');
+    expect(launcherCss).toContain('opacity:.38');
+    expect(launcherCss).toContain('filter:blur(.3px)');
     expect(launcherCss).not.toContain('data:image/svg+xml');
-    expect(launcherCss).toContain('background-size:43px 57px, 79px 107px, 127px 149px');
-    expect(launcherCss).toContain('34%');
-    expect(launcherCss).toContain('68%');
+    expect(launcherCss).toContain('background-size:347px 521px, 613px 887px, 907px 479px');
+    expect(launcherCss).toContain('29%');
+    expect(launcherCss).toContain('57%');
   });
   it('adds sparse, theme-specific background effects behind the six requested palettes', () => {
     for (const theme of ['amethyst', 'purple', 'forest', 'emerald', 'olive', 'rose']) {
@@ -101,6 +101,12 @@ describe('browser entry UI', () => {
     }
     expect(launcherCss).toContain('theme-frost-crystals 54s');
     expect(launcherCss).toContain('theme-night-atmosphere 64s');
+  });
+  it('allows selected atmospheric themes to show through large surfaces without weakening controls', () => {
+    expect(launcherCss).toContain(':root:is([data-app-theme="amethyst"], [data-app-theme="purple"], [data-app-theme="rose"], [data-app-theme="winterDay"]');
+    expect(launcherCss).toContain('background:color-mix(in srgb, var(--panel) 78%, transparent)');
+    expect(launcherCss).toContain('backdrop-filter:blur(11px) saturate(112%)');
+    expect(launcherCss).toContain('background-color:color-mix(in srgb, var(--bg2) 90%, transparent)');
   });
   it('adds restrained effects for spring, seaside, autumn, Valentine, Halloween, and Field Classic', () => {
     for (const theme of ['springBloom', 'summerSolstice', 'autumnHarvest', 'valentines', 'halloweenDay', 'halloweenNight', 'ink']) {
