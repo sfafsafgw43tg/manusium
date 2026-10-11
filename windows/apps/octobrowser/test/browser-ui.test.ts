@@ -133,6 +133,9 @@ describe('browser entry UI', () => {
 
   it('shows the themed startup panel only during app boot, never profile launch', () => {
     expect(launcherUi).toContain('export function beginStartupScreen');
+    expect(launcherUi).toContain('only while the launcher is booting');
+    expect(launcherUi).toContain("document.body.setAttribute('aria-busy', 'true')");
+    expect(launcherUi).toContain("document.body.setAttribute('aria-busy', 'false')");
     expect(launcherUi).toContain("role: 'dialog'");
     expect(launcherUi).toContain("'aria-live': 'polite'");
     expect(launcherUi).toContain('startupRetry');

@@ -236,11 +236,12 @@ let startupOverlay: HTMLElement | null = null;
 let startupActive = false;
 let startupRetry: (() => void) | null = null;
 
-/** Show a lightweight startup surface only while a real profile launch is pending. */
+/** Show a lightweight startup surface only while the launcher is booting. */
 export function beginStartupScreen(retry: () => void): boolean {
   if (startupActive) return false;
   startupActive = true;
   startupRetry = retry;
+  document.body.setAttribute('aria-busy', 'true');
   if (!startupOverlay) {
     const panel = h('div', { class: 'startup-panel', role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true' });
     const mark = h('div', { class: 'startup-brand' }, brandLogo(58), h('span', { text: 'Octo.su' }));
@@ -258,6 +259,7 @@ export function beginStartupScreen(retry: () => void): boolean {
       retryButton.hidden = true;
       startupRetry = next;
       startupActive = true;
+      document.body.setAttribute('aria-busy', 'true');
       next();
     };
     panel.append(mark, h('div', { class: 'startup-progress' }, spinner, status), error, retryButton);
@@ -290,6 +292,7 @@ export function refreshStartupScreen(): void {
 /** Finish the startup surface on the actual launch result; failures remain retryable. */
 export function finishStartupScreen(ok: boolean, message = ''): void {
   startupActive = false;
+  document.body.setAttribute('aria-busy', 'false');
   if (!startupOverlay) return;
   if (ok) {
     startupOverlay.classList.add('hidden');
