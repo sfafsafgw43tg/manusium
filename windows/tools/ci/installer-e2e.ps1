@@ -9,7 +9,8 @@
 #      in an ephemeral data folder; they must stay alive and log "app.start"
 #   5. octobrowser:// registration, then silent uninstall removes files and the handler
 #
-# Prerequisites: npm run dist:dir, npm run installer, sign-manifest, hashes
+# Prerequisites: npm run dist:browser, npm run verify:chromium:packaged,
+# npm run installer, sign-manifest, hashes
 # (with a throw-away CI key from tools/update-keygen.mjs).
 # Usage: pwsh -File tools/ci/installer-e2e.ps1
 
@@ -53,6 +54,29 @@ foreach ($rel in @('OctoBrowser\Octo.su.exe', 'OctoBrowser\resources\app.asar', 
   Assert (Test-Path -LiteralPath (Join-Path $installDir $rel)) "installed: $rel"
 }
 Assert ((Get-Item -LiteralPath $obExe).VersionInfo.ProductVersion -like "$version*") "Octo.su.exe product version $version"
+
+Step 'Installed source-built Chromium runtime'
+$chromiumRoot = Join-Path $installDir 'OctoBrowser\resources\engines\chromium\155.0.8059.39'
+$chromiumManifest = Join-Path $chromiumRoot 'runtime.json'
+$chromiumManifestObject = if (Test-Path -LiteralPath $chromiumManifest) {
+  Get-Content -Raw -LiteralPath $chromiumManifest | ConvertFrom-Json
+} else { $null }
+Assert ($null -ne $chromiumManifestObject) 'Chromium runtime.json is installed'
+Assert ($chromiumManifestObject.schema -eq 'octo.engine-manifest.v1') 'Chromium manifest schema'
+Assert ($chromiumManifestObject.kind -eq 'chromium') 'Chromium manifest kind'
+Assert ($chromiumManifestObject.distribution -eq 'source-built' -and $chromiumManifestObject.modified -eq $true) 'Chromium manifest identifies a modified source build'
+Assert ($chromiumManifestObject.executable -eq 'inkbrowser-chrome.exe') 'Chromium manifest executable name'
+$chromiumFiles = @(
+  'inkbrowser-chrome.exe', 'chrome.dll', 'chrome_elf.dll', 'chrome_child.dll',
+  'resources.pak', 'chrome_100_percent.pak', 'chrome_200_percent.pak',
+  'icudtl.dat', 'v8_context_snapshot.bin', 'locales\en-US.pak'
+)
+foreach ($rel in $chromiumFiles) {
+  Assert (Test-Path -LiteralPath (Join-Path $chromiumRoot $rel)) "installed Chromium file: $rel"
+}
+$chromiumExe = Join-Path $chromiumRoot 'inkbrowser-chrome.exe'
+$actualHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $chromiumExe).Hash.ToLowerInvariant()
+Assert ($actualHash -eq ([string]$chromiumManifestObject.sha256).ToLowerInvariant()) 'Chromium executable SHA-256 matches runtime.json'
 
 Step 'Release verification through the installed apps'
 foreach ($exe in @($obExe, $odExe)) {
