@@ -102,6 +102,17 @@ describe('browser entry UI', () => {
     expect(launcherCss).toContain('theme-frost-crystals 54s');
     expect(launcherCss).toContain('theme-night-atmosphere 64s');
   });
+  it('adds restrained effects for spring, seaside, autumn, Valentine, Halloween, and Field Classic', () => {
+    for (const theme of ['springBloom', 'summerSolstice', 'autumnHarvest', 'valentines', 'halloweenDay', 'halloweenNight', 'ink']) {
+      expect(launcherCss).toContain(`data-app-theme="${theme}"`);
+    }
+    for (const animation of ['theme-spring-breeze', 'theme-seaside-motes', 'theme-autumn-leaves', 'theme-valentine-motes', 'theme-halloween-haze', 'theme-field-dust']) {
+      expect(launcherCss).toContain(`@keyframes ${animation}`);
+    }
+    expect(launcherCss).toContain('theme-field-dust 72s');
+    expect(launcherCss).toContain('opacity:.12; background-image:radial-gradient(circle at 18% 28%');
+    expect(launcherCss).toContain('pointer-events:none;');
+  });
 
   it('restores the selected profile folder after the launcher is reopened', () => {
     expect(launcherProfiles).toContain("const ACTIVE_FOLDER_KEY = 'octo.active-profile-folder';");
