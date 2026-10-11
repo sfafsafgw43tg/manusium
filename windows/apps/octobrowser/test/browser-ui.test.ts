@@ -72,8 +72,10 @@ describe('browser entry UI', () => {
     expect(browser).toContain('dismissAllPopouts();');
   });
 
-  it('renders winter flakes as layered snowflake shapes with drifting paths', () => {
+  it('renders Winter Night as layered falling dots while keeping the seasonal drift system', () => {
     expect(launcherCss).toContain('seasonal-snow-drift');
+    expect(launcherCss).toContain(':root[data-app-theme="winterNight"] body::before { opacity:.64; background-image:radial-gradient');
+    expect(launcherCss).toContain('seasonal-snow-dots');
     expect(launcherCss).toContain('data:image/svg+xml');
     expect(launcherCss).toContain('background-size:96px 96px, 151px 151px, 73px 73px');
     expect(launcherCss).toContain('32%');
