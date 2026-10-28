@@ -64,6 +64,43 @@ export function windowsSandboxAvailable(): boolean {
   return fs.existsSync(path.join(SYSTEM32, 'WindowsSandbox.exe'));
 }
 
+export interface WindowsSandboxStatus {
+  available: boolean;
+  running: boolean;
+  instances: Array<{ pid: number; startedAt: string }>;
+  checkedAt: string;
+}
+
+/**
+ * Read-only status for the host dashboard. Windows does not expose a stable
+ * profile-to-VM association, so this reports actual WindowsSandbox.exe
+ * instances and never claims which profile owns a VM.
+ */
+export async function windowsSandboxStatus(): Promise<WindowsSandboxStatus> {
+  const checkedAt = new Date().toISOString();
+  if (process.platform !== 'win32') return { available: false, running: false, instances: [], checkedAt };
+  const exe = path.join(SYSTEM32, 'WindowsSandbox.exe');
+  if (!fs.existsSync(exe)) return { available: false, running: false, instances: [], checkedAt };
+  const ps = path.join(SYSTEM32, 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+  const script = "Get-Process -Name WindowsSandbox -ErrorAction SilentlyContinue | Select-Object Id,StartTime | ConvertTo-Json -Compress";
+  const result = await run(ps, ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', script], undefined, 5000);
+  if (result.code !== 0 || !result.stdout.trim()) return { available: true, running: false, instances: [], checkedAt };
+  try {
+    const parsed = JSON.parse(result.stdout.trim()) as unknown;
+    const rows = Array.isArray(parsed) ? parsed : [parsed];
+    const instances = rows.flatMap((row) => {
+      if (!row || typeof row !== 'object') return [];
+      const value = row as { Id?: unknown; StartTime?: unknown };
+      const pid = Number(value.Id);
+      if (!Number.isInteger(pid) || pid <= 0) return [];
+      return [{ pid, startedAt: typeof value.StartTime === 'string' ? value.StartTime : '' }];
+    });
+    return { available: true, running: instances.length > 0, instances, checkedAt };
+  } catch {
+    return { available: true, running: false, instances: [], checkedAt };
+  }
+}
+
 /** Are we running INSIDE Windows Sandbox? (its fixed account name) */
 export function runningInsideWindowsSandbox(): boolean {
   return process.platform === 'win32' && os.userInfo().username === 'WDAGUtilityAccount';

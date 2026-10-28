@@ -593,13 +593,14 @@ export function pageShim(c: PageConfig, eventName: string): void {
       const gpuName = `${exposedVendor} ${exposedRenderer}`.toLowerCase();
       const gpuTier = /rtx|rx [569]|rx 6|rx 7|m[2-4]|iris xe|radeon pro/.test(gpuName) ? 'high'
         : /gtx|uhd|iris|vega|m1|m2/.test(gpuName) ? 'mid' : 'low';
-      const gpuCaps = gpuTier === 'high'
-        ? { texture: 16384, cube: 16384, viewport: 16384, units: 16, varyings: 30, vertexUniforms: 1024, fragmentUniforms: 1024 }
-        : gpuTier === 'mid'
-          ? { texture: 8192, cube: 8192, viewport: 8192, units: 16, varyings: 15, vertexUniforms: 512, fragmentUniforms: 512 }
-          : { texture: 4096, cube: 4096, viewport: 4096, units: 8, varyings: 8, vertexUniforms: 256, fragmentUniforms: 256 };
       let gpuSalt = 0;
       for (let i = 0; i < gpuName.length; i++) gpuSalt = Math.imul(gpuSalt ^ gpuName.charCodeAt(i), 16777619);
+      const profileVariant = hash(0x475055, gpuSalt) % 3;
+      const gpuCaps = gpuTier === 'high'
+        ? { texture: profileVariant === 0 ? 8192 : 16384, cube: profileVariant === 0 ? 8192 : 16384, viewport: 16384, units: profileVariant === 2 ? 32 : 16, varyings: profileVariant === 2 ? 32 : 30, vertexUniforms: 1024, fragmentUniforms: 1024 }
+        : gpuTier === 'mid'
+          ? { texture: profileVariant === 0 ? 4096 : 8192, cube: profileVariant === 0 ? 4096 : 8192, viewport: 8192, units: 16, varyings: 15, vertexUniforms: 512, fragmentUniforms: 512 }
+          : { texture: 4096, cube: 4096, viewport: 4096, units: 8, varyings: 8, vertexUniforms: 256, fragmentUniforms: 256 };
       const patchWebGL = (Ctor: unknown): void => {
         const P = (Ctor as { prototype?: object } | undefined)?.prototype;
         if (!P) return;
@@ -622,6 +623,8 @@ export function pageShim(c: PageConfig, eventName: string): void {
             if (p === 0x8B4D) return gpuCaps.vertexUniforms; // MAX_VERTEX_UNIFORM_VECTORS
             if (p === 0x8B4B) return gpuCaps.fragmentUniforms; // MAX_FRAGMENT_UNIFORM_VECTORS
             if (p === 0x8DFC) return gpuCaps.varyings; // MAX_VARYING_VECTORS
+            if (p === 0x8869) return gpuTier === 'high' ? 16 : gpuTier === 'mid' ? 16 : 8; // MAX_VERTEX_ATTRIBS
+            if (p === 0x8824) return gpuTier === 'high' ? 8 : gpuTier === 'mid' ? 8 : 4; // MAX_DRAW_BUFFERS
           }
           return orig(...args);
         });
@@ -754,12 +757,13 @@ export function pageShim(c: PageConfig, eventName: string): void {
         const gpuName = `${config.vendor} ${config.renderer}`.toLowerCase();
         const high = /rtx|rx [569]|rx 6|rx 7|m[2-4]|iris xe|radeon pro/.test(gpuName);
         const mid = /gtx|uhd|iris|vega|m1|m2/.test(gpuName);
-        const texture = high ? 16384 : mid ? 8192 : 4096;
-        const units = high || mid ? 16 : 8;
-        const uniforms = high ? 1024 : mid ? 512 : 256;
-        const varyings = high ? 30 : mid ? 15 : 8;
         let gpuSalt = 0;
         for (let i = 0; i < gpuName.length; i++) gpuSalt = Math.imul(gpuSalt ^ gpuName.charCodeAt(i), 16777619);
+        const profileVariant = hashWorker(0x475055, gpuSalt) % 3;
+        const texture = high ? (profileVariant === 0 ? 8192 : 16384) : mid ? (profileVariant === 0 ? 4096 : 8192) : 4096;
+        const units = high ? (profileVariant === 2 ? 32 : 16) : mid ? 16 : 8;
+        const uniforms = high ? 1024 : mid ? 512 : 256;
+        const varyings = high ? (profileVariant === 2 ? 32 : 30) : mid ? 15 : 8;
         replace(P, 'getParameter', (_self, args, orig) => {
           const parameter = Number(args[0]);
           if ((config.webgl === 'noise' || config.vendor) && (parameter === 0x1f00 || parameter === 0x9245)) return config.vendor;
@@ -772,6 +776,8 @@ export function pageShim(c: PageConfig, eventName: string): void {
             if (parameter === 0x8872) return units;
             if (parameter === 0x8B4D || parameter === 0x8B4B) return uniforms;
             if (parameter === 0x8DFC) return varyings;
+            if (parameter === 0x8869) return high || mid ? 16 : 8;
+            if (parameter === 0x8824) return high || mid ? 8 : 4;
           }
           return orig(...args);
         });
@@ -816,12 +822,13 @@ export function pageShim(c: PageConfig, eventName: string): void {
         const gpuName = `${config.vendor} ${config.renderer}`.toLowerCase();
         const high = /rtx|rx [569]|rx 6|rx 7|m[2-4]|iris xe|radeon pro/.test(gpuName);
         const mid = /gtx|uhd|iris|vega|m1|m2/.test(gpuName);
-        const texture = high ? 16384 : mid ? 8192 : 4096;
-        const units = high || mid ? 16 : 8;
-        const uniforms = high ? 1024 : 512;
-        const varyings = high ? 30 : mid ? 15 : 8;
         let gpuSalt = 0;
         for (let i = 0; i < gpuName.length; i++) gpuSalt = Math.imul(gpuSalt ^ gpuName.charCodeAt(i), 16777619);
+        const profileVariant = hashWorker(0x475055, gpuSalt) % 3;
+        const texture = high ? (profileVariant === 0 ? 8192 : 16384) : mid ? (profileVariant === 0 ? 4096 : 8192) : 4096;
+        const units = high ? (profileVariant === 2 ? 32 : 16) : mid ? 16 : 8;
+        const uniforms = high ? 1024 : 512;
+        const varyings = high ? (profileVariant === 2 ? 32 : 30) : mid ? 15 : 8;
         const wrapInstance = (name: string, impl: (args: unknown[], orig: (...a: unknown[]) => unknown) => unknown): void => {
           const original = object[name];
           if (typeof original !== 'function') return;
@@ -838,6 +845,8 @@ export function pageShim(c: PageConfig, eventName: string): void {
             if (parameter === 0x8872) return units;
             if (parameter === 0x8B4D || parameter === 0x8B4B) return uniforms;
             if (parameter === 0x8DFC) return varyings;
+            if (parameter === 0x8869) return high || mid ? 16 : 8;
+            if (parameter === 0x8824) return high || mid ? 8 : 4;
           }
           return orig(...args);
         });

@@ -40,7 +40,7 @@ import { SAFE_WEB_PREFERENCES, assertSafeWebPreferences } from '@octo/shell/secu
 import { UpdateManager } from '@octo/shell/update-manager';
 import { runMasterPasswordUnlock } from '@octo/shell/unlock';
 import { iconPath, THEME } from '@octo/shell/windows-ui';
-import { findTorBrowser, firefoxAvailability, launchFirefox, launchDetached, launchWindowsSandbox, windowsSandboxAvailable } from '@octo/shell/winutil';
+import { findTorBrowser, firefoxAvailability, launchFirefox, launchDetached, launchWindowsSandbox, windowsSandboxAvailable, windowsSandboxStatus } from '@octo/shell/winutil';
 import { browserEngineFor, inkbrowserBlocks, NEW_PROFILE_ENGINE, BROWSER_INTEGRATIONS } from '@octo/core';
 import { findInkBrowser } from './inkbrowser';
 import { bootstrapFileFor } from '@octo/shell/prepare';
@@ -2563,6 +2563,7 @@ export class Manager {
     // VBoxManage's registered machine list is the source of truth; no VM
     // inventory or disk contents are uploaded.
     handle('mgr:virtualbox-status', L, () => virtualBoxStatus());
+    handle('mgr:windows-sandbox-status', L, async () => windowsSandboxStatus());
     handle('mgr:virtualbox-install', L, async () => installVirtualBox((message) => {
       this.launcher?.webContents.send('mgr:android-progress', { stage: 'install', percent: -1, text: message });
     }));

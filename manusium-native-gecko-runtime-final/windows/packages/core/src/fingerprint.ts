@@ -485,9 +485,13 @@ export function generateFingerprint(opts: GenerateOptions): FingerprintConfig {
     geolocation: { mode: 'auto', latitude: 0, longitude: 0, accuracy: 10 },
     cpu: { mode: 'manual', cores },
     memory: { mode: 'manual', gb: memory },
-    screen: { mode: 'manual', width: sw, height: sh },
+    // The selected dimensions and font persona are derived from the persistent
+    // profile seed, so they remain stable for the profile while differing
+    // across profiles. They are exposed as randomized settings in the editor,
+    // not as a claim about the physical host display or installed fonts.
+    screen: { mode: 'random', width: sw, height: sh },
     windowSize: { mode: 'default', width: sw, height: sh },
-    fonts: 'noise',
+    fonts: 'custom',
     fontList: fonts,
     audio: 'noise',
     speechVoices: 'noise',

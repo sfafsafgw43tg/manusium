@@ -909,8 +909,10 @@ function row(p: Profile, activeCols: ProfileColumnKey[], trGridCols: string): HT
 }
 
 let ticker: number | undefined;
+let sandboxStatusTicker: number | undefined;
 
 function managerOverview(onCreate: () => void): HTMLElement {
+  if (sandboxStatusTicker) { window.clearInterval(sandboxStatusTicker); sandboxStatusTicker = undefined; }
   const running = S.profiles.filter((p) => p.running).length;
   const folders = new Set(S.profiles.map((p) => p.folder).filter(Boolean)).size;
   const native = S.profiles.filter((p) => browserEngineFor(p.engine) !== 'electron').length;
@@ -939,10 +941,51 @@ function managerOverview(onCreate: () => void): HTMLElement {
     }, 'wide');
   };
   const create = h('button', { class: 'btn primary orbit-create' }, icon('plus', 15), h('span', { text: t('ui.createProfile') })); create.onclick = onCreate;
+  const sandboxState = h('span', { class: 'pill', text: t('sandboxMonitor.checking') });
+  const sandboxDetail = h('p', { class: 'hint', text: t('sandboxMonitor.loading') });
+  const sandboxCard = h('article', { class: 'panel orbit-sandbox-monitor' },
+    h('div', { class: 'row between' }, h('h3', { text: t('sandboxMonitor.title') }), sandboxState),
+    sandboxDetail,
+    h('p', { class: 'small muted', text: t('sandboxMonitor.note') }));
+  const refreshSandboxStatus = async () => {
+    const status = await run(api.invoke<{ available: boolean; running: boolean; instances: Array<{ pid: number; startedAt: string }> }>('mgr:windows-sandbox-status'));
+    if (!status || !sandboxState.isConnected) return;
+    sandboxState.className = `pill ${status.running ? 'ok' : status.available ? '' : 'warn'}`;
+    sandboxState.textContent = status.running ? t('sandboxMonitor.running', { n: status.instances.length }) : status.available ? t('sandboxMonitor.idle') : t('sandboxMonitor.unavailable');
+    sandboxDetail.textContent = status.running
+      ? status.instances.map((item) => `${t('sandboxMonitor.instance')} ${item.pid}${item.startedAt ? ` · ${new Date(item.startedAt).toLocaleTimeString()}` : ''}`).join(' · ')
+      : status.available ? t('sandboxMonitor.none') : t('sandboxMonitor.enableHint');
+  };
+  const monitorRows = h('div', { class: 'orbit-monitor-list', role: 'list' });
+  const refreshMonitorRows = () => {
+    clear(monitorRows);
+    const active = S.profiles.filter((p) => p.running || p.sandbox?.mode === 'windows-sandbox');
+    if (!active.length) {
+      monitorRows.append(h('p', { class: 'muted orbit-monitor-empty', text: t('sandboxMonitor.noProfiles') }));
+      return;
+    }
+    for (const profile of active) {
+      const sandbox = profile.sandbox?.mode === 'windows-sandbox';
+      const proxyEnabled = profile.network.mode === 'proxy';
+      const proxyState = !proxyEnabled ? t('sandboxMonitor.direct') : profile.proxyCheck?.ok ? t('sandboxMonitor.proxyOnline') : profile.proxyCheck ? t('sandboxMonitor.proxyError') : t('sandboxMonitor.proxyChecking');
+      const sandboxStateText = sandbox ? (profile.running ? t('sandboxMonitor.sandboxActive') : t('sandboxMonitor.sandboxRequested')) : t('sandboxMonitor.hostProfile');
+      monitorRows.append(h('div', { class: 'orbit-monitor-row', role: 'listitem' },
+        h('div', { class: 'orbit-monitor-profile' }, h('strong', { text: profile.name }), h('span', { class: 'muted', text: sandboxStateText })),
+        h('div', { class: 'orbit-monitor-network' }, h('span', { class: `orbit-monitor-dot ${proxyEnabled && profile.proxyCheck && !profile.proxyCheck.ok ? 'bad' : proxyEnabled ? 'ok' : 'idle'}` }), h('span', { text: proxyState }), profile.proxyCheck?.ip ? h('span', { class: 'mono muted', text: profile.proxyCheck.ip }) : null))));
+    }
+  };
+  refreshMonitorRows();
+  void refreshSandboxStatus();
+  sandboxStatusTicker = window.setInterval(() => { if (S.view === 'profiles') { void refreshSandboxStatus(); refreshMonitorRows(); } }, 5000);
+  const monitorCard = h('article', { class: 'panel orbit-monitor-card' },
+    h('div', { class: 'row between' }, h('h3', { text: t('sandboxMonitor.activeTitle') }), h('span', { class: 'small muted', text: t('sandboxMonitor.refreshRate') })),
+    monitorRows);
   return h('section', { class: 'orbit-overview' },
     h('div', { class: 'orbit-welcome' }, h('div', { class: 'orbit-welcome-copy' }, h('span', { class: 'orbit-kicker', text: t('ui.manager.kicker') }), h('h2', { text: t('ui.manager.title') }), h('p', { text: t('ui.manager.subtitle') })), h('div', { class: 'orbit-welcome-actions' }, health, create)),
     h('div', { class: 'orbit-metrics' }, metric(String(S.profiles.length), t('ui.manager.totalProfiles'), 'users'), metric(String(running), t('ui.manager.runningNow'), 'play'), metric(String(folders), t('ui.manager.folders'), 'folder'), metric(String(native), t('ui.manager.nativeProfiles'), 'globe')),
-    h('div', { class: 'orbit-engines' }, engineCard('chromium', Boolean(S.init.inkbrowserInstalled), t('browserEngine.chromiumCore'), t('ui.manager.chromiumCapability')), engineCard('firefox', Boolean(S.init.firefoxAvailable), t('browserEngine.firefoxCore'), t('ui.manager.firefoxCapability')), engineCard('electron', true, t('browserEngine.electron'), t('ui.manager.electronCapability'))));
+    h('div', { class: 'orbit-engines' }, engineCard('chromium', Boolean(S.init.inkbrowserInstalled), t('browserEngine.chromiumCore'), t('ui.manager.chromiumCapability')), engineCard('firefox', Boolean(S.init.firefoxAvailable), t('browserEngine.firefoxCore'), t('ui.manager.firefoxCapability')), engineCard('electron', true, t('browserEngine.electron'), t('ui.manager.electronCapability'))),
+    sandboxCard,
+    monitorCard);
 }
 
 export function renderProfiles(v: HTMLElement): void {

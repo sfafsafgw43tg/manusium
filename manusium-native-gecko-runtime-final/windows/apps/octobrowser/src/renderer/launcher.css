@@ -2003,3 +2003,25 @@ textarea.ua, .frow-info-card { max-width: 760px; }
 .camera-manager label { display: flex; align-items: center; gap: 8px; }
 .camera-manager input[type="checkbox"] { width: 18px; height: 18px; flex: none; }
 .camera-manager .camera-picker-foot { flex-wrap: wrap; gap: 8px; }
+
+/* Active profile / Windows Sandbox monitor extension. */
+.orbit-monitor-card,
+.orbit-sandbox-monitor { display: flex; flex-direction: column; gap: 12px; padding: 16px; min-width: 0; }
+.orbit-monitor-card h3,
+.orbit-sandbox-monitor h3 { margin: 0; font-size: 14px; letter-spacing: .01em; }
+.orbit-monitor-list { display: flex; flex-direction: column; gap: 7px; }
+.orbit-monitor-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 0; border-top: 1px solid var(--line); min-width: 0; }
+.orbit-monitor-row:first-child { border-top: 0; padding-top: 0; }
+.orbit-monitor-profile, .orbit-monitor-network { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.orbit-monitor-profile { flex-direction: column; align-items: flex-start; }
+.orbit-monitor-profile strong { max-width: 24ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.orbit-monitor-network { justify-content: flex-end; flex-wrap: wrap; font-size: 12px; }
+.orbit-monitor-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dim); flex: 0 0 auto; }
+.orbit-monitor-dot.ok { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 16%, transparent); }
+.orbit-monitor-dot.bad { background: var(--bad); box-shadow: 0 0 0 3px color-mix(in srgb, var(--bad) 16%, transparent); }
+.orbit-monitor-dot.idle { background: var(--muted); }
+.orbit-monitor-empty { margin: 0; padding: 6px 0; }
+@media (max-width: 760px) {
+  .orbit-monitor-row { align-items: flex-start; flex-direction: column; gap: 7px; }
+  .orbit-monitor-network { justify-content: flex-start; }
+}
