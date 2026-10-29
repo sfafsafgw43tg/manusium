@@ -1277,7 +1277,15 @@ function renderAddons(body: HTMLElement): void {
   }
   for (const extension of state.profile.chromeExtensions ?? []) {
     const sw = h('input', { type: 'checkbox', checked: extension.enabled, disabled: isTor });
-    sw.onchange = () => void api.invoke('ui:chrome-extension', extension.id, 'enable').then(() => openPanel('addons', () => renderAddons($('panelBody')), t('panel.addons')));
+    sw.onchange = () => {
+      if (sw.checked && !confirmChromeExtensionPermissions(extension)) {
+        sw.checked = false;
+        return;
+      }
+      void api.invoke('ui:chrome-extension', extension.id, 'enable')
+        .then(() => openPanel('addons', () => renderAddons($('panelBody')), t('panel.addons')))
+        .catch((error: Error) => { sw.checked = extension.enabled; toast('err.generic', { message: error.message }); });
+    };
     const open = h('button', { class: 'btn small', text: t('addons.openOptions') });
     open.onclick = () => void api.invoke('ui:chrome-extension', extension.id, 'options');
     const remove = h('button', { class: 'btn small', text: t('addons.remove') });
@@ -1296,6 +1304,12 @@ function renderAddons(body: HTMLElement): void {
 function confirmPermissions(a: AddonInfo): boolean {
   // A panel-embedded confirmation keeps page content visible; window.confirm is modal and simple.
   return window.confirm(`${a.name}\n\n${t('addons.permissions')}:\n- ${a.permissions.map(L).join('\n- ')}\n\n${t('addons.confirmEnable')}`);
+}
+
+function confirmChromeExtensionPermissions(extension: ProfileInfo['chromeExtensions'][number]): boolean {
+  const permissions = [...extension.permissions, ...extension.hostPermissions.map((host) => `Host access: ${host}`)];
+  if (!permissions.length) return true;
+  return window.confirm(`${extension.name}\n\nRequested permissions:\n- ${permissions.join('\n- ')}\n\nAllow this extension to use these permissions in the current profile?`);
 }
 
 let downloadsTrayOpen = false;
