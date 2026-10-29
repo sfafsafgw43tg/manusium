@@ -126,9 +126,15 @@ body.tab-dragging, body.tab-dragging .tab { cursor: grabbing; }
   background: #292a2d; color: #e8eaed;
   border: 1px solid #3c4043; border-radius: 12px;
   box-shadow: 0 8px 24px #00000080;
+  transform-origin: top left;
+  will-change: opacity, transform;
 }
 :root[data-theme="light"] .page-info, :root[data-theme="light"] .translate-bar { background: #fff; color: #202124; border-color: #dadce0; box-shadow: 0 8px 24px #00000026; }
 .page-info.hidden, .translate-bar.hidden { display: none; }
+:root:not([data-animations="off"]) .page-info:not(.hidden),
+:root:not([data-animations="off"]) .translate-bar:not(.hidden) {
+  animation: browser-pop .22s cubic-bezier(.2,.8,.2,1);
+}
 .pi-head { display: flex; align-items: center; gap: 8px; padding: 4px 8px 10px 16px; }
 .pi-head.nested { padding-bottom: 12px; border-bottom: 1px solid #3c4043; margin-bottom: 6px; }
 .pi-titles { display: flex; flex-direction: column; min-width: 0; flex: 1; }
@@ -1142,7 +1148,7 @@ body.downloads-tray-open #content { margin-right: 0; }
 /* Browser tools are floating popouts: they overlay the live page and preserve
    its layout instead of opening a second tab or pushing content sideways. */
 #panel.hidden { display: none; }
-:root[data-animations="on"] #panel.popout { animation: popout-in .22s cubic-bezier(.2,.8,.2,1); transform-origin: top right; }
+:root:not([data-animations="off"]) #panel.popout { animation: popout-in .22s cubic-bezier(.2,.8,.2,1); transform-origin: top right; }
 :root[data-animations="on"] #panel.popout-closing { pointer-events: none; }
 #panel.popout-closing { display: flex; }
 @keyframes popout-in { from { opacity: 0; transform: translate3d(0,12px,0) scale(.97); } 65% { opacity: .96; transform: translate3d(0,-1px,0) scale(1.005); } to { opacity: 1; transform: translate3d(0,0,0) scale(1); } }
