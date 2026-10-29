@@ -69,6 +69,7 @@
     "e2e": "npm run build && playwright test -c e2e/playwright.config.ts",
     "check-fuses": "node tools/check-fuses.mjs",
     "test:scripts": "pwsh -NoProfile -Command \"Invoke-Pester -Path scripts/tests -Output Detailed -CI\"",
+    "test:android:unity-camera": "pwsh -NoProfile -File scripts/android/test-unity-capture-avd.ps1",
     "package:local:windows": "node tools/package-local-windows.mjs",
     "verify:windows:branding": "node tools/verify-windows-branding.mjs",
     "build:compact": "node tools/build-compact.mjs",

@@ -38,7 +38,11 @@ param(
 
   [switch] $SkipBuild,
 
-  [switch] $KeepEmulator
+  [switch] $KeepEmulator,
+
+  [switch] $RequireUnityCapture,
+
+  [switch] $TestStockCamera
 )
 
 $ErrorActionPreference = 'Stop'
@@ -154,6 +158,15 @@ if ($avds -notcontains $AvdName) { Fail "AVD '$AvdName' is not installed. Availa
 $webcams = (& $emulator "@$AvdName" -webcam-list 2>&1 | Out-String)
 Write-Host $webcams.Trim()
 $listed = @([regex]::Matches($webcams, '\bwebcam\d{1,2}\b', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase) | ForEach-Object { $_.Value.ToLowerInvariant() } | Select-Object -Unique)
+if ($RequireUnityCapture) {
+  if ($listed -notcontains $BackCamera.ToLowerInvariant()) {
+    Fail "Unity Capture endpoint '$BackCamera' was not listed by the Android Emulator. Start the Unity Capture/vStudio producer, then refresh the emulator camera list."
+  }
+  $cameraLine = ($webcams -split "`r?`n" | Where-Object { $_ -match [regex]::Escape($BackCamera) } | Select-Object -First 1)
+  if ($cameraLine -notmatch '(?i)unity\s*(video\s*)?capture|v-?studio') {
+    Fail "The selected endpoint '$BackCamera' is not identified as Unity Capture/vStudio by the emulator. Refusing to test an unverified provider."
+  }
+}
 foreach ($camera in @($BackCamera, $FrontCamera)) {
   if ($camera -ne 'none' -and $listed -notcontains $camera.ToLowerInvariant()) {
     Fail "$camera is not listed by this emulator. Listed cameras: $($listed -join ', '). Start the virtual-camera provider and retry."
@@ -191,6 +204,15 @@ try {
   Invoke-Adb @('-s', $serial, 'shell', 'am', 'start', '-n', 'app.octo.avdcamera/.MainActivity') 'Starting the diagnostic activity'
   Start-Sleep -Seconds 8
 
+  if ($TestStockCamera) {
+    $resolved = Get-AdbOutput @('-s', $serial, 'shell', 'cmd', 'package', 'resolve-activity', '--brief', '-a', 'android.media.action.STILL_IMAGE_CAMERA')
+    $stockPackage = if ($resolved) { ([regex]::Match($resolved, '(?m)^([A-Za-z][\w.]*)/\S+\s*$')).Groups[1].Value } else { '' }
+    if (-not $stockPackage -or $stockPackage -eq 'android') { Fail 'The AVD has no stock Camera activity for the Unity Capture acceptance test.' }
+    Invoke-Adb @('-s', $serial, 'shell', 'pm', 'grant', $stockPackage, 'android.permission.CAMERA') 'Granting stock Camera permission'
+    Invoke-Adb @('-s', $serial, 'shell', 'am', 'start', '-a', 'android.media.action.STILL_IMAGE_CAMERA') 'Starting the stock Camera activity'
+    Start-Sleep -Seconds 8
+  }
+
   $uiDump = Join-Path $env:TEMP 'octo-avd-camera-window.xml'
   & $adb -s $serial shell uiautomator dump /sdcard/window.xml 2>$null | Out-Null
   $ui = & $adb -s $serial shell cat /sdcard/window.xml 2>$null | Out-String
@@ -204,6 +226,10 @@ try {
     '=== logcat ==='
     $logcat
   ) | Set-Content -LiteralPath $logRoot -Encoding UTF8
+
+  if ($media -match '(?i)Camera error traces \((?!0\d*\))' -or $logcat -match '(?i)FATAL EXCEPTION|CameraProvider.*(crash|fatal|error)|cameraserver.*(crash|fatal)|Camera keeps stopping|android\.hardware\.camera.*(dead|error)') {
+    Fail "CameraProvider or the Camera activity reported a crash/error. Full diagnostics were saved to '$logRoot'."
+  }
 
   if ($ui -notmatch 'active' -or $ui -notmatch 'Camera:') {
     Fail "The diagnostic app did not report an active preview. Full diagnostics were saved to '$logRoot'."
