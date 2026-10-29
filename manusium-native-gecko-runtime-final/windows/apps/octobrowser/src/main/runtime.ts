@@ -1117,7 +1117,7 @@ export class ProfileRuntime {
       const current = this.profile.chromeExtensions ?? [];
       const next = [...current.filter((item) => item.id !== inspected.id), {
         id: inspected.id, name: inspected.name, version: inspected.version, path: inspected.path,
-        permissions: inspected.permissions, hostPermissions: inspected.hostPermissions, enabled: true,
+        permissions: inspected.permissions, hostPermissions: inspected.hostPermissions, enabled: true, pinned: false,
       }];
       this.profile = { ...this.profile, chromeExtensions: next };
       await this.syncBundledExtensions(this.profileSession());
@@ -1125,13 +1125,15 @@ export class ProfileRuntime {
       this.pushAll();
       return { id: inspected.id, name: inspected.name, version: inspected.version, permissions: inspected.permissions, hostPermissions: inspected.hostPermissions, enabled: true };
     });
-    handle('ui:chrome-extension', L, async (_e, id: string, action: 'enable' | 'remove' | 'open' | 'options') => {
+    handle('ui:chrome-extension', L, async (_e, id: string, action: 'enable' | 'remove' | 'open' | 'options' | 'pin') => {
       const current = this.profile.chromeExtensions ?? [];
       const target = current.find((item) => item.id === String(id));
       if (!target) return false;
       if (action === 'open' || action === 'options') return this.openBundledExtension(target.id, action === 'options' ? 'options' : 'entry');
       const next = action === 'remove'
         ? current.filter((item) => item.id !== target.id)
+        : action === 'pin'
+          ? current.map((item) => item.id === target.id ? { ...item, pinned: item.pinned !== true } : item)
         : current.map((item) => item.id === target.id ? { ...item, enabled: !item.enabled } : item);
       this.profile = { ...this.profile, chromeExtensions: next };
       await this.syncBundledExtensions(this.profileSession());

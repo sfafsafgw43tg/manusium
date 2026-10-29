@@ -89,6 +89,8 @@ export interface ProfileChromeExtension {
   permissions: string[];
   hostPermissions: string[];
   enabled: boolean;
+  /** Show this extension as an individual button in the browser toolbar. */
+  pinned?: boolean;
 }
 
 /** Usage statistics shown in the profile list. */
@@ -505,7 +507,7 @@ export function sanitizeProfile(input: unknown): Profile {
     }).slice(0, 12).map((extension) => ({
       id: extension.id.slice(0, 80), name: extension.name.replace(/[\u0000-\u001f]/g, '').slice(0, 120), version: extension.version.slice(0, 64),
       path: path.resolve(extension.path).slice(0, 2048), permissions: extension.permissions.filter((item) => typeof item === 'string').slice(0, 64).map((item) => item.slice(0, 256)),
-      hostPermissions: extension.hostPermissions.filter((item) => typeof item === 'string').slice(0, 64).map((item) => item.slice(0, 256)), enabled: extension.enabled,
+      hostPermissions: extension.hostPermissions.filter((item) => typeof item === 'string').slice(0, 64).map((item) => item.slice(0, 256)), enabled: extension.enabled, pinned: extension.pinned === true,
     })) : [],
     savePasswords: typeof p.savePasswords === 'boolean' ? p.savePasswords : base.savePasswords,
     theme: isProfileTheme(p.theme) ? p.theme : base.theme,

@@ -27,7 +27,7 @@ interface ProfileInfo {
   id: string; name: string; kind: string; color: string; level: 'normal' | 'standard' | 'strict' | 'tor'; encrypted: boolean;
   network: 'system' | 'direct' | 'proxy'; deleteOnClose: boolean;
   audio: { muted: boolean; volume: number; outputDeviceId: string }; addons: string[];
-  chromeExtensions: Array<{ id: string; name: string; version: string; path: string; permissions: string[]; hostPermissions: string[]; enabled: boolean }>;
+  chromeExtensions: Array<{ id: string; name: string; version: string; path: string; permissions: string[]; hostPermissions: string[]; enabled: boolean; pinned?: boolean }>;
   theme: 'dark' | 'light'; browserShell: 'octo' | 'chrome' | 'chromium' | 'firefox' | 'safari'; baseChromeLook: boolean; appMode: boolean; smartPaste: boolean; mobile: boolean;
 }
 interface UpdateStatus {
@@ -230,6 +230,17 @@ function initToolbar(): void {
   mk('stMenu', 'menu', 'ui.menu', toggleChromeMenu);
 }
 
+function renderPinnedExtensions(): void {
+  const status = $('status');
+  for (const node of [...status.querySelectorAll('.pinned-extension')]) node.remove();
+  for (const extension of (state?.profile.chromeExtensions ?? []).filter((item) => item.enabled && item.pinned)) {
+    const button = h('button', { class: 'icon-btn status pinned-extension', title: extension.name, 'aria-label': extension.name });
+    button.append(h('span', { class: 'pinned-extension-mark', text: extension.name.slice(0, 1).toUpperCase() }));
+    button.onclick = () => void api.invoke('ui:chrome-extension', extension.id, 'open');
+    status.insertBefore(button, $('stAddons'));
+  }
+}
+
 function toggleExtensionPopup(): void {
   if (extensionPopupOpen) { closeExtensionPopup(); return; }
   dismissAllPopouts();
@@ -322,6 +333,7 @@ function renderStatus(): void {
   const active = [...downloads.values()].some((d) => d.state === 'downloading' || d.state === 'choosing-location' || d.state === 'scanning');
   set('stDownloads', active ? 'ok pulse' : '', t('panel.downloads'));
   set('stUpdates', state.update?.available ? 'accent' : '', state.update?.available ? t('upd.available', { v: state.update.latest ?? '' }) : t('panel.updates'));
+  renderPinnedExtensions();
   const vertical = usesVerticalTabs();
   document.body.classList.toggle('vertical', vertical);
   $('vtabs').classList.toggle('hidden', !vertical);
@@ -1270,10 +1282,12 @@ function renderAddons(body: HTMLElement): void {
     open.onclick = () => void api.invoke('ui:chrome-extension', extension.id, 'options');
     const remove = h('button', { class: 'btn small', text: t('addons.remove') });
     remove.onclick = () => void api.invoke('ui:chrome-extension', extension.id, 'remove').then(() => openPanel('addons', () => renderAddons($('panelBody')), t('panel.addons')));
+    const pin = h('button', { class: `btn small${extension.pinned ? ' primary' : ''}`, text: extension.pinned ? 'Unpin from bar' : 'Pin to bar' });
+    pin.onclick = () => void api.invoke('ui:chrome-extension', extension.id, 'pin').then(() => openPanel('addons', () => renderAddons($('panelBody')), t('panel.addons')));
     body.append(h('div', { class: 'addon addon-local' },
       h('div', { class: 'addon-head' }, h('b', { text: extension.name }), h('label', { class: 'switch' }, sw, h('span', {}))),
       h('div', { class: 'small muted', text: `Chrome extension · ${extension.version}` }),
-      h('div', { class: 'row' }, open, remove),
+      h('div', { class: 'row' }, open, pin, remove),
       h('details', {}, h('summary', { text: t('addons.details') }), kv('addons.source', extension.path), kv('addons.permissions', extension.permissions.join(', ') || 'none'), kv('addons.hostPermissions', extension.hostPermissions.join(', ') || 'none'))));
   }
   if (isTor) body.append(h('p', { class: 'note small', text: t('addons.torNote') }));
@@ -2594,6 +2608,20 @@ async function renderSettings(body: HTMLElement): Promise<void> {
   const studio = h('button', { class: 'btn small primary', text: t('settings.openVstudio') });
   studio.onclick = () => { void api.invoke('ui:vstudio-web', studioLabel.value); toast('settings.vstudioStarted', { name: studioLabel.value || data.profile.name }); };
 
+  const toolbarExtensions = h('div', { class: 'settings-toolbar-extensions' });
+  const localExtensions = data.profile.chromeExtensions ?? [];
+  if (!localExtensions.length) {
+    toolbarExtensions.append(h('p', { class: 'muted small', text: 'Import an extension first to choose which ones appear in the toolbar.' }));
+  } else {
+    for (const extension of localExtensions) {
+      const toggle = h('input', { type: 'checkbox', checked: extension.pinned === true }) as HTMLInputElement;
+      toggle.onchange = () => void api.invoke('ui:chrome-extension', extension.id, 'pin').then(() => {
+        openPanel('settings', () => void renderSettings($('panelBody')), t('menu.settings'));
+      });
+      toolbarExtensions.append(h('label', { class: 'set-row' }, toggle, h('span', { text: extension.name }), h('span', { class: 'muted small', text: extension.pinned ? 'Shown in toolbar' : 'Hidden from toolbar' })));
+    }
+  }
+
   body.append(
     settingsSearch,
     h('div', { class: 'settings-shell-head' }, h('b', { text: t('settings.shellTitle', { shell: shellName }) }), h('span', { class: 'muted small', text: t(`settings.shellHint.${data.profile.browserShell}`) })),
@@ -2636,6 +2664,9 @@ async function renderSettings(body: HTMLElement): Promise<void> {
       appSwitch('settings.animations', data.app.animations, (value) => ({ animations: value })),
       appSwitch('settings.confirmOnQuit', data.app.confirmOnQuit, (value) => ({ confirmOnQuit: value })),
       appSwitch('settings.closeCountdown', data.app.closeCountdown, (value) => ({ closeCountdown: value }))),
+    section('settings.toolbar',
+      h('p', { class: 'muted small', text: 'Choose which imported extensions have a button in the browser toolbar.' }),
+      toolbarExtensions),
     section('settings.search',
       h('div', { class: 'set-row' }, h('span', { text: t('settings.searchEngine') }), engine),
       h('p', { class: 'muted small', text: t('settings.searchEngineHint') })),

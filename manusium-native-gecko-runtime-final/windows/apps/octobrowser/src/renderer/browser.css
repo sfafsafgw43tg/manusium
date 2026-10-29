@@ -191,6 +191,9 @@ body.tab-dragging, body.tab-dragging .tab { cursor: grabbing; }
 .chip { font-size: 11px; padding: 2px 7px; border-radius: 10px; background: var(--panel2); color: var(--muted); cursor: pointer; }
 #blockedCount { color: var(--text); }
 .status-icons { display: flex; gap: 1px; }
+.pinned-extension { position: relative; }
+.pinned-extension-mark { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 5px; background: var(--accent); color: var(--bg); font-size: 11px; font-weight: 700; }
+.settings-toolbar-extensions { display: flex; flex-direction: column; gap: 2px; width: 100%; }
 
 /* A handset profile keeps its real mobile page metrics, but its trusted shell
    is also compact: one active tab, a practical address row and a visible menu

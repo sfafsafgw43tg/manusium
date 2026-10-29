@@ -2270,7 +2270,7 @@ export class Manager {
           allowed.chromeExtensions = patch.chromeExtensions.slice(0, 12).map((extension) => {
             const inspected = inspectLocalChromeExtension(String(extension.path ?? ''));
             if (inspected.id !== extension.id) throw new Error('Chrome extension identity changed; select the folder again');
-            return { ...toProfileChromeExtension(inspected), enabled: extension.enabled === true };
+            return { ...toProfileChromeExtension(inspected), enabled: extension.enabled === true, pinned: extension.pinned === true };
           });
         }
         if (patch.sandbox) allowed.sandbox = { ...this.profiles.get(id).sandbox, ...patch.sandbox };
