@@ -50,7 +50,9 @@ $args = @(
   '-TestStockCamera'
 )
 if ($SdkRoot) { $args += @('-SdkRoot', $SdkRoot) }
+elseif (Test-Path -LiteralPath "$env:LOCALAPPDATA\Android\Sdk") { $args += @('-SdkRoot', "$env:LOCALAPPDATA\Android\Sdk") }
 if ($AvdHome) { $args += @('-AvdHome', $AvdHome) }
+elseif (Test-Path -LiteralPath "$env:USERPROFILE\.android\avd") { $args += @('-AvdHome', "$env:USERPROFILE\.android\avd") }
 if ($SkipBuild) { $args += '-SkipBuild' }
 if ($KeepEmulator) { $args += '-KeepEmulator' }
 

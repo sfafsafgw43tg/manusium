@@ -53,7 +53,7 @@ function Find-Tool([string] $Name, [string[]] $Candidates) {
 
 $roots = @()
 if ($SdkRoot) { $roots += $SdkRoot }
-$roots += @($env:ANDROID_HOME, $env:ANDROID_SDK_ROOT, (Join-Path $env:LOCALAPPDATA 'Android\Sdk'))
+$roots += @($env:ANDROID_HOME, $env:ANDROID_SDK_ROOT, $(if ($env:LOCALAPPDATA) { Join-Path $env:LOCALAPPDATA 'Android\Sdk' }))
 $roots = @($roots | Where-Object { $_ } | ForEach-Object { try { (Resolve-Path -LiteralPath $_ -ErrorAction Stop).Path } catch { $null } } | Select-Object -Unique)
 
 $emulatorCandidates = @($roots | ForEach-Object { Join-Path $_ 'emulator\emulator.exe' })
@@ -61,7 +61,7 @@ $emulator = Find-Tool 'emulator.exe' $emulatorCandidates
 
 $avdRoots = @()
 if ($AvdHome) { $avdRoots += $AvdHome }
-$avdRoots += @($env:ANDROID_AVD_HOME, (Join-Path $env:USERPROFILE '.android\avd'))
+$avdRoots += @($env:ANDROID_AVD_HOME, $(if ($env:USERPROFILE) { Join-Path $env:USERPROFILE '.android\avd' }))
 $avdRoots = @($avdRoots | Where-Object { $_ } | ForEach-Object { try { (Resolve-Path -LiteralPath $_ -ErrorAction Stop).Path } catch { $_ } } | Select-Object -Unique)
 
 $config = $null

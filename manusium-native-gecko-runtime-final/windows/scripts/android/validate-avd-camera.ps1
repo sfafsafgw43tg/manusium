@@ -46,7 +46,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $moduleRoot = Join-Path $repoRoot 'android\avd-camera-check'
 $setupScript = Join-Path $PSScriptRoot 'setup-avd-cameras.ps1'
 $apk = Join-Path $moduleRoot 'app\build\outputs\apk\debug\app-debug.apk'
@@ -104,7 +104,7 @@ $roots = @(
   $SdkRoot,
   $env:ANDROID_HOME,
   $env:ANDROID_SDK_ROOT,
-  (Join-Path $env:LOCALAPPDATA 'Android\Sdk')
+  $(if ($env:LOCALAPPDATA) { Join-Path $env:LOCALAPPDATA 'Android\Sdk' })
 )
 $sdk = Resolve-ExistingDirectory $roots
 if (-not $sdk) {
@@ -122,9 +122,9 @@ if (-not $emulator) { Fail "emulator.exe was not found under '$sdk\emulator'. In
 
 $jdkCandidates = @(
   $env:JAVA_HOME,
-  (Join-Path $env:ProgramFiles 'Android\Android Studio\jbr'),
-  (Join-Path $env:ProgramFiles 'Android\Android Studio\jre'),
-  (Join-Path $env:LOCALAPPDATA 'Programs\Android Studio\jbr')
+  $(if ($env:ProgramFiles) { Join-Path $env:ProgramFiles 'Android\Android Studio\jbr' }),
+  $(if ($env:ProgramFiles) { Join-Path $env:ProgramFiles 'Android\Android Studio\jre' }),
+  $(if ($env:LOCALAPPDATA) { Join-Path $env:LOCALAPPDATA 'Programs\Android Studio\jbr' })
 )
 $jdk = Resolve-ExistingDirectory $jdkCandidates
 if (-not $jdk) { Fail "JDK 17 was not found. Set JAVA_HOME or install Android Studio's bundled JBR." }
