@@ -42,7 +42,9 @@ param(
 
   [switch] $RequireUnityCapture,
 
-  [switch] $TestStockCamera
+  [switch] $TestStockCamera,
+
+  [switch] $MockUnityCapture
 )
 
 $ErrorActionPreference = 'Stop'
@@ -98,6 +100,39 @@ function Get-AdbOutput([string[]] $Arguments) {
   $output = & $adb @Arguments 2>&1 | Out-String
   if ($LASTEXITCODE -ne 0) { return $null }
   return $output.Trim()
+}
+
+if ($MockUnityCapture) {
+  if (-not $RequireUnityCapture) { Fail 'MockUnityCapture requires RequireUnityCapture so CI cannot silently become a generic camera test.' }
+  if ($BackCamera -ne 'webcam0' -or $FrontCamera -ne 'none') { Fail 'The CI Unity Capture mock supports webcam0 on the rear lens and none on the front lens only.' }
+  $mockRoot = Join-Path ([IO.Path]::GetTempPath()) ('octo-avd-camera-mock-' + [guid]::NewGuid().ToString('N'))
+  New-Item -ItemType Directory -Path $mockRoot -Force | Out-Null
+  try {
+    @(
+      'hw.camera.back=webcam0'
+      'hw.camera.front=none'
+      'hw.audioInput=yes'
+    ) | Set-Content -LiteralPath (Join-Path $mockRoot 'config.ini') -Encoding UTF8
+    $config = Get-Content -LiteralPath (Join-Path $mockRoot 'config.ini') -Raw
+    if ($config -notmatch '(?m)^hw\.camera\.back=webcam0\r?$' -or $config -notmatch '(?m)^hw\.camera\.front=none\r?$') {
+      Fail 'Mock Unity Capture mapping was not written correctly.'
+    }
+    [ordered]@{
+      mode = 'mock';
+      provider = 'Unity Capture/vStudio (synthetic CI endpoint)';
+      endpoint = 'webcam0';
+      back = 'webcam0';
+      front = 'none';
+      liveFramesVerified = $false;
+      emulatorLaunched = $false;
+      config = $config.Trim();
+    } | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $repoRoot 'android-camera-mock-result.json') -Encoding UTF8
+    Write-Host '[AVD camera validation] MOCK PASS: Unity Capture endpoint identity and AVD mapping contract verified.'
+    Write-Host '[AVD camera validation] MOCK LIMIT: no emulator, driver, CameraX preview, or live frames were exercised.'
+    exit 0
+  } finally {
+    Remove-Item -LiteralPath $mockRoot -Recurse -Force -ErrorAction SilentlyContinue
+  }
 }
 
 $roots = @(

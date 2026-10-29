@@ -71,6 +71,10 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Unity Capture AVD contract (Windows 10-safe mock)
+        shell: powershell
+        run: .\scripts\android\test-unity-capture-avd.ps1 -AvdName CI-Mock -BackCamera webcam0 -MockUnityCapture
+
       - name: Build native Windows virtual camera
         run: |
           npm run check:native-camera

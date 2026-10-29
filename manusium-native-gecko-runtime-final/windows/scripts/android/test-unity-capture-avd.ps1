@@ -33,7 +33,8 @@ param(
   [string] $AvdHome,
   [int] $BootTimeoutSeconds = 180,
   [switch] $SkipBuild,
-  [switch] $KeepEmulator
+  [switch] $KeepEmulator,
+  [switch] $MockUnityCapture
 )
 
 $ErrorActionPreference = 'Stop'
@@ -55,6 +56,7 @@ if ($AvdHome) { $args += @('-AvdHome', $AvdHome) }
 elseif (Test-Path -LiteralPath "$env:USERPROFILE\.android\avd") { $args += @('-AvdHome', "$env:USERPROFILE\.android\avd") }
 if ($SkipBuild) { $args += '-SkipBuild' }
 if ($KeepEmulator) { $args += '-KeepEmulator' }
+if ($MockUnityCapture) { $args += '-MockUnityCapture' }
 
 & powershell.exe @args
 if ($LASTEXITCODE -ne 0) {
