@@ -1124,6 +1124,14 @@ body.downloads-tray-open #content { margin-right: 0; }
 /* ---- main area ---- */
 #main { position: relative; flex: 1; display: flex; min-height: 0; border-top: 1px solid var(--line); }
 #content { flex: 1; min-width: 0; background: transparent; }
+:root[data-animations="on"] #app.tab-switching #tabstrip,
+:root[data-animations="on"] #app.tab-switching #toolbar {
+  animation: tab-switch-in .18s cubic-bezier(.2,.8,.2,1);
+}
+@keyframes tab-switch-in {
+  from { opacity: .72; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 #vtabs { width: 240px; flex: none; overflow-y: auto; padding: 8px 6px; background: var(--bg); border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; }
 #vtabs .tab { border-radius: 8px; flex: none; max-width: none; height: 32px; }
 #vtabs .tab.active::after { left: 0; right: auto; top: 6px; bottom: 6px; width: 3px; height: auto; }

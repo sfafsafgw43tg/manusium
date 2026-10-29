@@ -65,10 +65,14 @@ test('launcher opens in Polish with the default profiles', async () => {
 test('the new-profile type picker does not offer Personal or Work', async () => {
   const win = await windowWithPage(l.app, 'launcher.html');
   await win.getByRole('button', { name: 'Utwórz profil' }).click();
-  const kinds = win.locator('.kind-grid:not(.browser-shell-grid)');
+  const kinds = win.locator('.kind-grid:not(.browser-base-grid)');
   await expect(kinds).toBeVisible();
   await expect(kinds).not.toContainText('Osobisty');
   await expect(kinds).not.toContainText('Praca');
+  const base = win.locator('.browser-base-grid');
+  await expect(base).toBeVisible();
+  await expect(base).toContainText('Electron');
+  await expect(base.getByRole('radio')).toHaveAttribute('aria-checked', 'true');
   await win.getByRole('button', { name: 'Zamknij' }).click();
 });
 

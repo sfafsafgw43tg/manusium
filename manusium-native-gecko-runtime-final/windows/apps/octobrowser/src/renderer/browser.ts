@@ -2812,6 +2812,13 @@ function initEvents(): void {
     if (s.activeId !== lastActiveTabId) {
       lastActiveTabId = s.activeId;
       dismissAllPopouts();
+      const app = $('app');
+      app.classList.remove('tab-switching');
+      if (s.animations !== false && s.virtualBoxMode !== true) {
+        void app.offsetWidth;
+        app.classList.add('tab-switching');
+        window.setTimeout(() => app.classList.remove('tab-switching'), 180);
+      }
     }
     // A tab's dropdown must not outlive the tab (for example, a page closed by its own script).
     if (chromeMenuOpen && chromeMenuTabId && !s.tabs.some((tab) => tab.id === chromeMenuTabId)) closeChromeMenu();

@@ -124,6 +124,7 @@ export class BrowserWindowController {
   private readonly chromeReady: Promise<boolean>;
   /** Set once the user confirmed closing (the close event is intercepted first). */
   private closeConfirmed = false;
+  private closeFadeTimer?: NodeJS.Timeout;
   private closedStack: Array<{ url: string; title: string }> = [];
   private sleepTimer: NodeJS.Timeout;
 
@@ -138,10 +139,10 @@ export class BrowserWindowController {
     const baseChromeFrame = process.platform === 'win32';
     const frameColor = p.theme === 'light' ? (chromeFamily ? '#dedede' : '#ededed') : (chromeFamily ? '#29292f' : '#181818');
     this.win = new BaseWindow({
-      width: phone ? Math.max(420, Math.min(1100, phone.width + 42)) : 1280,
-      height: phone ? Math.max(620, Math.min(1300, phone.height + 210)) : 820,
-      minWidth: phone ? 360 : 720,
-      minHeight: phone ? 560 : 480,
+      width: phone ? Math.max(420, Math.min(1000, phone.width + 42)) : 1100,
+      height: phone ? Math.max(620, Math.min(1200, phone.height + 210)) : 720,
+      minWidth: phone ? 360 : 680,
+      minHeight: phone ? 560 : 460,
       show: false,
       backgroundColor: frameColor,
       // The trusted renderer owns the integrated title bar and its controls.
@@ -181,8 +182,7 @@ export class BrowserWindowController {
     // Do not make opening the native window depend on a renderer event. On
     // Windows a very fast local load can complete before an event listener is
     // attached, leaving a fully running profile with no visible window.
-    this.win.show();
-    this.win.focus();
+    this.showWindowAnimated();
     this.chromeReady = this.chrome.webContents.loadFile(path.join(rt.distDir, 'renderer', 'browser.html')).then(
       () => {
         try { this.chrome.setBackgroundColor('#00000000'); } catch {}
@@ -240,9 +240,28 @@ export class BrowserWindowController {
     if (this.win.isDestroyed()) throw new Error('browser window closed while opening');
     // Reassert foreground visibility after the chrome load. This covers Windows
     // window-manager races during a second Electron process startup.
+    this.showWindowAnimated();
+    if (!this.win.isVisible()) throw new Error('browser window could not be shown');
+  }
+
+  private showWindowAnimated(): void {
+    if (this.win.isDestroyed()) return;
+    const animated = this.rt.settings.load().ui.animations !== false;
+    if (!animated) {
+      this.win.show();
+      this.win.focus();
+      return;
+    }
+    try { this.win.setOpacity(0); } catch { /* unsupported window manager */ }
     this.win.show();
     this.win.focus();
-    if (!this.win.isVisible()) throw new Error('browser window could not be shown');
+    const started = Date.now();
+    const fade = setInterval(() => {
+      if (this.win.isDestroyed()) { clearInterval(fade); return; }
+      const progress = Math.min(1, (Date.now() - started) / 160);
+      try { this.win.setOpacity(progress); } catch { clearInterval(fade); return; }
+      if (progress >= 1) clearInterval(fade);
+    }, 16);
   }
 
   // ------------------------------------------------------------ tab basics
@@ -769,7 +788,15 @@ export class BrowserWindowController {
   confirmClose(force: boolean): void {
     this.closeConfirmed = true;
     if (force) this.rt.logger.info('window.force-closed', { tabs: this.tabs.length });
-    this.win.close();
+    if (force || this.rt.settings.load().ui.animations === false) {
+      this.win.close();
+      return;
+    }
+    try { this.win.setOpacity(0); } catch { this.win.close(); return; }
+    this.closeFadeTimer = setTimeout(() => {
+      this.closeFadeTimer = undefined;
+      if (!this.win.isDestroyed()) this.win.close();
+    }, 150);
   }
 
   snapshotTabs(): Array<{ url: string; title: string; pinned: boolean; group?: string }> {
