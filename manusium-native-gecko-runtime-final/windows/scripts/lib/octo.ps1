@@ -1,4 +1,4 @@
-﻿# scripts/lib/octo.ps1
+# scripts/lib/octo.ps1
 #
 # Shared implementation of the OctoSuite maintenance scripts (scripts\*.bat).
 # Target: Windows PowerShell 5.1 (built into Windows 10/11) - no PS7 syntax.
@@ -2583,10 +2583,17 @@ function Get-SetupSteps {
     @{ Key = 'stepPrereqs'; Required = $true; Fatal = $true; Action = {
         $coreOk = if (Test-GitCheckout) { Install-Prerequisites -GitRequired } else { Install-Prerequisites }
         if (-not $coreOk) { return (ConvertTo-StepResult $false) }
-        # These tables were previously only exposed from the Devices UI, which
-        # left a clean install without the tools needed by step 3.
-        if (-not (Install-MediaPrerequisites)) { return (ConvertTo-StepResult $false) }
-        if (-not (Install-AndroidPrerequisites)) { return (ConvertTo-StepResult $false) }
+        # The packaged Electron browser does not require CMake, Visual Studio,
+        # Python, Android Studio, or Java. Keep these development/device tools
+        # opt-in so a normal install never triggers a large UAC toolchain setup.
+        # Set OCTO_INSTALL_OPTIONAL_TOOLS=1 when building native camera or VM
+        # components from this checkout.
+        if ($env:OCTO_INSTALL_OPTIONAL_TOOLS -eq '1') {
+          if (-not (Install-MediaPrerequisites)) { Warn 'Optional media tools were not installed; the browser will remain usable without native camera capture.' }
+          if (-not (Install-AndroidPrerequisites)) { Warn 'Optional Android tools were not installed; Android/VM features remain unavailable.' }
+        } else {
+          Write-Log 'info' 'Skipping optional CMake, Visual Studio, Python, Android Studio, and Java prerequisites for the packaged browser.'
+        }
         return (ConvertTo-StepResult $true)
       } }
     @{ Key = 'stepDeps'; Required = $true; Fatal = $true; Action = {
@@ -2617,15 +2624,19 @@ function Get-SetupSteps {
         }
         Invoke-Npm @('run', 'icons')
         Invoke-Npm @('run', 'build')
-        # The Windows virtual camera is optional for the Electron app, but when
-        # CMake/MSVC are available build it before preparing the local bundles.
-        # A missing native toolchain must not prevent the browser from working.
-        $cameraBuild = Invoke-NpmResult @('run', 'build:native-camera')
-        if ($cameraBuild.code -ne 0) {
-          foreach ($line in @(([string]$cameraBuild.text) -split "`r?`n" | Where-Object { $_ -and $_.Trim() } | Select-Object -Last 20)) { Write-Log 'error' $line }
-          Warn 'Windows virtual camera compilation failed. The installer downloaded prerequisites but could not build the camera. Close Visual Studio/OctoSuite and retry setup; see the log for the CMake error.'
+        # The Windows virtual camera is optional for the Electron app. Only
+        # compile it when the user explicitly opted into optional tools and a
+        # complete CMake/MSVC toolchain is already available.
+        if ($env:OCTO_INSTALL_OPTIONAL_TOOLS -eq '1' -and (Test-NativeCameraToolchain)) {
+          $cameraBuild = Invoke-NpmResult @('run', 'build:native-camera')
+          if ($cameraBuild.code -ne 0) {
+            foreach ($line in @(([string]$cameraBuild.text) -split "`r?`n" | Where-Object { $_ -and $_.Trim() } | Select-Object -Last 20)) { Write-Log 'error' $line }
+            Warn 'Windows virtual camera compilation failed. The browser remains usable without native camera capture.'
+          } else {
+            $nativeCameraBuilt = $true
+          }
         } else {
-          $nativeCameraBuilt = $true
+          Write-Log 'info' 'Skipping optional native camera compilation; C++/CMake are not required for the packaged browser.'
         }
         # Strictly verify a downloaded runtime. When no release exists, package
         # Electron only and record that native Chromium is unavailable.
