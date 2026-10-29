@@ -1725,6 +1725,12 @@ export interface EmulatorWebcam {
   hardwareId?: string;
 }
 
+/** Return true when a selected emulator endpoint is backed by Unity Capture/vStudio. */
+export function selectedUnityCaptureWebcams(webcams: EmulatorWebcam[], endpoints: string[]): EmulatorWebcam[] {
+  const selected = new Set(endpoints.filter((value) => WEBCAM.test(value)));
+  return webcams.filter((camera) => selected.has(camera.name) && /unity\s*(video\s*)?capture|v-?studio/i.test(camera.device));
+}
+
 /**
  * `emulator -webcam-list` prints one line per camera. The quotes around the
  * names differ between builds and platforms - single quotes on Linux, backticks
@@ -3832,6 +3838,27 @@ export async function launchAndroidAvd(input: AndroidLaunchInput): Promise<Andro
       'Close other camera apps, refresh the camera list, enable the camera in the AVD, and cold-boot again.',
       webcamReport.detail || 'Run emulator.exe @AVD_NAME -webcam-list and select an endpoint that is listed.',
     ].join(' '));
+  }
+  const selectedForProvider = [
+    input.cameraFrontDevice ?? avd.cameraFrontDevice ?? '',
+    input.cameraBackDevice ?? avd.cameraBackDevice ?? '',
+    input.cameraDevice ?? avd.cameraDevice ?? '',
+  ];
+  const unityCaptureCameras = selectedUnityCaptureWebcams(webcams, selectedForProvider);
+  if (unityCaptureCameras.length) {
+    const companion = await mediaCompanionStatusAsync('vstudio-mobile');
+    if (!companion.enabled) {
+      throw new Error('Unity Capture is selected, but the vStudio Mobile media companion is disabled. Enable vStudio Mobile, start its Unity Capture producer, refresh the camera list, and try again.');
+    }
+    if (!companion.ready) {
+      throw new Error('Unity Capture is selected, but its camera or microphone driver is not ready. Install/register Unity Capture and refresh the camera list before launching the AVD.');
+    }
+    const request = requestMediaCompanionBroadcast('vstudio-mobile', true);
+    if (!companion.running) {
+      await ensureMediaCompanionAsync('vstudio-mobile');
+      startMediaCompanion('vstudio-mobile');
+    }
+    await waitForMediaCompanionCamera('vstudio-mobile', request);
   }
   const assignments = resolveActiveCameraAssignments(
     front, back,

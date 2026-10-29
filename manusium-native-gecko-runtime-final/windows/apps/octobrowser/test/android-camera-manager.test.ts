@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { CameraTestManager } from '../src/renderer/camera-test-manager';
 import { resolveAvdCameraSelection } from '@octo/core';
-import { configValue, writeConfigValues, mediaConfig, normalizeCameraSources, resolveActiveCameraAssignments, emulatorCameraValues } from '../src/main/android-studio';
+import { configValue, writeConfigValues, mediaConfig, normalizeCameraSources, resolveActiveCameraAssignments, emulatorCameraValues, selectedUnityCaptureWebcams } from '../src/main/android-studio';
 
 describe('host webcam test manager', () => {
   it('defaults to Android-only without granting a host capture lease', () => {
@@ -46,6 +46,16 @@ describe('host webcam test manager', () => {
 });
 
 describe('explicit Android camera configuration', () => {
+  it('identifies Unity Capture endpoints without treating ordinary webcams as virtual producers', () => {
+    const webcams = [
+      { name: 'webcam0', device: 'Integrated Camera', virtual: false },
+      { name: 'webcam1', device: 'Unity Capture virtual camera', virtual: true },
+      { name: 'webcam2', device: 'OBS Virtual Camera', virtual: true },
+    ];
+    expect(selectedUnityCaptureWebcams(webcams, ['webcam0', 'webcam1'])).toEqual([webcams[1]]);
+    expect(selectedUnityCaptureWebcams(webcams, ['webcam0', 'webcam2'])).toEqual([]);
+  });
+
   it('preserves webcam0 for both lenses even when the emulator enumerates nothing', () => {
     expect(resolveAvdCameraSelection({ front: 'webcam', back: 'webcam' }, { front: 'webcam0', back: 'webcam0' }, []))
       .toEqual({ front: 'webcam0', back: 'webcam0', shared: true, unlisted: ['webcam0'] });
