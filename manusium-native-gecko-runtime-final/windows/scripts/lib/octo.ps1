@@ -1,4 +1,4 @@
-# scripts/lib/octo.ps1
+﻿# scripts/lib/octo.ps1
 #
 # Shared implementation of the OctoSuite maintenance scripts (scripts\*.bat).
 # Target: Windows PowerShell 5.1 (built into Windows 10/11) - no PS7 syntax.
