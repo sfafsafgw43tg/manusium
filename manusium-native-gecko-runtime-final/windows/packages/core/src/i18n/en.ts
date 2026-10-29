@@ -525,6 +525,7 @@ export const en: Record<string, string> = {
   'sandbox.camera': 'Allow camera',
   'sandbox.microphone': 'Allow microphone',
   'sandbox.devices': 'Allow USB / HID / serial devices',
+  'sandbox.clipboard': 'Allow clipboard access',
   'sandbox.shareDownloads': 'Share the Downloads folder with the sandbox',
   'sandbox.appContainerNote': 'Chromium renderer processes already run in a Windows AppContainer-style sandbox. A full AppContainer for the whole app is not used because it breaks profile storage.',
 

@@ -34,6 +34,12 @@ let completed = false;
 try {
   for (const project of projects) {
     fs.cpSync(project.source, project.staged, { recursive: true, filter: (entry) => !entry.includes(`${path.sep}build${path.sep}`) && !entry.endsWith(`${path.sep}build`) });
+    // DirectShow consumes the producer's shared-memory protocol header. Keep
+    // the source trees independent in Git, but stage the shared header beside
+    // the DirectShow CMake project before compiling from the short temp path.
+    if (path.basename(project.source) === 'octo-directshow') {
+      fs.copyFileSync(path.join(root, 'native', 'octo-camera', 'feed_protocol.h'), path.join(project.staged, 'feed_protocol.h'));
+    }
     run('cmake', ['-S', project.staged, '-B', project.build, '-A', 'x64']);
     run('cmake', ['--build', project.build, '--config', 'Release', '--parallel']);
   }

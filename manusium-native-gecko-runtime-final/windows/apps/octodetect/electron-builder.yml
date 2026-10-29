@@ -5,7 +5,7 @@ appId: su.octo.detect
 productName: OctoDetect.su
 executableName: OctoDetect.su
 copyright: Copyright © 2026 OctoSuite contributors
-electronVersion: 44.7.0
+electronVersion: 44.9.3
 directories:
   output: ../../release/octodetect
   buildResources: build-resources

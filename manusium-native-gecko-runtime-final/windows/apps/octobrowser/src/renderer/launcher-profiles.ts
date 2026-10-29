@@ -971,7 +971,7 @@ function managerOverview(onCreate: () => void): HTMLElement {
       const sandboxStateText = sandbox ? (profile.running ? t('sandboxMonitor.sandboxActive') : t('sandboxMonitor.sandboxRequested')) : t('sandboxMonitor.hostProfile');
       monitorRows.append(h('div', { class: 'orbit-monitor-row', role: 'listitem' },
         h('div', { class: 'orbit-monitor-profile' }, h('strong', { text: profile.name }), h('span', { class: 'muted', text: sandboxStateText })),
-        h('div', { class: 'orbit-monitor-network' }, h('span', { class: `orbit-monitor-dot ${proxyEnabled && profile.proxyCheck && !profile.proxyCheck.ok ? 'bad' : proxyEnabled ? 'ok' : 'idle'}` }), h('span', { text: proxyState }), profile.proxyCheck?.ip ? h('span', { class: 'mono muted', text: profile.proxyCheck.ip }) : null))));
+        h('div', { class: 'orbit-monitor-network' }, h('span', { class: `orbit-monitor-dot ${proxyEnabled && profile.proxyCheck && !profile.proxyCheck.ok ? 'bad' : proxyEnabled ? 'ok' : 'idle'}` }), h('span', { text: proxyState }), profile.proxyCheck?.ip ? h('span', { class: 'mono muted', text: profile.proxyCheck.ip }) : null)));
     }
   };
   refreshMonitorRows();

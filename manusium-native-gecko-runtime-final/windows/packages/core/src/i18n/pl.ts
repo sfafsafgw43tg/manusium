@@ -524,6 +524,7 @@ export const pl: Record<string, string> = {
   'sandbox.camera': 'Zezwól na kamerę',
   'sandbox.microphone': 'Zezwól na mikrofon',
   'sandbox.devices': 'Zezwól na urządzenia USB / HID / szeregowe',
+  'sandbox.clipboard': 'Zezwól na dostęp do schowka',
   'sandbox.shareDownloads': 'Udostępnij piaskownicy folder Pobrane',
   'sandbox.appContainerNote': 'Procesy renderujące Chromium już działają w piaskownicy podobnej do AppContainer. Pełny AppContainer dla całej aplikacji nie jest używany, bo uniemożliwia zapis profili.',
 
