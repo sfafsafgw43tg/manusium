@@ -235,12 +235,14 @@ function toggleExtensionPopup(): void {
   dismissAllPopouts();
   extensionPopupOpen = true;
   $('extensionPopup').classList.remove('hidden');
+  syncChromeFront();
   renderExtensionPopup();
 }
 
 function closeExtensionPopup(): void {
   extensionPopupOpen = false;
   $('extensionPopup').classList.add('hidden');
+  syncChromeFront();
 }
 
 function renderExtensionPopup(): void {
@@ -798,7 +800,7 @@ function permissionBarOpen(): boolean {
  * notification can never be left behind by one of its close paths.
  */
 function chromeNeedsFront(): boolean {
-  return !shuttingDown && (bars.size > 0 || pageInfoOpen || translateOpen || chromeMenuOpen || downloadsTrayOpen || passwordsPopoutOpen);
+  return !shuttingDown && (bars.size > 0 || panel !== null || extensionPopupOpen || pageInfoOpen || translateOpen || chromeMenuOpen || downloadsTrayOpen || passwordsPopoutOpen);
 }
 
 let chromeFront = false;
@@ -824,7 +826,7 @@ function syncChromeFront(): void {
 function watchChromeLayers(): void {
   const run = () => syncChromeFront();
   const observer = new MutationObserver(run);
-  for (const id of ['panel', 'pageInfo', 'translateBar', 'chromeMenu', 'downloadsTray', 'passwordsPopout', 'overlay']) {
+  for (const id of ['panel', 'extensionPopup', 'pageInfo', 'translateBar', 'chromeMenu', 'downloadsTray', 'passwordsPopout', 'overlay']) {
     const node = document.getElementById(id);
     if (node) observer.observe(node, { attributes: true, attributeFilter: ['class'] });
   }
@@ -985,6 +987,7 @@ function openPanel(p: Panel | null, custom?: () => void, title?: string): void {
       panelElement.classList.add('hidden');
       panelElement.classList.remove('popout-closing');
       clear(body);
+      syncChromeFront();
       requestAnimationFrame(reportLayout);
     };
     if (tabMotionEnabled()) {
@@ -1013,6 +1016,7 @@ function openPanel(p: Panel | null, custom?: () => void, title?: string): void {
   $('panelTitle').textContent = title ?? t(`panel.${p}`);
   if (custom) custom();
   else void renderPanel(p);
+  syncChromeFront();
   if (switchingTool) {
     body.animate([
       { opacity: 0, transform: 'translateX(10px)' },
